@@ -15,7 +15,25 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+import auth.views as auth_views
+import request.views as request_views
+from django.views.generic import TemplateView
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', TemplateView.as_view(template_name='base.html'), name='index'),
+
+    # Auth views:
+    path('login/',auth_views.login, name='login'),
+    path('register/', auth_views.register, name='register'),
+    path('logout/', auth_views.logout, name='logout'),
+
+    # request views
+    ## pages
+    path('make_request/', request_views.make_request, name='make_request'),
+    ## json responses
+    path('get_form/<str:form_id>', request_views.get_form, name='get_form'),
+    path('request_create/', request_views.request_create, name='request_create'),
+    path('request_submit/', request_views.request_submit, name='request_submit')
 ]

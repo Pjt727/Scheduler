@@ -1,0 +1,61 @@
+Code,Number,Type,Capacity
+MUS,3202,Classroom,30
+MUS,3203,Classroom,30
+MUS,3204,Classroom,30
+MUS,110,Classroom,35
+MUS,113,Classroom,40
+MUS,145,Classroom,40
+MUS,146,Classroom,30
+MUS,209,Classroom,31
+MUS,210,Classroom,30
+MUS,212,Classroom,33
+MUS,213,Classroom,34
+MUS,214,Classroom,5
+MUS,215,Classroom,34
+MUS,218,Classroom,40
+MUS,226,Classroom,30
+MUS,227,Classroom,40
+MUS,228,Classroom,30
+MUS,229,Classroom,40
+MUS,230,Classroom,40
+MUS,231,Classroom,40
+MUS,303,Computer Lab,25
+MUS,301,Computer Lab,18
+MUS,302,Computer Lab,35
+MUS,303,Computer Lab,35
+MUS,112,Classroom,48
+MUS,222,Classroom,48
+MUS,100,Classroom,35
+MUS,106,Classroom,32
+MUS,112,Classroom,40
+MUS,118,Classroom,30
+MUS,211,Classroom,35
+MUS,225,Classroom,76
+MUS,236,Classroom,35
+MUS,236A,Classroom,35
+MUS,237,Classroom,42
+MUS,238,Classroom,35
+DN,258A,Computer Lab,28
+LT,006,Classroom,30
+LT,013,Classroom,32
+LT,017,Classroom,32
+LT,020,Classroom,32
+LT,021,Classroom,40
+LT,027,Classroom,60
+LT,129,Classroom,32
+LT,133,Classroom,32
+LT,239,Classroom,30
+LT,240,Classroom,30
+FN,102,Classroom,35
+FN,103,Classroom,35
+FN,104,Classroom,35
+FN,105,Classroom,35
+HC,0004,Computer Lab,24
+HC,0005,Computer Lab,32
+HC,0006,Computer Lab,24
+HC,1021,Classroom,30
+HC,2005,Classroom,32
+HC,2017,Classroom,30
+HC,2019,Classroom,30
+HC,2020,Classroom,30
+HC,2023,Classroom,70

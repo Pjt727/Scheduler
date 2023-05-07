@@ -1,0 +1,51 @@
+{% extends "base.html" %} {% block title %}Claim{% endblock %} {% block content %} {% load static %}
+
+<!-- Creating Model Form Modals 
+update-url="{% url 'get_form' form_id=submit_request_form.id %}"
+-->
+
+<form class="form-element" update-url="{% url 'get_form' form_id=submit_request_form.id %}" id="{{ submit_request_form.id }}" action="{% url 'request_submit' %}" method="POST">
+    {% csrf_token %}
+    <div id="inputs-{{ submit_request_form.id }}">
+    </div>
+    <input type="submit" name="action" value="Submit" data-value="submit" class="btn btn-outline-success"></input>
+    <input type="submit" name="action" value="Delete" data-value="delete" class="btn btn-outline-danger"></input>
+</form>
+<div id="testinggg">
+</div>
+
+{% for form in modal_forms %}
+
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modal-{{ form.id }}">
+    New {{ form.table_name }}
+</button>
+
+<div class="modal fade" id="modal-{{ form.id }}" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="staticBackdropLabel">New {{ form.table_name }}</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="{{ form.id }}" class="form-modal-element" autocomplete="off" update-url="{% url 'get_form' form_id=form.id %}" action="{% if form.create %}{% url form.view %}{% else %}{% url form.view form_id=form.id %}{% endif %}" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div id="inputs-{{ form.id }}"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <input type="submit" value="Request" class="btn btn-primary"></input>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endfor %}
+
+
+
+
+
+{% endblock %} {% block scripts %}
+<script src={% static 'mkae_requests.js' %}></script> {% endblock %}
