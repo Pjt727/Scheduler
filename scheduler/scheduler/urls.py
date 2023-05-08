@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-import auth.views as auth_views
+import authentication.views as auth_views
 import request.views as request_views
 from django.views.generic import TemplateView
 
@@ -35,5 +35,6 @@ urlpatterns = [
     ## json responses
     path('get_form/<str:form_id>', request_views.get_form, name='get_form'),
     path('request_create/', request_views.request_create, name='request_create'),
-    path('request_submit/', request_views.request_submit, name='request_submit')
+    path('request_submit/', request_views.request_submit, name='request_submit'),
+    path('request_add/<str:form_id>', request_views.request_add, name='request_add'),
 ]

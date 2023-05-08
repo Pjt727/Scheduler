@@ -2,6 +2,6 @@ from django.apps import AppConfig
 
 
 class MyAppConfig(AppConfig):
-    name = 'django.contrib.auth'
+    name = 'authentication'
     verbose_name = 'Teacher Authentication'
     version = '1.0'

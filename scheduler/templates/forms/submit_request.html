@@ -1,0 +1,28 @@
+{% load formhelpers %}
+
+{{ form.request_bundle.label_tag }}
+{{ form.request_bundle }}
+
+<div class="container text-center">
+    <div class="row">
+        <div class="col-2 fw-bold">Select</div>
+        <div class="col-2 fw-bold">Item to Create</div>
+        <div class="col-8 fw-bold">Details</div>
+    </div>
+    {% for val, request_item in form.fields.request_items.choices %}
+    <div class="row">
+        <div class="col-2">
+            <input type="checkbox" name="{{ form.request_items.name }}" value="{{ val }}" {% if val|stringformat:'s' in form.data|get_list:'request_items' %}checked{% endif %}>
+        </div>
+        <div class="col-2">{{ request_item.verbose_name }}</div>
+        <div class="col-8">{{ request_item }}</div>
+    </div>
+    {% endfor %}
+</div>
+
+{{ form.message.label_tag }}
+{{ form.message }}
+
+{% if form.request_bundle_form %}
+{% include 'request_bundle.html' with form=form.request_bundle_form %}
+{% endif %}

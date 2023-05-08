@@ -1,5 +1,5 @@
 from django.db import models
-from auth.models import Professor
+from authentication.models import Professor
 from request.models import RequestItem
 
 

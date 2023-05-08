@@ -8,8 +8,6 @@ class Professor(User):
     is_department_head =models.BooleanField(blank=True, null=True, default=False)
     credits = models.IntegerField(default=0)
 
-    class Meta:
-            app_label = 'django.contrib.auth'
-
     def __str__(self) -> str:
         return f"{self.title} {self.last_name}"
+    

@@ -1,5 +1,5 @@
 from django.db import models, IntegrityError, transaction
-from auth.models import Professor
+from authentication.models import Professor
 from django.utils.timezone import now
 
 class RequestBundle(models.Model):

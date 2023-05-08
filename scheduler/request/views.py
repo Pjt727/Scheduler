@@ -3,7 +3,7 @@ from django.shortcuts import render
 import request.forms as forms
 from django.db import IntegrityError, transaction
 from django.forms import ModelForm
-from auth.models import Professor
+from authentication.models import Professor
 from django.contrib.auth.decorators import login_required
 from request.models import RequestMessageGroup, submit_requests, delete_requests
 
@@ -34,7 +34,7 @@ def make_request(request: HttpRequest) -> HttpResponse:
         'submit_request_form': forms.SubmitRequestBundle(data={'author': prof}, user=request.user),
     }
 
-    return render(request, 'claim.html', context=context)
+    return render(request, 'make_request.html', context=context)
 
 
 ########
@@ -66,7 +66,6 @@ def request_create(request: HttpRequest) -> JsonResponse:
     response_data['requestBundleValue'] = request_bundle_created.id
     response_data['message'] = f"{request_bundle_created} bundle created!"
     response_data['ok'] = True
-       
 
     return JsonResponse(response_data)
     

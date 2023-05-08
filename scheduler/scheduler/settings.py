@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'authentication',
     'claim',
     'request',
 ]
@@ -66,12 +67,14 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
+            
             BASE_DIR / 'templates',
             BASE_DIR / 'templates' / 'auth',
             BASE_DIR / 'templates' / 'forms',
             BASE_DIR / 'templates' / 'pages',
             BASE_DIR / 'templates' / 'pages' / 'claim',
             BASE_DIR / 'templates' / 'pages' / 'request',
+            BASE_DIR / 'request' / 'templatetags',
         ],
         'APP_DIRS': True,
         'OPTIONS': {

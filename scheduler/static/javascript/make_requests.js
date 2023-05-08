@@ -30,7 +30,7 @@ function changeSelectValue(formElement, selectName, newValue) {
 }
 
 
-function addModelFormListeners() {
+function addModalFormListeners() {
     const formElements = document.querySelectorAll('.form-modal-element');
 
     formElements.forEach(formElement => {
@@ -42,7 +42,7 @@ function addModelFormListeners() {
             const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
 
             fetch(form.action, {
-                    method: form.method,
+                    method: 'post',
                     headers: { 'X-CSRFToken': csrfToken },
                     body: new FormData(form)
                 })
@@ -50,7 +50,7 @@ function addModelFormListeners() {
                 .then(data => {
                     const formId = form.id;
                     const modal = document.querySelector('#modal-' + formId);
-                    modal.modal('hide');
+                    // TODO make the modal close...
 
                     if (data.ok) {
                         form.reset();
@@ -75,17 +75,44 @@ function addModelFormListeners() {
     });
 }
 
+function addSubmitRequest() {
+    const submitRequestBundleForm = document.querySelector('#submit-request-bundle');
+    submitRequestBundleForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        submitRequestBundleForm.querySelector('input[type="submit"]').disabled = true;
+        var csrf_token = submitRequestBundleForm.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        let submitType = event.submitter.dataset.value;
+        fetch(submitRequestBundleForm.action, {
+                method: submitRequestBundleForm.method,
+                headers: { 'X-CSRFToken': csrf_token },
+                body: new URLSearchParams(new FormData(submitRequestBundleForm)).toString() + '&button=' + submitType
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    successMessage(data.message);
+                    updateForm(submitRequestBundleForm);
+                } else {
+                    errorMessage(data.errors);
+                }
+            })
+            .finally(() => {
+                setTimeout(() => { submitRequestBundleForm.querySelector('input[type="submit"]').disabled = false }, 50);
+            });
+    });
+}
+
 function updateForm(form) {
     const formId = form.id;
     const url = `/get_form/${formId}`;
 
     // Make a Fetch request to the update URL to get the updated form HTML
     fetch(url, {
-            method: 'GET',
+            method: 'POST',
             body: new FormData(form),
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': form.querySelector('input[name="csrfmiddlewaretoken"]').value
             }
         })
         .then(response => response.json())
@@ -108,5 +135,14 @@ function updateForm(form) {
 
 
 document.addEventListener('DOMContentLoaded', function() {
-    addModelFormListeners();
+    // configure modal submit buttons for fetches 
+    addModalFormListeners();
+
+    // configure request bundle submit button for fetches
+    addSubmitRequest();
+
+    // update all the forms
+    document.querySelectorAll('form').forEach(function(element) {
+        updateForm(element);
+    });
 });

@@ -1,0 +1,81 @@
+{% load formhelpers %}
+
+<div class="container">
+    <div class="row">
+      <div class="col-1 fw-bold">Select</div>
+      <div class="col-2 fw-bold">Item</div>
+      <div class="col-6 fw-bold">Details</div>
+      <div class="col-1 fw-bold">Update</div>
+      <div class="col-1 fw-bold">History</div>
+    </div>
+  {% for val, request_item_group in form.fields.request_groups.choices %}
+    <div class="row border-top secondary-400">
+      {% with request_item=request_item_group.get_head.get_item %}
+        <div class="col-1 fw-bold">
+          <input type="checkbox" name="{{ form.request_items.name }}" value="{{ val }}" {% if val|stringformat:'s' in form.data|get_list:'request_items' %}checked{% endif %}>
+        </div>
+
+        <div class="col-2">
+          {{ request_item.verbose_name }}
+        </div>
+        <div class="col-6">
+          {{ request_item|stringformat:'r' }}
+        </div>
+        <div class="col-1">
+<!-- start of the modal form to update-->
+<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#update-{{ group.id }}">
+  update
+</button>
+<div class="modal fade" id="update-{{ request_item_group.id }}" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h1 class="modal-title fs-5" id="staticBackdropLabel">Update {{ request_item.verbose_name }}</h1>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <form id="{{ request_item_group.id }}" class="form-modal-element" autocomplete="off" update-url="{% url 'get_request_bundle' request_bundle_id=request_item.group.request_bundle %}" method="POST">
+              {% csrf_token %}
+              <div class="modal-body">
+                  <div id="inputs-{{ request_item_group.id }}"></div>
+              </div>
+              <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                  <input type="submit" value="Request" class="btn btn-primary"></input>
+              </div>
+          </form>
+      </div>
+  </div>
+</div>
+
+
+<!-- end of the modal form to update-->
+        </div>
+        <div class="col-1">
+          <a class="btn btn-outline-none float-end" data-bs-toggle="collapse" href="#request-item-group-{{ request_item_group.id }}-toggle" role="button" aria-expanded="false" aria-controls="request-item-group-{{ request_item_group.id }}-toggle">+</a>
+        </div>
+      {% endwith %}
+    </div>
+      {% with history=request_item_group.get_history %}
+        {% if history %}
+        {% for request_item_old in request_item_group.get_history %}
+          <div id="request-item-group-{{ request_item_group.id }}-toggle" class="row border-bottom {% if request_item_old.status == request_item_old.REQUESTED %}secondary-200{% elif request_item_old.status == request_item_old.CHANGED %}warning-200{% elif request_item_old.status == request_item_old.APPROVED %}success-200{% elif request_item_old.status == request_item_old.CANCELLED %}danger-200{% endif %} collapse">
+            <div class="col-3">
+              {{ request_item_old.status }}
+            </div>
+            <div class="col-8">
+              {{ request_item_old.get_item|stringformat:'r' }}
+            </div>
+          </div>
+        {% endfor %}
+        {% else %}
+        <div id="request-item-group-{{ request_item_group.id }}-toggle" class="row border-bottom secondary-200 collapse">
+          <div class="col-11 d-flex justify-content-center">
+            No History
+          </div>
+        </div>
+        {% endif %}
+      {% endwith %}
+  {% endfor %}
+</div>
+
+  
