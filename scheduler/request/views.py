@@ -6,7 +6,7 @@ from django.forms import ModelForm
 from authentication.models import Professor
 from django.contrib.auth.decorators import login_required
 from request.models import RequestMessageGroup, submit_requests, delete_requests
-
+from claim.models import load_base_data, Building
 
 REQUEST_FORMS = {
     forms.EditRequestBundle.id: forms.EditRequestBundle,
@@ -23,6 +23,12 @@ POST_ERR_MESSAGE = "Only post requests are allowed!"
 #######
 @login_required
 def make_request(request: HttpRequest) -> HttpResponse:
+    # Only for testing purposes to generate base_data if not already generate... eventually wont be here
+    try:
+        Building.objects.get(code='MUS')
+    except Building.DoesNotExist:
+        load_base_data()
+    
 
     prof=Professor.objects.get(pk=request.user.id)
     context = {

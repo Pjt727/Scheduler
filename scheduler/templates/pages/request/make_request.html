@@ -1,4 +1,8 @@
-{% extends "base.html" %} {% block title %}Claim{% endblock %} {% block content %} {% load static %}
+
+{% extends "base.html" %}
+{% load static %}
+{% block head %}<link rel="stylesheet" href="{% static 'formSubmission.css' %}">{% endblock %}
+{% block title %}Claim{% endblock %} {% block content %} 
 
 <!-- Creating Model Form Modals 
 update-url="{% url 'get_form' form_id=submit_request_form.id %}"

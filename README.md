@@ -9,7 +9,7 @@
         - `Set-ExecutionPolicy Unrestricted -Scope Process` if UnauthorizedAccess
     3. `pip install -r requirements.txt` (installs the required libraries)
 
-- Set up the database (pwd backend)
+- Set up the database (pwd scheduler)
     1. `python manage.py makemigrations` (create a migration file if there are changes)
     2. `python manage.py migrate` (migrates the latest migration file and creates a database file)
     3. `python manage.py loaddata myapp/fixtures/initial_data.json` (dumps the initial data json into the database that was created)

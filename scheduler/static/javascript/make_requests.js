@@ -50,6 +50,13 @@ function addModalFormListeners() {
                 .then(data => {
                     const formId = form.id;
                     const modal = document.querySelector('#modal-' + formId);
+                    console.log("Before close")
+                    const myModal = new bootstrap.Modal(`#modal-request-bundle`, {
+                        keyboard: false
+                      })
+
+                    console.log(myModal)
+                
                     // TODO make the modal close...
 
                     if (data.ok) {
