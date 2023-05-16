@@ -32,11 +32,10 @@ function changeSelectValue(formElement, selectName, newValue) {
 
 function addModalFormListeners() {
     const formElements = document.querySelectorAll('.form-modal-element');
-
+    // Submit functionality
     formElements.forEach(formElement => {
         formElement.addEventListener('submit', (event) => {
             event.preventDefault();
-
             const form = event.target;
             form.querySelector('input[type="submit"]').disabled = true;
             const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]').value;
@@ -50,13 +49,13 @@ function addModalFormListeners() {
                 .then(data => {
                     const formId = form.id;
                     const modal = document.querySelector('#modal-' + formId);
-                    console.log("Before close")
-                    const myModal = new bootstrap.Modal(`#modal-request-bundle`, {
+                    // modal does not close properly for whatever reason
+                    /*const myModal = new bootstrap.Modal(modal, {
                         keyboard: false
                       })
 
                     console.log(myModal)
-                
+                    */
                     // TODO make the modal close...
 
                     if (data.ok) {
@@ -91,8 +90,8 @@ function addSubmitRequest() {
         let submitType = event.submitter.dataset.value;
         fetch(submitRequestBundleForm.action, {
                 method: submitRequestBundleForm.method,
-                headers: { 'X-CSRFToken': csrf_token },
-                body: new URLSearchParams(new FormData(submitRequestBundleForm)).toString() + '&button=' + submitType
+                headers: { 'X-CSRFToken': csrf_token, 'button': submitType },
+                body: new FormData(submitRequestBundleForm)
             })
             .then(response => response.json())
             .then(data => {
@@ -139,7 +138,20 @@ function updateForm(form) {
         .catch(error => console.error(error));
 }
 
-
+function submitBundleUpdates() {
+    const submitRequestBundleForm = document.querySelector('#submit-request-bundle');
+    const formElements = document.querySelectorAll('.form-modal-element');
+    submitRequestBundleForm.addEventListener('change', (e) => {
+        if (!(e.target.name === 'request_bundle')) { return };
+        updateForm(submitRequestBundleForm);
+        const requestBundleSelectVal = submitRequestBundleForm.querySelector("#id_request_bundle").value;
+        const requestBundleSelects = document.querySelectorAll('#id_request_bundle');
+        // update the request values
+        requestBundleSelects.forEach(requestBundleSelect => { requestBundleSelect.value = requestBundleSelectVal });
+        // refresh the forms
+        formElements.forEach(form => { updateForm(form) });
+    })
+}
 
 document.addEventListener('DOMContentLoaded', function() {
     // configure modal submit buttons for fetches 
@@ -149,7 +161,8 @@ document.addEventListener('DOMContentLoaded', function() {
     addSubmitRequest();
 
     // update all the forms
-    document.querySelectorAll('form').forEach(function(element) {
-        updateForm(element);
-    });
+    document.querySelectorAll('form').forEach(function(element) { updateForm(element) });
+
+    //update all forms when the backdrop request bundle changes
+    submitBundleUpdates();
 });

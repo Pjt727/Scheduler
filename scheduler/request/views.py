@@ -139,14 +139,16 @@ def request_submit(request: HttpRequest) -> JsonResponse:
         response_data['error'] = form.errors.as_text()
         return JsonResponse(response_data)
 
+    button_value = request.META.get('HTTP_BUTTON', '')
+
     # button checks
-    if not (request.POST['button'] == "delete" or request.POST['button'] == "delete"):
+    if not (button_value == "delete" or button_value == "delete"):
         response_data['ok'] = False
         response_data['error'] = "Button data-value not recognized"
         return JsonResponse(response_data)
     
     ## button delete
-    if request.POST['button'] == "delete":
+    if button_value == "delete":
         try:
             delete_requests(form.cleaned_data['request_items'])
             response_data['ok'] = True
