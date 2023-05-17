@@ -57,18 +57,16 @@ function addModalFormListeners() {
                     console.log(myModal)
                     */
                     // TODO make the modal close...
-
                     if (data.ok) {
                         form.reset();
-                        const requestBundleValue = data.requestBundleValue;
                         successMessage(data.message);
 
-                        // submit-request-bundle
-                        const submitRequestBundleForm = document.querySelector('#submit-request-bundle');
-                        changeSelectValue(submitRequestBundleForm, "request_bundle", requestBundleValue);
+                        // submit-request
+                        const submitRequestBundleForm = document.querySelector('#submit-request');
                         updateForm(submitRequestBundleForm);
+                        formElements.forEach((f) => updateForm(f));
                     } else {
-                        errorMessage(data.errors);
+                        errorMessage(data.error);
                     }
                 })
                 .catch(error => {
@@ -82,24 +80,24 @@ function addModalFormListeners() {
 }
 
 function addSubmitRequest() {
-    const submitRequestBundleForm = document.querySelector('#submit-request-bundle');
+    const submitRequestBundleForm = document.querySelector('#submit-request');
     submitRequestBundleForm.addEventListener('submit', function(event) {
         event.preventDefault();
         submitRequestBundleForm.querySelector('input[type="submit"]').disabled = true;
-        var csrf_token = submitRequestBundleForm.querySelector('input[name="csrfmiddlewaretoken"]').value;
-        let submitType = event.submitter.dataset.value;
-        fetch(submitRequestBundleForm.action, {
+        const csrf_token = submitRequestBundleForm.querySelector('input[name="csrfmiddlewaretoken"]').value;
+        const submitType = event.submitter.dataset.value;
+        fetch(submitRequestBundleForm.getAttribute('action'), {
                 method: submitRequestBundleForm.method,
                 headers: { 'X-CSRFToken': csrf_token, 'button': submitType },
                 body: new FormData(submitRequestBundleForm)
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.ok) {
                     successMessage(data.message);
                     updateForm(submitRequestBundleForm);
                 } else {
-                    errorMessage(data.errors);
+                    errorMessage(data.error);
                 }
             })
             .finally(() => {
@@ -138,21 +136,6 @@ function updateForm(form) {
         .catch(error => console.error(error));
 }
 
-function submitBundleUpdates() {
-    const submitRequestBundleForm = document.querySelector('#submit-request-bundle');
-    const formElements = document.querySelectorAll('.form-modal-element');
-    submitRequestBundleForm.addEventListener('change', (e) => {
-        if (!(e.target.name === 'request_bundle')) { return };
-        updateForm(submitRequestBundleForm);
-        const requestBundleSelectVal = submitRequestBundleForm.querySelector("#id_request_bundle").value;
-        const requestBundleSelects = document.querySelectorAll('#id_request_bundle');
-        // update the request values
-        requestBundleSelects.forEach(requestBundleSelect => { requestBundleSelect.value = requestBundleSelectVal });
-        // refresh the forms
-        formElements.forEach(form => { updateForm(form) });
-    })
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     // configure modal submit buttons for fetches 
     addModalFormListeners();
@@ -162,7 +145,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // update all the forms
     document.querySelectorAll('form').forEach(function(element) { updateForm(element) });
-
-    //update all forms when the backdrop request bundle changes
-    submitBundleUpdates();
 });

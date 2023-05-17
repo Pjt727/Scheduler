@@ -2,46 +2,11 @@ from django.db import models, IntegrityError, transaction
 from authentication.models import Professor
 from django.utils.timezone import now
 
-class RequestBundle(models.Model):
-    verbose_name = "Request Bundle"
-
-    title = models.CharField(max_length=50)
-    reason = models.CharField(max_length=1024, blank=True, null=True, default=None)
-    is_closed = models.BooleanField(blank=True, default=False)
-
-    approver = models.ForeignKey(Professor, related_name="my_approve_request_bundles", blank=True, null=True, default=None, on_delete=models.CASCADE)
-    requester = models.ForeignKey(Professor, related_name="my_request_bundles", on_delete=models.CASCADE)
-
-    def __str__(self) -> str:
-        return self.title
-    
-    def __repr__(self) -> str:
-        return f"{self.title}: is_closed={self.is_closed}, approver={self.approver}, requester={self.requester}"
-
-
-# Think of this class like a chat box of request messages that groups request items
-class RequestMessageGroup(models.Model):
-    verbose_name = "Request message Group"
-    request_bundle = models.ForeignKey(RequestBundle, related_name="request_message_groups", on_delete=models.CASCADE)
-
-
-class RequestMessage(models.Model):
-    verbose_name = "Request Message"
-
-    date = models.DateField(blank=True, default=now)
-    message = models.CharField(max_length=1024, null=True, blank=True, default=None)
-
-    group = models.ForeignKey(RequestMessageGroup, related_name="request_messages", on_delete=models.CASCADE)
-    author = models.ForeignKey(Professor, related_name="author_request_messages", on_delete=models.CASCADE)
-
-    class Meta:
-        ordering= ['date']
-
 
 # Think of this class like a line of all the changes for a particular request item
 class RequestItemGroup(models.Model):
     verbose_name = "Request Item Group"
-    request_bundle = models.ForeignKey(RequestBundle, related_name="request_item_groups", on_delete=models.CASCADE)
+    requester = models.ForeignKey(Professor, related_name="request_item_groups", on_delete=models.CASCADE)
 
     def get_head(self):
         '''Returns the most recent request item which is the latest response'''
@@ -87,10 +52,11 @@ class RequestItem(models.Model):
     date = models.DateField(blank=True, default=now)
 
     group = models.ForeignKey(RequestItemGroup, related_name="request_items", on_delete=models.CASCADE)
-    request_message = models.ForeignKey(RequestMessage, related_name="request_items", null=True, blank=True, default=None, on_delete=models.CASCADE)
+
 
     def is_head(self) -> bool:
         return self is self.group.get_head()
+
 
     def previous(self):
         try:
@@ -191,11 +157,6 @@ class RequestItem(models.Model):
 # from .forms import SubmitRequestBundle
 @transaction.atomic
 def submit_requests(form, request_item_ids: list[int]):
-    request_message_group = RequestMessageGroup(request_bundle=form.cleaned_data['request_bundle'])
-    request_message_group.save()
-    form.instance.group = request_message_group
-    form.save()
-     
     request_items_queryset = RequestItem.objects.filter(pk__in=request_item_ids)
     request_items_queryset.update(status=RequestItem.REQUESTED, date=now())
     
