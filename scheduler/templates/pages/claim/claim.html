@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'formSubmission.css' %}">
+    <link rel="stylesheet" href="{% static 'search.css' %}">
+{% endblock %}
+{% block title %}Claim{% endblock %} {% block content %}
+
+<div class="d-grid gap-3">
+    <div class="p-2">
+        <label for="id_department">Department:</label>
+        <select name="department" class="form-control" id="id_department">
+            <option value="any" value selected>Any</option>
+            {% for department in departments %}
+                <option value="{{ department.pk }}"> {{ department }} </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="p-2">
+        <label for="id_subject">Subject:</label>
+        <select name="subject" class="form-control" id="id_subject">
+            <option value="any" value selected>Any</option>
+            {% for department, subject in department_subjects %}
+                <option value="{{ subject }}" department="{{ department }}">{{ subject }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="p-2">
+
+        <label for="id_course-text">Course (SBJ: CODE)</label>
+        <input id="id_course-text" type="text" class="form-control" list="id_course-options">
+        <datalist id="id_course-options">
+            {% for course in courses %}
+                    <option 
+                        id="{{ course.pk }}"
+                        value="{{ course }}"
+                        department="{{ course.department }}"
+                        title="{{ course.title }}" 
+                        subject="{{ course.subject }}"
+                        code="{{ course.code }}"
+                    > 
+                        {{ course.title }}
+                    </option>
+            {% endfor %}
+        </datalist>
+    </div>
+</div>
+<div id="courseMultiSelect">
+    
+</div>
+
+
+{% endblock %}
+{% block scripts %}<script src={% static 'claim.js' %}></script> {% endblock %}

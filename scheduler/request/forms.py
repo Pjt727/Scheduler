@@ -5,7 +5,7 @@ from authentication.models import Professor
 from django.db.models import Q
 
 
-class SubmitRequestBundle(forms.Form):
+class SubmitRequest(forms.Form):
     request_items = forms.MultipleChoiceField(choices=(), widget=forms.CheckboxSelectMultiple())
     
     id = "submit-request"

@@ -1,9 +1,10 @@
 {% load formhelpers %}
 
-{{ form.request_bundle.label_tag }}
-{{ form.request_bundle }}
 
 <div class="container text-center">
+    <div class="row">
+        <h2 class="col-12 fw-bold">Unrequested Items</h2>
+    </div>
     <div class="row">
         <div class="col-2 fw-bold">Select</div>
         <div class="col-2 fw-bold">Item to Create</div>
@@ -19,9 +20,6 @@
     </div>
     {% endfor %}
 </div>
-
-{{ form.message.label_tag }}
-{{ form.message }}
 
 {% if form.request_bundle_form %}
 {% include 'request_bundle.html' with form=form.request_bundle_form %}

@@ -17,6 +17,7 @@ from django.contrib import admin
 from django.urls import path
 import authentication.views as auth_views
 import request.views as request_views
+import claim.views as claim_views
 from django.views.generic import TemplateView
 
 
@@ -36,4 +37,7 @@ urlpatterns = [
     path('get_form/<str:form_id>', request_views.get_form, name='get_form'),
     path('request_submit/', request_views.request_submit, name='request_submit'),
     path('request_add/<str:form_id>', request_views.request_add, name='request_add'),
+
+    # Claim views
+    path('claim/', claim_views.claim, name='claim')
 ]

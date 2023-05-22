@@ -1,0 +1,5 @@
+.live-search-options {
+    max-height: 300px;
+    overflow-y: scroll;
+    user-select: none;
+}

@@ -9,7 +9,7 @@ from request.models import submit_requests, delete_requests
 from claim.models import load_base_data, Building
 
 REQUEST_FORMS = {
-    forms.SubmitRequestBundle.id: forms.SubmitRequestBundle,
+    forms.SubmitRequest.id: forms.SubmitRequest,
     forms.RequestBuilding.id: forms.RequestBuilding,
     forms.RequestRoom.id: forms.RequestRoom,
 }
@@ -28,13 +28,12 @@ def make_request(request: HttpRequest) -> HttpResponse:
         load_base_data()
     
 
-    prof=Professor.objects.get(pk=request.user.id)
     context = {
         'modal_forms': (
             forms.RequestBuilding(data={}),
             forms.RequestRoom(data={}, user=request.user),
         ),
-        'submit_request_form': forms.SubmitRequestBundle(user=request.user),
+        'submit_request_form': forms.SubmitRequest(user=request.user),
     }
 
     return render(request, 'make_request.html', context=context)
@@ -101,7 +100,7 @@ def request_submit(request: HttpRequest) -> JsonResponse:
         return JsonResponse(response_data)
     
     # making form instance
-    form: forms.SubmitRequestBundle = forms.SubmitRequestBundle(request.POST, user=request.user)
+    form: forms.SubmitRequest = forms.SubmitRequest(request.POST, user=request.user)
 
     # form checking
     if not form.is_valid():
