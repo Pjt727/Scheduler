@@ -1,4 +1,5 @@
 from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from django import forms
 
 class RegisterUserForm(UserCreationForm):
@@ -9,13 +10,9 @@ class RegisterUserForm(UserCreationForm):
     id = "register-user-form"
 
     class Meta:
-        from .models import Professor
-        model = Professor
+        model = User
         fields = (
             'username',
-            'first_name',
-            'last_name',
-            'credits',
             'password1',
             'password2'
         ) 

@@ -49,7 +49,7 @@ class RequestItem(models.Model):
         (DELETED, 'Deleted')
     )
     status = models.CharField(max_length=20, choices=STATUSES, null=True, default=NOT_REQUESTED)
-    date = models.DateField(blank=True, default=now)
+    date = models.DateTimeField(blank=True, default=now)
 
     group = models.ForeignKey(RequestItemGroup, related_name="request_items", on_delete=models.CASCADE)
 

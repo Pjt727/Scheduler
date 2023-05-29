@@ -12,7 +12,7 @@
         <select name="department" class="form-control" id="id_department">
             <option value="any" value selected>Any</option>
             {% for department in departments %}
-                <option value="{{ department.pk }}"> {{ department }} </option>
+                <option value="{{ department.pk }}">{{ department }}</option>
             {% endfor %}
         </select>
     </div>
