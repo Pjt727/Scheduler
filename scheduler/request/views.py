@@ -149,10 +149,8 @@ def get_form(request: HttpRequest, form_id:str) -> JsonResponse:
     # getting form
     FormModel = REQUEST_FORMS.get(form_id, None)
     if FormModel is None:
-        response_data = {
-            'error': f'Form {form_id} not found',
-            'ok': False
-        }
+        response_data['error'] = f'Form {form_id} not found'
+        response_data['ok'] = False
         return JsonResponse(response_data)
 
     # Probably bad practice to create FormModel

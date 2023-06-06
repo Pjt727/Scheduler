@@ -39,5 +39,11 @@ urlpatterns = [
     path('request_add/<str:form_id>', request_views.request_add, name='request_add'),
 
     # Claim views
-    path('claim/', claim_views.claim, name='claim')
+    ## pages
+    path('claim/', claim_views.claim, name='claim'),
+    path('term_overview/', claim_views.term_overview, name="term_overview"),
+    ## json responses
+    path('course_search/', claim_views.course_search, name='course_search'),
+    path('section_search/', claim_views.section_search, name='section_search'),
+    path('submit_claim/', claim_views.submit_claim, name="submit_claim"),
 ]

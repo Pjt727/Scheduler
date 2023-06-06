@@ -1,0 +1,32 @@
+{% if sections %}
+{% for section in sections %}
+    <tr>
+        <td>{{ section.course.title }}</td>
+        <td>{{ section.course.subject.code }}</td>
+        <td>{{ section.course.code }}</td>
+        <td>
+            <table id="meetingsFor{{ section.pk }}">
+                {% for meeting in section.meetings.all %}
+                    <tr value="{{ meeting.pk }}">
+                        <td>{{ meeting.time_block.day }},</td>
+                        <td>{{ meeting.time_block.start_end_time }}</td>
+                        <td>{{ meeting.room }}</td>
+                    </tr>
+                {% endfor %}
+            </table>
+        </td>
+        <td>
+            <button type="button" data-bs-toggle="modal" 
+                data-bs-target="#submitClaim"
+                data-bs-title="{{ section.course.title }}"
+                data-bs-subject="{{ section.course.subject.code }}"
+                data-bs-course="{{ section.course.code }}"
+                meetings="meetingsFor{{ section.pk }}">
+                Claim
+            </button>
+        </td>
+    </tr>
+{% endfor %}
+{% else %}
+<tr>There are no sections matching that query.</tr>
+{% endif %}

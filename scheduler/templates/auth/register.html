@@ -13,8 +13,16 @@
 <br/><br/>
 <form action="{% url 'register' %}" method="POST">
     {% csrf_token %}
-
-    {{ form.as_p }}
+    <label class="form-label">Email:</label>
+    <input type="text" class="form-control"  aria-describedby="emailHelp" name="email">
+    <label class="form-label">First name:</label>
+    <input type="text" class="form-control" name="first_name">
+    <label class="form-label">Last name:</label>
+    <input type="text" class="form-control" name="last_name">
+    <label class="form-label">Password:</label>
+    <input type="password" class="form-control" name="password1">
+    <label class="form-label">Password confrimation:</label>
+    <input type="password" class="form-control" name="password2">
     <br/><br/>
     <input type="submit"
     value="Submit" class="btn btn-secondary">

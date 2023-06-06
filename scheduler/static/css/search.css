@@ -1,5 +1,20 @@
 .live-search-options {
-    max-height: 300px;
+    height: 150px;
+    max-height: 150px;
     overflow-y: scroll;
     user-select: none;
+}
+
+.search-icon-link {
+    color: inherit;
+    text-decoration: none;
+    user-select: none;
+    cursor: pointer;
+}
+
+.search-icon-link:hover,
+.search-icon-link:focus {
+    color: inherit;
+    text-decoration: none;
+    outline: none;
 }

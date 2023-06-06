@@ -5,8 +5,8 @@
 <form action="{% url 'login' %}" method="POST">
     {% csrf_token %}
     <div class="mb-3">
-      <label  class="form-label">Username</label>
-      <input type="text" class="form-control"  aria-describedby="emailHelp" name="username">
+      <label  class="form-label">Email</label>
+      <input type="text" class="form-control"  aria-describedby="emailHelp" name="email">
     
     </div>
     <div class="mb-3">

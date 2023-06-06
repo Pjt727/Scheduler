@@ -1,6 +1,8 @@
 # Creates DB instances of information gained from /classes/*/sections.csv and /classes/courses.csv
 # That is information from each section that has been scraped from the Marist Banner system
 
+# mfw "get_or_create" exists :/ 
+
 from django.conf import settings
 import claim.models as MaristDB
 from authentication.models import Professor as MaristDB_Professor
@@ -53,8 +55,6 @@ def add_section(section_row, term: str) -> None:
             room.save()
             return room
 
-        # sort of hacky way to put a space between the Season and year
-        term = term.replace("2", " 2", 1)
         if MaristDB.Section.objects.filter(number=section_row["section"], term=term, course=section_row["course_id"]).exists(): return
         section = MaristDB.Section(number=section_row["section"], campus=section_row["campus"], term=term, soft_cap=section_row["seat_cap"], course=section_row["course_id"])
         section.save()
@@ -154,6 +154,13 @@ def create_terms(terms: list[str] = [], force=False) -> tuple[list[str], list[st
     
     section_errs = []
     for term, section_df in section_dfs.items():
+        # sort of hacky way to put a space between the Season and year
+        term = term.lower().replace("2", " 2", 1)
+        season, year = term.split()
+        term = MaristDB.Term.objects.filter(season=season, year=year).first()
+        if term is None:
+            term = MaristDB.Term(season=season, year=year)
+            term.save()
         for _, section_row in section_df.iterrows():
             try:
                 add_section(section_row, term)

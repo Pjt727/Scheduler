@@ -1,7 +1,8 @@
 from django.db import models
+from django.db.models.query import QuerySet
 from authentication.models import Professor
 from request.models import RequestItem
-
+from datetime import time
 
 
 class Day:
@@ -41,7 +42,16 @@ class Day:
         'Sunday': 'SU',
     }
 
-    
+
+# Makes it so that to get items that are still in request you must explicitly ask for them
+# This is done so there is never accidental additions of objects that are requested in the wrong place
+class NonRequestManager(models.Manager):
+    def get_queryset(self) -> QuerySet:
+        return super().get_queryset().filter(request__isnull=True)
+
+class RequestManager(models.Manager):
+    def get_queryset(self) -> QuerySet:
+        return super().get_queryset().filter(request__isnull=False)
 
 
 class Building(models.Model):
@@ -51,6 +61,9 @@ class Building(models.Model):
     code = models.CharField(max_length=2)
 
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='building_requests', null=True, blank=True, default=None)
+
+    objects = NonRequestManager()
+    request_objects = RequestManager()
 
     def __str__(self) -> str:
         return f"{self.name}"
@@ -76,6 +89,9 @@ class Room(models.Model):
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='room_requests', null=True, blank=True, default=None)
 
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+
     def __str__(self) -> str:
         return f"{self.building} {self.number}"
 
@@ -90,7 +106,10 @@ class StartEndTime(models.Model):
     end = models.TimeField()
 
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='start_end_time_requests', null=True, blank=True, default=None)
-
+    
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return f"{self.start.strftime('%I:%M %p')} - {self.end.strftime('%I:%M %p')}"
 
@@ -104,7 +123,10 @@ class TimeBlock(models.Model):
 
     start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='time_block_requests', null=True, blank=True, default=None)
-
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return f"{self.number}, {self.day}"
     
@@ -121,7 +143,10 @@ class Department(models.Model):
 
     chair = models.ForeignKey(Professor, related_name="departments", on_delete=models.CASCADE, blank=True, null=True, default=None)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='department_requests', null=True, blank=True, default=None)
-
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return self.name
     
@@ -137,6 +162,9 @@ class DepartmentTimeBlockAllocation(models.Model):
     time_block = models.ForeignKey(TimeBlock, related_name="department_time_block_allocations", null=True, on_delete=models.SET_NULL)
     department = models.ForeignKey(Department, related_name="department_time_block_allocations", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='department_time_block_allocation_requests', null=True, blank=True, default=None)
+       
+    objects = NonRequestManager()
+    request_objects = RequestManager()
     
     def __repr__(self) -> str:
         return f"number of classroom={self.number_of_classrooms}, time block={self.time_block}, department={self.department}"
@@ -149,7 +177,10 @@ class Subject(models.Model):
 
     department = models.ForeignKey(Department, related_name="subjects", null=True, on_delete=models.CASCADE)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='subject_requests', null=True, blank=True, default=None)
-
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return self.code
     
@@ -166,12 +197,37 @@ class Course(models.Model):
 
     subject = models.ForeignKey(Subject, related_name="courses", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='course_requests', null=True, blank=True, default=None)
-
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return f"{self.subject}: {self.code}"
 
     def __repr__(self) -> str:
         return f"code={self.code}, credits={self.credits}, title={self.title}, subject={self.subject}"    
+
+class Term(models.Model):
+    verbose_name = "Term"
+    WINTER = "winter"
+    SPRING = "spring"
+    SUMMER = "summer"
+    FALL = "fall"
+    SEASONS = (
+        (WINTER, 'Winter'),
+        (SPRING, 'Spring'),
+        (SUMMER, 'Summer'),
+        (FALL, 'Fall'),
+    )
+
+    season = models.CharField(max_length=20, choices=SEASONS)
+    year = models.IntegerField()
+
+    def __str__(self) -> str:
+        return f"{self.season.capitalize()} {self.year}"
+    
+    def __repr__(self) -> str:
+        return f"{self.season.capitalize()} {self.year}"
 
 
 class Section(models.Model):
@@ -179,12 +235,15 @@ class Section(models.Model):
     
     number = models.CharField(max_length=5, default=None)
     campus = models.CharField(max_length=20, default=None)
-    term = models.CharField(max_length=20)
     soft_cap = models.IntegerField(blank=True, default=0)
 
+    term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="sections", max_length=20)
     course = models.ForeignKey(Course, related_name="sections", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='section_requests', null=True, blank=True, default=None)
-
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
     def __str__(self) -> str:
         return f"{self.course.subject}-{self.number}"     
 
@@ -193,19 +252,36 @@ class Section(models.Model):
 
 class Meeting(models.Model):
     verbose_name = "Meeting"
-
+    
     start_date = models.DateField(null=True, blank=True, default=None)
     end_date = models.DateField(null=True, blank=True, default=None)
     style = models.CharField(max_length=20, default="Lecture", blank=True, null=True)
 
-    section = models.ForeignKey(Section, related_name="meetings", null=True, on_delete=models.SET_NULL)
+    section = models.ForeignKey(Section, related_name="meetings", null=True, on_delete=models.CASCADE)
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
     professor = models.ForeignKey(Professor, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    request = models.OneToOneField(RequestItem, on_delete=models.SET_NULL, related_name='meeting_requests', null=True, blank=True, default=None)
+    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='meeting_requests', null=True, blank=True, default=None)
+   
+    objects = NonRequestManager()
+    request_objects = RequestManager()
+    
+    def interferes_time(self, day: str, start_time: time, end_time: time) -> bool:
+        if day != self.time_block.day:
+            return False
+        if start_time <= self.time_block.start_end_time.end and end_time >= self.time_block.start_end_time.start:
+            return True
+        return False
+    
+    def interferes_meeting(self, meeting: 'Meeting') -> bool:
+        return self.interferes_time(day=meeting.time_block.day, start_time=meeting.time_block.start_end_time.start, end_time=meeting.time_block.start_end_time.end)
+        
+
 
     def __str__(self) -> str:
-        return f"Meeting during {self.time_block}"
+        return f"{self.time_block.day} {self.time_block.start_end_time}"
     
     def __repr__(self) -> str:
         return f"section={self.section}, time block={self.time_block}, room={self.room}, teacher={self.professor}"
+    
+    

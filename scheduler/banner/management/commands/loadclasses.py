@@ -25,7 +25,7 @@ class Command(BaseCommand):
                 raise CommandError(f"{', '.join(invalid_terms)} term(s) are invalid or not stored. These are the stored terms: {','.join(valid_terms)}")
             course_errs, section_errs = create_terms(terms=options["terms"], force=options["force"]) 
         
-        self.stdout.write(self.style.SUCCESS('Successfully class information to the database'))
+        self.stdout.write(self.style.SUCCESS('Successfully added class information to the database'))
         if course_errs or section_errs:
             tab = "----"
             unique_course_errs = set(course_errs)
