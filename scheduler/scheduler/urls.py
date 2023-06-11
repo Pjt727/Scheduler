@@ -46,4 +46,5 @@ urlpatterns = [
     path('course_search/', claim_views.course_search, name='course_search'),
     path('section_search/', claim_views.section_search, name='section_search'),
     path('submit_claim/', claim_views.submit_claim, name="submit_claim"),
+    path('dep_allo/', claim_views.dep_allo, name="dep_allo"),
 ]

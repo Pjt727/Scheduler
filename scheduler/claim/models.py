@@ -112,28 +112,7 @@ class StartEndTime(models.Model):
     
     def __str__(self) -> str:
         return f"{self.start.strftime('%I:%M %p')} - {self.end.strftime('%I:%M %p')}"
-
-
-class TimeBlock(models.Model):
-    verbose_name = "Time Block"
-
-    # if this is None it means that it is an abnormal time slot
-    number = models.IntegerField(null=True, blank=True, default=None) 
-    day = models.CharField(max_length=2, choices=Day.DAY_CHOICES)
-
-    start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='time_block_requests', null=True, blank=True, default=None)
-   
-    objects = NonRequestManager()
-    request_objects = RequestManager()
     
-    def __str__(self) -> str:
-        return f"{self.number}, {self.day}"
-    
-    def __repr__(self) -> str:
-        return f"block={self.number}, day={self.day}, time={self.start_end_time}"
-    
-        
 
 class Department(models.Model):
     verbose_name = "Department"
@@ -154,20 +133,40 @@ class Department(models.Model):
         return f"name={self.name}, code={self.code}, chair={self.chair}"
     
 
-class DepartmentTimeBlockAllocation(models.Model):
-    verbose_name = "Department Time Block Allocation"
+class AllocationGroup(models.Model):
+    verbose_name = "Block Group"
 
     number_of_classrooms = models.IntegerField()
 
-    time_block = models.ForeignKey(TimeBlock, related_name="department_time_block_allocations", null=True, on_delete=models.SET_NULL)
-    department = models.ForeignKey(Department, related_name="department_time_block_allocations", null=True, on_delete=models.SET_NULL)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='department_time_block_allocation_requests', null=True, blank=True, default=None)
-       
+    department = models.ForeignKey(Department, related_name="allocation_groups", on_delete=models.CASCADE)
+
+    def __repr__(self) -> str:
+        return f"number of classroom={self.number_of_classrooms}, time block={self.time_blocks.all()}, department={self.department}"
+
+
+class TimeBlock(models.Model):
+    verbose_name = "Time Block"
+
+    day = models.CharField(max_length=2, choices=Day.DAY_CHOICES)
+    # if this is None it means that it is an abnormal time slot
+    number = models.IntegerField(null=True, blank=True, default=None)
+
+    allocation_group = models.ForeignKey(AllocationGroup, related_name="time_blocks", on_delete=models.CASCADE, null=True, blank=True, default=None)
+    start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
+    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='time_block_requests', null=True, blank=True, default=None)
+   
     objects = NonRequestManager()
     request_objects = RequestManager()
     
+    def __str__(self) -> str:
+        return f"{self.number}, {self.day}"
+    
     def __repr__(self) -> str:
-        return f"number of classroom={self.number_of_classrooms}, time block={self.time_block}, department={self.department}"
+        return f"block={self.number}, day={self.day}, time={self.start_end_time}"
+    
+        
+
+
 
 
 class Subject(models.Model):

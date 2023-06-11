@@ -4,8 +4,9 @@ import claim.models as MaristDB
 import pandas as pd
 from functools import lru_cache
 import datetime
+import ast
 
-# mfw "get_or_create" exists :/ 
+# mfw "get_or_create" exists :/ I'm too lazy to change it maybe
 
 # helper functions
 def add_buildings(buildings_df: pd.DataFrame) -> None:
@@ -28,10 +29,25 @@ def add_time_blocks(time_block_df: pd.DataFrame) -> None:
         if MaristDB.TimeBlock.objects.filter(start_end_time=timeb_row["start_end_time"], number=timeb_row["number"], day=timeb_row["day"]): continue
         MaristDB.TimeBlock(start_end_time=timeb_row["start_end_time"], number=timeb_row["number"], day=timeb_row["day"]).save()
         
-def add_department_time_block_allocations(department_time_block_allocations_df: pd.DataFrame) -> None:
-    for _, allo_row in department_time_block_allocations_df.iterrows():
-        if MaristDB.DepartmentTimeBlockAllocation.objects.filter(department=allo_row["department"], time_block=allo_row["time_block"]).exists(): continue
-        MaristDB.DepartmentTimeBlockAllocation(department=allo_row["department"], time_block=allo_row["time_block"], number_of_classrooms=allo_row["allocation"]).save()
+def add_allocation_groups(allocation_group_df: pd.DataFrame) -> None:
+    for _, allo_row in allocation_group_df.iterrows():
+        add_allo_group = False
+        time_block_populated = False
+        allo_group = MaristDB.AllocationGroup(department=allo_row["department"], number_of_classrooms=allo_row["allocation"])
+        time_blocks = list(allo_row["time_blocks"])
+        for time_block in time_blocks:
+            if time_block.allocation_group is None:
+                add_allo_group = True
+                time_block.allocation_group = allo_group
+                continue
+            time_block_populated = True
+        if add_allo_group and time_block_populated:
+            raise ValueError("A set of time blocks' allocation group was partially loaded")
+        if add_allo_group: 
+            allo_group.save()
+            for time_block in time_blocks:
+                time_block.save()
+
 
 # driver function
 def create_all():
@@ -64,13 +80,15 @@ def create_all():
 
     # Department time block allocations
     @lru_cache
-    def time_block_convertor(time_block) -> MaristDB.TimeBlock:
-        timeb_row = time_blocks_df.iloc[int(time_block)]
-        return MaristDB.TimeBlock.objects.get(start_end_time=timeb_row["start_end_time"], number=timeb_row["number"], day=timeb_row["day"])
+    def time_blocks_convertor(time_block):
+        time_blocks: list[int] = ast.literal_eval(time_block)
+        time_blocks: map[pd.Series] = map( lambda t_id: time_blocks_df.iloc[t_id], time_blocks)
+        return map(lambda t: 
+                   (MaristDB.TimeBlock.objects.get(start_end_time=t["start_end_time"], number=t["number"], day=t["day"])),
+                time_blocks)
     @lru_cache
     def department_convertor(department) -> MaristDB.Department:
-        dep_row = department_df.iloc[int(department)]
-        return MaristDB.Department.objects.get(code=dep_row["code"])
-    add_department_time_block_allocations(pd.read_csv(f"{STATIC_DATA_PATH}/DepartmentTimeBlockAllocation.csv", converters={
-        "time_block": time_block_convertor, "department": department_convertor}))
+        return MaristDB.Department.objects.get(code=department)
+    add_allocation_groups(pd.read_csv(f"{STATIC_DATA_PATH}/AllocationGroup.csv", converters={
+        "time_blocks": time_blocks_convertor, "department": department_convertor}))
     
