@@ -93,6 +93,49 @@ def get_sections_by_overlapping_duration(sections: QuerySet, allocation_group: A
 
     return sections
 
+def get_sections_by_overlapping_duration_course(sections: QuerySet, allocation_group: AllocationGroup):
+    allocation_time_blocks = allocation_group.time_blocks
+
+    allocation_overlaps = {}
+
+    for allocation_time_block in allocation_time_blocks.all():
+        in_allocation_time_blocks = (Q(meetings__time_block__day=allocation_time_block.day)
+            & Q(meetings__time_block__start_end_time__start__lte=allocation_time_block.start_end_time.end)
+            & Q(meetings__time_block__start_end_time__end__gte=allocation_time_block.start_end_time.start)
+            )
+        
+        allocation_start = allocation_time_block.start_end_time.start
+        allocation_end = allocation_time_block.start_end_time.end
+
+        cases = Case(
+            When(meetings__time_block__start_end_time__end__lt=allocation_end, 
+                then=Case(
+                    When(meetings__time_block__start_end_time__start__gt=allocation_start,
+                        then=F('meetings__time_block__start_end_time__end') - F('meetings__time_block__start_end_time__start')),
+                    default=F('meetings__time_block__start_end_time__end') - Value(allocation_start, output_field=TimeField())
+                    ),
+            ),
+            default=Case(
+                When(meetings__time_block__start_end_time__start__gt=allocation_start,
+                then=Value(allocation_end, output_field=TimeField()) - F('meetings__time_block__start_end_time__start')
+                ),
+                default=Value(allocation_end, output_field=TimeField()) - Value(allocation_start, output_field=TimeField())
+            )
+        )
+        ann = sections.annotate(total_overlapped_time=Sum(cases,filter=in_allocation_time_blocks)).exclude(total_overlapped_time=None).values('pk', 'total_overlapped_time')
+        for section in ann.all():
+            prev_allocation_overlap = allocation_overlaps.get(section['pk'], timedelta())
+            allocation_overlaps[section['pk']] = prev_allocation_overlap + section['total_overlapped_time']
+    
+    sections: list[Section] = []
+    for section, overlap in allocation_overlaps.items():
+        if overlap >= timedelta(hours=2, minutes=30):
+            sections.append(Section.objects.get(pk=section))
+
+    courses = set()
+    for section in sections:
+        courses.add(section.course.pk)
+    return len(courses)
 
 def count_section_by_overlapping_duration(sections: QuerySet, allocation_group: AllocationGroup):
     return len(get_sections_by_overlapping_duration(sections, allocation_group))
@@ -121,7 +164,7 @@ def dep_allo(request: HttpRequest) -> JsonResponse:
     for department_allocation in DepartmentAllocation.objects.filter(department=department).all():
         number_dict = {}
 
-        number_dict["count"] = count_section_by_overlapping_duration(sections=sections, allocation_group=department_allocation.allocation_group)
+        number_dict["count"] = get_sections_by_overlapping_duration_course(sections=sections, allocation_group=department_allocation.allocation_group)
         number_dict["max"] = department_allocation.number_of_classrooms
         numbers_allo_group[department_allocation.allocation_group.pk] = number_dict
 

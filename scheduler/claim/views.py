@@ -36,7 +36,6 @@ def claim(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def my_meetings(request: HttpRequest) -> HttpResponse:
-    professor = Professor.objects.get(user=request.user)
     data = {
         # could change this to limit from a certain year
         'terms': Term.objects.all().order_by('-year',

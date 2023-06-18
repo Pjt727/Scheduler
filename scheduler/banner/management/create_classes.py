@@ -25,6 +25,8 @@ def add_section(section_row, term: str) -> None:
         def add_professor(instructor_name: str, instructor_email: str) -> MaristDB_Professor:
             if pd.isna(instructor_name) and pd.isna(instructor_email): return None
             first_name, last_name =  (None, None) if pd.isna(instructor_name) else instructor_name.split(",", 1)
+            first_name = first_name.strip()
+            last_name = last_name.strip()
             instructor_email = None if instructor_email=="#" else instructor_email
             if instructor_email is None and first_name is None: return None
             if instructor_email:

@@ -1,4 +1,4 @@
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from .models import Professor
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate
@@ -9,6 +9,8 @@ from django.contrib.auth.models import User
 from authentication.models import Professor
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+
+GET_ERR_MESSAGE = "Only get requests are allowed!"
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
@@ -43,6 +45,8 @@ def register(request: HttpRequest) -> HttpResponse:
         else:
             extra_message = " Your previous teaching history is available."
             prof.user = user
+            prof.first_name = first_name
+            prof.last_name = last_name
         prof.save()
         
         professor = authenticate(username=email, password=password1) 
@@ -76,3 +80,26 @@ def login(request: HttpRequest) -> HttpResponse:
 def logout(request: HttpRequest) -> HttpResponse:
     logout_user(request)
     return render(request, 'login.html')
+
+
+def get_professor(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+    
+    # not get check
+    if request.method != 'GET':
+        response_data['error'] = GET_ERR_MESSAGE
+        response_data['ok'] = False
+        return JsonResponse(response_data)
+    
+    email = request.GET.get('email')
+    try:
+        prof = Professor.objects.get(email=email)
+    except Professor.DoesNotExist:
+        response_data['ok'] = False
+        return JsonResponse(response_data)
+    
+    response_data['first_name'] = prof.first_name
+    response_data['last_name'] = prof.last_name
+    response_data['ok'] = True
+    
+    return JsonResponse(response_data)

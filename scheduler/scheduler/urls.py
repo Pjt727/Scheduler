@@ -27,9 +27,12 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='base.html'), name='index'),
 
     # Auth views:
+    ## pages
     path('login/',auth_views.login, name='login'),
     path('register/', auth_views.register, name='register'),
     path('logout/', auth_views.logout, name='logout'),
+    ## json responses
+    path('get_professor/', auth_views.get_professor, name='get_professor'),
 
     # request views
     ## pages
