@@ -136,12 +136,19 @@ class Department(models.Model):
 class AllocationGroup(models.Model):
     verbose_name = "Block Group"
 
+
+class DepartmentAllocation(models.Model):
+    verbose_name = "Department Allocation"
+
     number_of_classrooms = models.IntegerField()
 
-    department = models.ForeignKey(Department, related_name="allocation_groups", on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, related_name="department_allocations", on_delete=models.CASCADE)
+    allocation_group = models.ForeignKey(AllocationGroup, related_name="department_allocations", on_delete=models.CASCADE)
 
     def __repr__(self) -> str:
-        return f"number of classroom={self.number_of_classrooms}, time block={self.time_blocks.all()}, department={self.department}"
+        return f"number of classroom={self.number_of_classrooms}, time block={self.allocation_group.time_blocks.all()}, department={self.department}"
+
+
 
 
 class TimeBlock(models.Model):
@@ -242,6 +249,11 @@ class Section(models.Model):
    
     objects = NonRequestManager()
     request_objects = RequestManager()
+
+    def in_allocation_group(self, allocation_group: AllocationGroup) -> bool:
+        
+        self.meetings
+        return
     
     def __str__(self) -> str:
         return f"{self.course.subject}-{self.number}"     

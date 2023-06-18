@@ -18,6 +18,7 @@ from django.urls import path
 import authentication.views as auth_views
 import request.views as request_views
 import claim.views as claim_views
+import heads.views as heads_views
 from django.views.generic import TemplateView
 
 
@@ -41,10 +42,17 @@ urlpatterns = [
     # Claim views
     ## pages
     path('claim/', claim_views.claim, name='claim'),
-    path('term_overview/', claim_views.term_overview, name="term_overview"),
+    path('my_meetings/', claim_views.my_meetings, name='my_meetings'),
     ## json responses
     path('course_search/', claim_views.course_search, name='course_search'),
     path('section_search/', claim_views.section_search, name='section_search'),
     path('submit_claim/', claim_views.submit_claim, name="submit_claim"),
-    path('dep_allo/', claim_views.dep_allo, name="dep_allo"),
+    path('get_meetings/', claim_views.get_meetings, name='get_meetings'),
+    
+    # Head views
+    ## pages
+    path('term_overview/', heads_views.term_overview, name="term_overview"),
+    ## json responses
+    path('dep_allo/', heads_views.dep_allo, name="dep_allo"),
+    path('dep_allo_sections/', heads_views.dep_allo_sections, name="dep_allo_sections"),
 ]

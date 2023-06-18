@@ -13,7 +13,7 @@ Help teachers submit class schedules
     1. `python manage.py makemigrations` (create a migration file if there are changes)
     2. `python manage.py migrate` (migrates the latest migration file and creates a database file)
     3. `python manage.py loadgeneral` Loads generally static csv data
-    4. `python manage.py loadclasses` Loads csv data from previous terms
+    4. `python manage.py loadclasses` Loads csv data from previous terms (will take a minute)
 - run the server on local port
     1. `python manage.py runserver`
 

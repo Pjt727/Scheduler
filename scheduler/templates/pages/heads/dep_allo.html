@@ -1,8 +1,5 @@
-{% extends "base.html" %}
 {% load formhelpers %}
-
-{% block content %}
-<table class="table">
+<table class="table" id="department_allocations">
     <thead>
         <tr>
             <th>Time</th>
@@ -19,31 +16,30 @@
                 {{ start_end_time }}
             </td>
             {% for code, day in days %}
-            <td value="{{ code }}">
                 {% if start_time_blob %}
                 {% with start_time_blob|get_item:code as number %}
                 {% if number %}
-                <div class="container">
-                    <div class="row" value="{{ number.allocation_group }}">
-                        <div class="col-6 col-sm-3"></div>    
-                        <div class="col-6 col-sm-3 fw-bold">{{ number.number }}</div>
-                        <div class="w-100"></div>
-                        <div class="col-6 col-sm-1">{{ number.count }}</div>
-                        <div class="col-6 col-sm-1">{{ number.max }}</div>
+                <td class="time_block" value="{{ number.allocation_group }}">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-6 col-sm-3"></div>    
+                            <div class="col-6 col-sm-3 fw-bold">{{ number.number }}</div>
+                            <div class="w-100"></div>
+                            <div class="col-6 col-sm-1">{{ number.count }}</div>
+                            <div class="col-6 col-sm-1">{{ number.max }}</div>
+                        </div>
                     </div>
-                </div>
+                </td>
+                {% else %}
+                <td>
+                </td>
                 {% endif %}
                 {% endwith %}
-                {% else %}
-                <div class="container">
-                    No Data
-                </div>
                 {% endif %}
-            </td>
             {% endfor %}
         </tr>
         {% endwith %}
         {% endfor %}
     </tbody>
 </table>
-{% endblock %}
+

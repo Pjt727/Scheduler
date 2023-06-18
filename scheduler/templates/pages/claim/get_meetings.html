@@ -1,0 +1,62 @@
+{% load formhelpers %}
+<div class="container">
+  <div class="title">{{ professor }} - {{ term }}</div>
+  <div class="days">
+    <div class="filler"></div>
+    <div class="filler"></div>
+    <div class="day">Monday</div>
+    <div class="day">Tuesday</div>
+    <div class="day">Wednesday</div>
+    <div class="day">Thursday</div>
+    <div class="day current">Friday</div>
+    <div class="day">Saturday</div>
+    <div class="day">Sunday</div>
+  </div>
+  <div class="content">
+    <div class="time" style="grid-row:1"><div>08:00</div></div>
+    <div class="time-double" style="grid-row:2"><div>09:00/&nbsp</div><div>09:15&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:3"><div>10:45/&nbsp</div><div>11:00&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:4"><div>12:15/&nbsp</div><div>12:30&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:5"><div>01:45/&nbsp</div><div>02:00&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:6"><div>03:15/&nbsp</div><div>03:30&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:7"><div>04:45/&nbsp</div><div>05:00&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:8"><div>06:15/&nbsp</div><div>06:30&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:9"><div>07:45/&nbsp</div><div>08:00&nbsp&nbsp</div></div>
+    <div class="time" style="grid-row:10"><div>09:15</div></div>
+    <div class="time" style="grid-row:11"><div>10:30</div></div>
+    <div class="filler-col"></div>
+    <div class="col" style="grid-column:3"></div>
+    <div class="col" style="grid-column:4"></div>
+    <div class="col" style="grid-column:5"></div>
+    <div class="col" style="grid-column:6"></div>
+    <div class="col" style="grid-column:7"></div>
+    <div class="col weekend" style="grid-column:8"></div>
+    <div class="col weekend" style="grid-column:9"></div>
+    <div class="row" style="grid-row:1"></div>
+    <div class="row" style="grid-row:2"></div>
+    <div class="row" style="grid-row:3"></div>
+    <div class="row" style="grid-row:4"></div>
+    <div class="row" style="grid-row:5"></div>
+    <div class="row" style="grid-row:6"></div>
+    <div class="row" style="grid-row:7"></div>
+    <div class="row" style="grid-row:8"></div>
+    <div class="row" style="grid-row:9"></div>
+    <div class="row" style="grid-row:10"></div>
+    <div class="row" style="grid-row:11"></div>
+    {% regroup meetings by section as sections %}
+    {% for section in sections %}
+      {% for meeting in section.list %}
+      
+      <div class="event calendar{{ forloop.parentloop.counter|modulo:8 }}"
+        style="grid-column: {{ meeting|get_meeting_col }}; grid-row: {{ meeting|get_meeting_row }}/span {{ meeting|get_meeting_span }};">
+        <a type="button" class="btn btn-outline-secondary fw-bold"
+        data-bs-toggle="popover" data-bs-placement="right"
+        data-bs-title="{{ meeting.time_block.start_end_time }}"
+        data-bs-content="{{ meeting.section.course.title }}">
+        {{ meeting.section }}
+        </a>       
+      </div>
+      {% endfor %}
+    {% endfor %}
+  </div>
+</div>

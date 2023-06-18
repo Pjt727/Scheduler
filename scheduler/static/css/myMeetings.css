@@ -1,0 +1,164 @@
+* {
+    box-sizing: border-box;
+  }
+  
+  body {
+    background: #fff;
+  }
+  
+  .container {
+    width: 100%;
+    display: grid;
+    grid-template-rows: 3em 3em auto;
+    position: absolute;
+  }
+  
+  .title {
+    background: #217346;
+    text-align: center;
+    display: grid;
+    place-content: center;
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .days {
+    background: #f3f2f1;
+    display: grid;
+    place-content: center;
+    text-align: center;
+    grid-template-columns: 3em 10px repeat(7, 1fr);
+    position: sticky;
+    top: 3em;
+    z-index: 10;
+    border-bottom: 2px solid #dadce0;
+  }
+  
+  .day {
+    border-left: 1px solid #dadce0;
+  }
+  
+  .content {
+    display: grid;
+    grid-template-columns: 3em 10px repeat(7, 1fr);
+    grid-template-rows: repeat(11, 3em);
+  }
+  
+  .time {
+    grid-column: 1;
+    text-align: right;
+    align-self: end;
+    font-size: 80%;
+    position: relative;
+    bottom: -1ex;
+    color: #70757a;
+    padding-right: 2px;
+  }
+
+  .time-double{
+    grid-column: 1;
+    text-align: right;
+    align-self: end;
+    font-size: 80%;
+    position: relative;
+    bottom: -2.5ex;
+    color: #70757a;
+    padding-right: 2px;
+  }
+  
+  .col {
+    border-right: 1px solid #dadce0;
+    grid-row: 1/span 11;
+    grid-column: span 1;
+  }
+  
+  .filler-col {
+    grid-row: 1/-1;
+    grid-column: 2;
+    border-right: 1px solid #dadce0;
+  }
+  
+  .row {
+    grid-column: 2/-1;
+    border-bottom: 1px solid #dadce0;
+  }
+  
+  .event {
+    border-radius: 5px;
+    padding: 5px;
+    margin-right: 10px;
+    font-weight: bold;
+    font-size: 80%;
+  }
+  
+  .weekend {
+    background-color: #f1f3f4;
+  }
+
+  .calendar0 {
+    background-color: #8baf97;
+    border-color: #8ac08a;
+    
+  }
+
+  .calendar1 {
+    background-color: #d7dbef;
+    border-color: #bcc3e5;
+  }
+  
+  .calendar2 {
+    background-color: #b3e1f7;
+    border-color: #81cdf2;
+  }
+
+  .calendar3 {
+    background-color: #f5c6c6;
+    border-color: #fad3d3;
+    
+  }
+
+  .calendar4 {
+    background-color: #a3a3a3;
+    border-color: #7e7e7e;
+  }
+  
+  .calendar5 {
+    background-color: #8baf97;
+    border-color: #8ac08a;
+  }
+  
+  .calendar6 {
+    background-color: #f1b3f7;
+    border-color: #ec9fe2;
+  }
+  
+  .calendar7 {
+    background-color: #f1cfa8;
+    border-color: #f8c28f;
+  }
+
+  .event1 {
+    grid-column: 3;
+    grid-row: 1/span 1;
+  }
+  
+  .event2 {
+    grid-column: 5;
+    grid-row: 10/span 6;
+  }
+  
+  .event3 {
+    grid-column: 7;
+    grid-row: 8/span 10;
+  }
+  
+  .event4 {
+    grid-column: 8;
+    grid-row: 21/span 2;
+  }
+  
+  .current {
+    font-weight: bold;
+  }

@@ -15,6 +15,7 @@
                 {% endfor %}
             </table>
         </td>
+        {% if claim %}
         <td>
             <button type="button" data-bs-toggle="modal" 
                 data-bs-target="#submitClaim"
@@ -25,6 +26,13 @@
                 Claim
             </button>
         </td>
+        {% elif allocation %}
+        <td>
+            <button type="button" data-bs-toggle="modal">
+                Edit
+            </button>
+        </td>
+        {% endif %}
     </tr>
 {% endfor %}
 {% else %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Term Overview{% endblock %} {% block content %}
+<label for="id_terms">Terms</label>
+<select id="id_term" class="form-control">
+    {% for term in terms %}
+    {% if forloop.first %}
+    <option value="{{ term.pk }}" selected>{{ term }}</option>
+    {% else %}
+    <option value="{{ term.pk }}">{{ term }}</option>
+    {% endif %}
+    {% endfor %}
+</select>
+<label for="id_department">Department:</label>
+<select name="department" class="form-control" id="id_department">
+    {% for department in departments %}
+    {% if forloop.first %}
+    <option value="{{ department.pk }}" selected>{{ department }}</option>
+    {% else %}
+    <option value="{{ department.pk }}">{{ department }}</option>
+    {% endif %}
+    {% endfor %}
+</select>
+
+<div id="dep_allo_container">
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Course</th>
+            <th scope="col">Meetings</th>
+            <th scope="col"></th>
+        </tr>
+    </thead>
+    <tbody id="sections_container">
+    </tbody>  
+</table>
+{% endblock %}
+{% block scripts %}
+<script src={% static 'message.js' %}></script> 
+<script src={% static 'term_overview.js' %}></script>
+{% endblock %}

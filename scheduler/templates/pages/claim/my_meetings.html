@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+{% endblock %}
+{% block title %}My Meetings{% endblock %}
+{% block content %}
+        <label for="id_term">Term:</label>
+        <select name="term" class="form-control" id="id_term">
+            {% for term in terms %}
+                {% if forloop.first %}
+                    <option value="{{ term.pk }}" selected>{{ term }}</option>
+                {% else %}
+                    <option value="{{ term.pk }}">{{ term }}</option>
+                {% endif %}
+            {% endfor %}
+        </select>
+        <br>
+        <br>
+        
+        <div id="meetings">
+        </div>
+{% endblock %}
+{% block scripts %}
+    <script src={% static 'message.js' %}></script> 
+    <script src={% static 'my_meetings.js' %}></script>
+{% endblock %}

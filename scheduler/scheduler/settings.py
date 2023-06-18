@@ -75,6 +75,7 @@ TEMPLATES = [
             BASE_DIR / 'templates' / 'pages',
             BASE_DIR / 'templates' / 'pages' / 'claim',
             BASE_DIR / 'templates' / 'pages' / 'request',
+            BASE_DIR / 'templates' / 'pages' / 'heads',
             BASE_DIR / 'request' / 'templatetags',
         ],
         'APP_DIRS': True,

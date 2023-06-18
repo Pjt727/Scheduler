@@ -1,13 +1,16 @@
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup
-from django.db.models import Q, Case, When, IntegerField, Count
-from datetime import time
+from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup, Meeting, DepartmentAllocation
+from django.db.models import Q, Case, When, IntegerField, Subquery, OuterRef
+from django.db.models.functions import Coalesce
+from datetime import time, timedelta, datetime
 import json
 
 POST_ERR_MESSAGE = "Only post requests are allowed!"
 GET_ERR_MESSAGE = "Only get requests are allowed!"
+
+## pages
 
 @login_required
 def claim(request: HttpRequest) -> HttpResponse:
@@ -31,69 +34,55 @@ def claim(request: HttpRequest) -> HttpResponse:
     }
     return render(request, 'claim.html', context=data)
 
-
-def only_department_heads(view_func):
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        prof = Professor.objects.get(user=user)
-        if not prof.department_head:
-            return redirect('index')
-
-    return wrapper
-
-# change to only department heads...
 @login_required
-def term_overview(request: HttpRequest) -> HttpResponse:
+def my_meetings(request: HttpRequest) -> HttpResponse:
+    professor = Professor.objects.get(user=request.user)
     data = {
-            "terms": Term.objects.all(),
-            "departments": Department.objects.all(),
+        # could change this to limit from a certain year
+        'terms': Term.objects.all().order_by('-year',
+            Case(
+                When(season=Term.FALL, then=1),
+                When(season=Term.WINTER, then=2),
+                When(season=Term.SPRING, then=3),
+                When(season=Term.SUMMER, then=4),
+                default=0,
+                output_field=IntegerField(),
+            )),
     }
-    return render(request, 'term_overview.html', context=data)
+    return render(request, 'my_meetings.html', context=data)
 
-def dep_allo(request: HttpRequest) -> HttpResponse:
-    department = Department.objects.first()
-    term = Term.objects.first()
 
-    sections = Section.objects.filter(term=term, course__subject__department=department)
+## api 
+@login_required
+def get_meetings(request: HttpRequest) -> JsonResponse:
+    response_data = {}
 
-    time_blocks = TimeBlock.objects.exclude(number=None)
+    # not get check
+    if request.method != 'GET':
+        response_data['error'] = GET_ERR_MESSAGE
+        response_data['ok'] = False
+        return JsonResponse(response_data)
     
-    numbers: dict[int, dict[str, dict[str, dict]]] = {}
-
-    # does more than two times more work than needed 
-    for time_block in time_blocks.all():
-        number_dict = {}
-        count = sections.annotate(meeting_count=Count(
-                'meetings', 
-                filter=Q(meetings__time_block__allocation_group=time_block.allocation_group))
-            ).exclude(meeting_count=0).count()
-
-        number_dict["number"] = time_block.number
-        number_dict["count"] = count
-        department_allo: AllocationGroup = time_block.allocation_group
-        number_dict["allocation_group"] = department_allo.pk
-        allo = 0 if department_allo is None else department_allo.number_of_classrooms
-        number_dict["max"] = allo
-        start_time_blob = numbers.get(time_block.start_end_time.pk)
-        if start_time_blob is None: numbers[time_block.start_end_time.pk] = {}
-        numbers[time_block.start_end_time.pk][time_block.day] = number_dict
-
-    time_blocks_dict = {}
-    for code, _ in Day.DAY_CHOICES:
-        time_blocks_dict[code] = {}
-        for tb in time_blocks.filter(day=code).all():
-            time_blocks_dict[code][tb.number] = tb
+    term = request.GET.get('term')
+    term = Term.objects.get(pk=term)
+    professor = Professor.objects.get(user=request.user)
+    meetings = professor.meetings.filter(section__term=term)
+    for meeting in meetings.all():
+        print(meeting)
 
     data = {
-            "department": department,
-            "time_blocks": time_blocks_dict,
-            "numbers": numbers,
-            "start_end_times": StartEndTime.objects.exclude(time_blocks__number=None).order_by("end").all(),
-            "days": Day.DAY_CHOICES,
-            }
-    return render(request, 'dep_allo.html', context=data)
-# Fetch Api requests
+        "professor": professor,
+        "term": term,
+        "meetings": meetings
+    }
 
+    get_meetings_template = render(request, "get_meetings.html", data).content.decode()
+
+
+    response_data['ok'] = True
+    response_data['get_meetings_template'] = get_meetings_template
+
+    return JsonResponse(response_data)
 @login_required
 def course_search(request: HttpRequest) -> JsonResponse:
     response_data = {}
@@ -186,7 +175,7 @@ def section_search(request: HttpRequest) -> JsonResponse:
         section_qs = section_qs.exclude(exclusion_query)
     
     
-    sections_template = render(request, "sections.html", {"sections": section_qs.all()}).content.decode()
+    sections_template = render(request, "sections.html", {"sections": section_qs.all(), "claim": True}).content.decode()
 
     response_data['ok'] = True
     response_data['section_html'] = sections_template
