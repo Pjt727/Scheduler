@@ -173,7 +173,7 @@ function searchDebounce(){
 }
 
 
-function updateSections() {
+function updateSections(sortColumn=null, sortType=null) {
     const term = document.getElementById('id_term').options[document.getElementById('id_term').selectedIndex].getAttribute('value');
     const doesFit = document.getElementById('fits').checked;
     const isAvailable = document.getElementById('available').checked;
@@ -202,13 +202,16 @@ function updateSections() {
     }))
 
     const url = new URL('section_search/', window.location.origin);
-
     const payload = {
         term: term,
         does_fit: doesFit,
         is_available: isAvailable,
         courses: courses,
         exclusion_times: exclusionTimes,
+        sort_column: sortColumn,
+        sort_type: sortType,
+        start_slice: startSlice,
+        end_slice: endSlice
     };
 
     fetch(url, {
@@ -227,6 +230,9 @@ function updateSections() {
             }
             const tableBody = document.getElementById('sections');
             tableBody.innerHTML = data['section_html']
+            addSortListeners(updateSections);
+            addPaginationListeners(updateSections);
+            addMeetingPopovers();
         });
 }
 
@@ -357,7 +363,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     updateCourseLiveSearch();
 
     // section search
-    document.getElementById('meetingSearch').addEventListener('click', updateSections);
+    document.getElementById('meetingSearch').addEventListener('click', () => updateSections());
     document.getElementById('excludeButton').addEventListener('click', addExclusionTime);
 
     // claim

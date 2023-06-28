@@ -1,9 +1,11 @@
-function getMeetings(){
+function getMeetings(sortColumn = null, sortType = null){
     const termSelect = document.getElementById("id_term");
     const selectedTerm = termSelect.options[termSelect.selectedIndex].value
 
     const url = new URL('get_meetings/', window.location.origin);
     url.searchParams.set('term', selectedTerm);
+    url.searchParams.set('sortColumn', sortColumn);
+    url.searchParams.set('sortType', sortType);
 
     fetch(url, {
         method: 'get',
@@ -19,10 +21,11 @@ function getMeetings(){
             const meetingsContainer = document.getElementById("meetings")
             meetingsContainer.innerHTML = data["get_meetings_template"]
             const popoverTriggerList = document.querySelectorAll('[data-bs-toggle="popover"]');
-                popoverTriggerList.forEach((popoverTriggerEl) => {
+            popoverTriggerList.forEach((popoverTriggerEl) => {
                 new bootstrap.Popover(popoverTriggerEl);
             });
 
+            
         })
 }
 

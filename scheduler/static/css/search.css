@@ -18,3 +18,19 @@
     text-decoration: none;
     outline: none;
 }
+
+.popover {
+    max-width: 400px;
+}
+
+.sectionRow {
+    height: 55px;
+}
+
+#sectionsTableContainer {
+    min-height: 550px;
+}
+
+.pagination {
+    user-select: none;
+}

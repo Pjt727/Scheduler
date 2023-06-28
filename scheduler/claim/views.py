@@ -66,8 +66,6 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
     term = Term.objects.get(pk=term)
     professor = Professor.objects.get(user=request.user)
     meetings = professor.meetings.filter(section__term=term)
-    for meeting in meetings.all():
-        print(meeting)
 
     data = {
         "professor": professor,
@@ -142,6 +140,11 @@ def section_search(request: HttpRequest) -> JsonResponse:
     does_fit = data.get('does_fit', False)
     is_available = data.get('is_available', False)
 
+    sort_column = data.get('sort_column')
+    sort_type = data.get('sort_type')
+    start_slice = data.get('start_slice')
+    end_slice = data.get('end_slice')
+
     professor = Professor.objects.get(user=request.user)
     section_qs = Section.objects.filter(term=term, course__in=courses)
 
@@ -173,8 +176,21 @@ def section_search(request: HttpRequest) -> JsonResponse:
 
         section_qs = section_qs.exclude(exclusion_query)
     
-    
-    sections_template = render(request, "sections.html", {"sections": section_qs.all(), "claim": True}).content.decode()
+    section_qs = Section.sort_sections(section_qs=section_qs, sort_column=sort_column, sort_type=sort_type)
+    original_length = len(section_qs)
+    section_qs = section_qs[start_slice:end_slice]
+
+    sections_template = render(request, "sections.html", {
+        "sections": section_qs,
+        "claim": True,
+        "sort_column": sort_column,
+        "sort_type": sort_type,
+        "sort_column": sort_column,
+        "sort_type": sort_type,
+        "start_slice": start_slice,
+        "end_slice": min(end_slice, original_length),
+        "original_length": original_length  
+    }).content.decode()
 
     response_data['ok'] = True
     response_data['section_html'] = sections_template

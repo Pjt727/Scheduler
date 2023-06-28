@@ -1,7 +1,10 @@
 {% extends "base.html" %}
 {% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'search.css' %}">
+{% endblock %}
 {% block title %}Term Overview{% endblock %} {% block content %}
-<label for="id_terms">Terms</label>
+<label for="id_term">Terms</label>
 <select id="id_term" class="form-control">
     {% for term in terms %}
     {% if forloop.first %}
@@ -24,22 +27,12 @@
 
 <div id="dep_allo_container">
 </div>
+<div id="sections_container">
+</div>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col">Title</th>
-            <th scope="col">Subject</th>
-            <th scope="col">Course</th>
-            <th scope="col">Meetings</th>
-            <th scope="col"></th>
-        </tr>
-    </thead>
-    <tbody id="sections_container">
-    </tbody>  
-</table>
 {% endblock %}
 {% block scripts %}
-<script src={% static 'message.js' %}></script> 
+<script src={% static 'message.js' %}></script>
+<script src={% static 'sections.js' %}></script>
 <script src={% static 'term_overview.js' %}></script>
 {% endblock %}

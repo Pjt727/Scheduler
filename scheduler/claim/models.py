@@ -239,27 +239,42 @@ class Term(models.Model):
 class Section(models.Model):
     verbose_name = "Section"
     
-    number = models.CharField(max_length=5, default=None)
-    campus = models.CharField(max_length=20, default=None)
+    number = models.CharField(blank=True, max_length=5)
+    campus = models.CharField(max_length=20)
     soft_cap = models.IntegerField(blank=True, default=0)
 
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="sections", max_length=20)
-    course = models.ForeignKey(Course, related_name="sections", null=True, on_delete=models.SET_NULL)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='section_requests', null=True, blank=True, default=None)
+    course = models.ForeignKey(Course, related_name="sections", on_delete=models.CASCADE)
+    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='section_requests',
+                                    null=True, blank=True, default=None)
    
     objects = NonRequestManager()
     request_objects = RequestManager()
 
-    def in_allocation_group(self, allocation_group: AllocationGroup) -> bool:
-        
-        self.meetings
-        return
-    
+    class Meta:
+        unique_together = ('course', 'term', 'number', 'request')
+
     def __str__(self) -> str:
         return f"{self.course.subject}-{self.number}"     
 
     def __repr__(self) -> str:
         return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}, request={self.request}"
+    
+    def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:
+        field_names = {
+        'sortTitle': 'course__title',
+        'sortSubject': 'course__subject__code',
+        'sortCode': 'course__code',
+        }
+
+        field_name = field_names.get(sort_column)
+        if field_name is not None:
+            if sort_type == "descending":
+                field_name = '-' + field_name
+
+            section_qs = section_qs.order_by(field_name)
+
+        return section_qs
 
 class Meeting(models.Model):
     verbose_name = "Meeting"

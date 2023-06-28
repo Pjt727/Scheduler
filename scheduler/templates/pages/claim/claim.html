@@ -101,27 +101,16 @@
     </div>
 </div>
 <div class="p-2">
-<label>Sections:</label>
-<table class="table">
-    <thead>
-        <tr>
-            <th scope="col">Title</th>
-            <th scope="col">Subject</th>
-            <th scope="col">Course</th>
-            <th scope="col">Meetings</th>
-            <th scope="col">
-                <button class="cursor-pointer search-icon-link" id="meetingSearch">
-                    Search
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-                    </svg>
-                </button>
-            </th>
-        </tr>
-    </thead> 
-    <tbody id="sections">
-    </tbody>               
-</table>
+    <div>
+        <label>Sections:</label>
+        <button class="cursor-pointer search-icon-link" id="meetingSearch">
+            Search
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+            </svg>
+        </button>
+    </div>
+    <div id="sections"></div>
 </div>
 
 <!-- Modal to submit a claim for a section/ particular meetings-->
@@ -149,5 +138,6 @@
 {% endblock %}
 {% block scripts %}
     <script src={% static 'message.js' %}></script> 
+    <script src={% static 'sections.js' %}></script> 
     <script src={% static 'claim.js' %}></script>
 {% endblock %}

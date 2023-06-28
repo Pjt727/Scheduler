@@ -89,7 +89,7 @@ def get_sections_by_overlapping_duration(sections: QuerySet, allocation_group: A
     sections: list[Section] = []
     for section, overlap in allocation_overlaps.items():
         if overlap >= timedelta(hours=2, minutes=30):
-            sections.append(Section.objects.get(pk=section))
+            sections.append(section)
 
     return sections
 
@@ -137,7 +137,7 @@ def get_sections_by_overlapping_duration_course(sections: QuerySet, allocation_g
         courses.add(section.course.pk)
     return len(courses)
 
-def count_section_by_overlapping_duration(sections: QuerySet, allocation_group: AllocationGroup):
+def count_section_by_overlapping_duration(sections: list[int], allocation_group: AllocationGroup):
     return len(get_sections_by_overlapping_duration(sections, allocation_group))
 
 # change to only department heads...
@@ -164,7 +164,7 @@ def dep_allo(request: HttpRequest) -> JsonResponse:
     for department_allocation in DepartmentAllocation.objects.filter(department=department).all():
         number_dict = {}
 
-        number_dict["count"] = get_sections_by_overlapping_duration_course(sections=sections, allocation_group=department_allocation.allocation_group)
+        number_dict["count"] = count_section_by_overlapping_duration(sections=sections, allocation_group=department_allocation.allocation_group)
         number_dict["max"] = department_allocation.number_of_classrooms
         numbers_allo_group[department_allocation.allocation_group.pk] = number_dict
 
@@ -212,11 +212,32 @@ def dep_allo_sections(request: HttpRequest) -> JsonResponse:
     
     department = request.GET.get('department')
     term = request.GET.get('term')
-    allocation_group = AllocationGroup.objects.get(pk=request.GET.get('allocation_group'))
-    sections = Section.objects.filter(course__subject__department=department, term=term)
-    sections_list = get_sections_by_overlapping_duration(sections, allocation_group)
 
-    sections_html = render(request, "sections.html", {"sections": sections_list, "allocation": True}).content.decode()
+    sort_column = request.GET.get('sort_column')
+    sort_type = request.GET.get('sort_type')
+    group = request.GET.get('allocation_group')
+    start_slice = int(request.GET.get('start_slice'))
+    end_slice = int(request.GET.get('end_slice'))
+    sections_qs = Section.objects.filter(course__subject__department=department, term=term)
+    if (group is not None) and (group != 'null'):
+        allocation_group = AllocationGroup.objects.get(pk=group)
+        sections_list = get_sections_by_overlapping_duration(sections_qs, allocation_group)
+        sections_qs = sections_qs.filter(pk__in=sections_list)
+
+
+    sections_qs = Section.sort_sections(section_qs=sections_qs, sort_column=sort_column, sort_type=sort_type)
+    original_length = len(sections_qs)
+    sections_qs = sections_qs[start_slice:end_slice]
+
+    sections_html = render(request, "sections.html", {
+        "sections": sections_qs,
+        "allocation": True,
+        "sort_column": sort_column,
+        "sort_type": sort_type,
+        "start_slice": start_slice,
+        "end_slice": min(end_slice, original_length),
+        "original_length": original_length  
+    }).content.decode()
     
     response_data['ok'] = True
     response_data['sections_html'] = sections_html
