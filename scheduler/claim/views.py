@@ -70,7 +70,8 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
     data = {
         "professor": professor,
         "term": term,
-        "meetings": meetings
+        "meetings": meetings,
+        "unscheduled_sections": professor.sections.filter(meetings__isnull=True).all(),
     }
 
     get_meetings_template = render(request, "get_meetings.html", data).content.decode()
@@ -80,6 +81,7 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
     response_data['get_meetings_template'] = get_meetings_template
 
     return JsonResponse(response_data)
+
 @login_required
 def course_search(request: HttpRequest) -> JsonResponse:
     response_data = {}

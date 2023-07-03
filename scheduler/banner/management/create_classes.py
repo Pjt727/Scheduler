@@ -58,9 +58,9 @@ def add_section(section_row, term: str) -> None:
             return room
 
         if MaristDB.Section.objects.filter(number=section_row["section"], term=term, course=section_row["course_id"]).exists(): return
-        section = MaristDB.Section(number=section_row["section"], campus=section_row["campus"], term=term, soft_cap=section_row["seat_cap"], course=section_row["course_id"])
-        section.save()
         professor = add_professor(section_row["instructor"], section_row["instructor_email"])
+        section = MaristDB.Section(number=section_row["section"], campus=section_row["campus"], term=term, soft_cap=section_row["seat_cap"], course=section_row["course_id"], primary_professor=professor)
+        section.save()
         meeting_times: pd.DataFrame = section_row['meeting_times']
 
         for _, meeting_time in meeting_times.iterrows():

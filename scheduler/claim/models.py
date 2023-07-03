@@ -247,7 +247,8 @@ class Section(models.Model):
     course = models.ForeignKey(Course, related_name="sections", on_delete=models.CASCADE)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='section_requests',
                                     null=True, blank=True, default=None)
-   
+    primary_professor = models.ForeignKey(Professor, related_name="sections", on_delete=models.SET_NULL, blank=True, null=True, default=None)
+    
     objects = NonRequestManager()
     request_objects = RequestManager()
 
