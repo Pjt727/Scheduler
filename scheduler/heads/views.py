@@ -140,6 +140,31 @@ def get_sections_by_overlapping_duration_course(sections: QuerySet, allocation_g
 def count_section_by_overlapping_duration(sections: list[int], allocation_group: AllocationGroup):
     return len(get_sections_by_overlapping_duration(sections, allocation_group))
 
+def get_sections_and_count(sections: QuerySet, allocation_group: AllocationGroup) -> tuple[QuerySet, int]:
+    in_allocation_group: Q = Q()
+    for allocation_time_block in allocation_group.time_blocks.all():
+        in_allocation_group |= (Q(meetings__time_block__day=allocation_time_block.day)
+            & Q(meetings__time_block__start_end_time__start__lte=allocation_time_block.start_end_time.end)
+            & Q(meetings__time_block__start_end_time__end__gte=allocation_time_block.start_end_time.start)
+            & Q(meetings__room__is_general_purpose=True)
+            )
+    
+    meeting_in_allocation_group: Q = Q()  
+    for allocation_time_block in allocation_group.time_blocks.all():
+        meeting_in_allocation_group |= (Q(time_block__day=allocation_time_block.day)
+            & Q(time_block__start_end_time__start__lte=allocation_time_block.start_end_time.end)
+            & Q(time_block__start_end_time__end__gte=allocation_time_block.start_end_time.start)
+            & Q(room__is_general_purpose=True)
+            )
+    
+    sections = sections.filter(in_allocation_group).distinct() 
+    meetings: QuerySet = Meeting.objects.filter(section__in=sections).filter(meeting_in_allocation_group)
+    count = meetings.values('room').distinct().count()
+        
+    return sections, count
+
+
+
 # change to only department heads...
 @login_required
 def dep_allo(request: HttpRequest) -> JsonResponse:
@@ -164,7 +189,7 @@ def dep_allo(request: HttpRequest) -> JsonResponse:
     for department_allocation in DepartmentAllocation.objects.filter(department=department).all():
         number_dict = {}
 
-        number_dict["count"] = count_section_by_overlapping_duration(sections=sections, allocation_group=department_allocation.allocation_group)
+        _, number_dict["count"] = get_sections_and_count(sections=sections, allocation_group=department_allocation.allocation_group)
         number_dict["max"] = department_allocation.number_of_classrooms
         numbers_allo_group[department_allocation.allocation_group.pk] = number_dict
 
@@ -221,8 +246,7 @@ def dep_allo_sections(request: HttpRequest) -> JsonResponse:
     sections_qs = Section.objects.filter(course__subject__department=department, term=term)
     if (group is not None) and (group != 'null'):
         allocation_group = AllocationGroup.objects.get(pk=group)
-        sections_list = get_sections_by_overlapping_duration(sections_qs, allocation_group)
-        sections_qs = sections_qs.filter(pk__in=sections_list)
+        sections_qs, _ = get_sections_and_count(sections_qs, allocation_group)
 
 
     sections_qs = Section.sort_sections(section_qs=sections_qs, sort_column=sort_column, sort_type=sort_type)

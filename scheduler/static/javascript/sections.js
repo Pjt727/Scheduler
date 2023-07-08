@@ -2,6 +2,11 @@ let startSlice = 0;
 const jumpSlice = 10;
 let endSlice = startSlice + jumpSlice;
 
+function resetSlices(){
+  startSlice = 0;
+  endSlice = startSlice + jumpSlice;
+}
+
 function iterateSort(e){
     const options = ["noSort", "ascending", "descending"];
     const column = e.currentTarget;

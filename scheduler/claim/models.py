@@ -85,12 +85,16 @@ class Room(models.Model):
     number = models.CharField(max_length=6)
     classification = models.CharField(max_length=20, choices=CLASSIFICATIONS)
     capacity = models.IntegerField()
+    is_general_purpose = models.BooleanField(null=True, blank=True, default=False)
     
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='room_requests', null=True, blank=True, default=None)
 
     objects = NonRequestManager()
     request_objects = RequestManager()
+
+    class Meta:
+        ordering = ['number']
 
     def __str__(self) -> str:
         return f"{self.building} {self.number}"
@@ -113,6 +117,11 @@ class StartEndTime(models.Model):
     def __str__(self) -> str:
         return f"{self.start.strftime('%I:%M %p')} - {self.end.strftime('%I:%M %p')}"
     
+    def start_input(self) -> str:
+        return self.start.strftime('%H:%M')
+
+    def end_input(self) -> str:
+        return self.end.strftime('%I:%M')
 
 class Department(models.Model):
     verbose_name = "Department"

@@ -1,7 +1,7 @@
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup, Meeting, DepartmentAllocation
+from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup, Meeting, DepartmentAllocation, Room, Building
 from django.db.models import Q, Case, When, IntegerField, Subquery, OuterRef
 from django.db.models.functions import Coalesce
 from datetime import time, timedelta, datetime
@@ -50,6 +50,17 @@ def my_meetings(request: HttpRequest) -> HttpResponse:
     }
     return render(request, 'my_meetings.html', context=data)
 
+def edit_section(request: HttpRequest, section: int) -> HttpResponse:
+    section = Section.objects.get(pk=section)
+
+    data = {
+        "professor": Professor.objects.get(user=request.user),
+        "section": section,
+        "days": Day.CODE_TO_VERBOSE.items(), 
+        "buildings": Building.objects.all()
+    }
+
+    return render(request, 'edit_section.html', context=data)
 
 ## api 
 @login_required
@@ -81,6 +92,64 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
     response_data['get_meetings_template'] = get_meetings_template
 
     return JsonResponse(response_data)
+
+@login_required
+def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+
+    # not get check
+    if request.method != 'GET':
+        response_data['error'] = GET_ERR_MESSAGE
+        response_data['ok'] = False
+        return JsonResponse(response_data)
+
+    section = request.GET.get('section')
+    section: Section = Section.objects.get(pk=section)
+    room = request.GET.get('room')
+    professor = Professor.objects.get(user=request.user)
+    
+    meetings = Meeting.objects.none()
+
+    if section.primary_professor:
+        meetings |= section.primary_professor.meetings.filter(section__term=section.term)
+    
+    if room != 'null' and room != 'any':
+        room: Room = Room.objects.get(pk=room)
+        meetings |= Meeting.objects.filter(room=room, section__term=section.term).exclude(time_block__in=meetings.values('time_block'))
+
+    meetings = meetings.exclude(section=section).distinct()
+    data = {
+        "meetings": meetings,
+        "term": section.term
+    }
+    get_meetings_template = render(request, "get_meetings.html", data).content.decode()
+
+    response_data['ok'] = True
+    response_data['get_meetings_template'] = get_meetings_template
+
+    return JsonResponse(response_data)
+
+@login_required
+def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+    
+    # not get check
+    if request.method != 'GET':
+        response_data['error'] = GET_ERR_MESSAGE
+        response_data['ok'] = False
+        return JsonResponse(response_data)
+    
+    building = request.GET.get('building')
+    building = Building.objects.get(pk=building)
+    rooms = building.rooms.distinct().values_list('pk', 'number')
+
+    response_data['ok'] = True
+    response_data['rooms'] = tuple(rooms)
+    
+    return JsonResponse(response_data)
+    
+
+    
 
 @login_required
 def course_search(request: HttpRequest) -> JsonResponse:
@@ -256,5 +325,4 @@ def submit_claim(request: HttpRequest) -> JsonResponse:
     response_data['success_message'] = "Successfully claimed all meetings."
     response_data['ok'] = True
     return JsonResponse(response_data)
-
 

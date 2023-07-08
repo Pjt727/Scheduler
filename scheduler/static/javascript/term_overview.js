@@ -76,15 +76,13 @@ function groupClick() {
                 unHighlightGroup(lastClick.getAttribute("value"), "table-dark");
                 if(lastClick.getAttribute("value")===timeBlock.getAttribute("value")){
                     lastClick = null;
-                    startSlice = 0;
-                    endSlice = startSlice + jumpSlice;
+                    resetSlices();
                     groupSectionsAdd();
                     return;
                 }
             }
 
-            startSlice = 0;
-            endSlice = startSlice + jumpSlice;
+            resetSlices();
             lastClick = timeBlock;
 
             groupSectionsAdd();
@@ -132,6 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     getDepartmentAllo();
     const termSelect = document.getElementById("id_term");
     const departmentSelect = document.getElementById("id_department");
-    termSelect.addEventListener('change', getDepartmentAllo);
-    departmentSelect.addEventListener('change', getDepartmentAllo);
+    termSelect.addEventListener('change', () => {resetSlices(); getDepartmentAllo();});
+    departmentSelect.addEventListener('change', () => {resetSlices(); getDepartmentAllo();});
 });

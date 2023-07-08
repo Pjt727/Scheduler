@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+{% endblock %}
+{% block title %}Edit Section{% endblock %} {% block content %}
+<div class="container text-center">
+    <div class="row justify-content-md-center">
+        <div id="section" value="{{ section.pk }}" class="col col-lg-2">
+           {{ section }} 
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            {{ section.course }}
+        </div>
+        <div class="col">
+            {{ section.course.title }}
+        </div>
+        <div class="col">
+            {{ section.course.subject.department }}
+        </div>
+        <div class="col">
+            {{ section.primary_professor }}
+        </div>
+        <div class="col">
+            {{ section.course.credits }}
+        </div>
+    </div>
+    <div class="row justify-content-md-center">
+        <div class="col col-lg-2">
+            Meetings
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
+                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
+            </svg>
+        </div>
+    </div>
+    <div edit="false">
+    {% for meeting in section.meetings.all %}
+    <div class="row" value="{{ meeting.pk }}">
+        <div class="col">
+            {{ meeting.time_block.start_end_time }} &nbsp {{ meeting.time_block.day }}
+
+        </div>
+        <div class="col">
+            {{ meeting.room }}
+        </div>
+        <div class="col">
+            {{ meeting.professor }}
+        </div>
+    </div>
+    {% endfor %}
+    </div>
+    <div edit="true">
+    {% for meeting in section.meetings.all %}
+    
+    <div class="row meetingRow" value="{{ meeting.pk }}">
+        <div class="col-sm-4">
+
+            <input type="time" name="startTime" min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.start_input}}">
+            &nbsp-&nbsp
+            <input type="time" name="endTime"  min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.end_input}}">
+        </div>
+        <div class="col-sm-1"> 
+            <select name="day">
+            {% for code, day in days %}
+                <option value="{{ code }}" {% if meeting.time_block.day == code %}selected{% endif %}>
+                    {{ day }} 
+                </option>
+            {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-2">
+            <select name="building">
+                <option value="any">Any</option>
+                {% for building in buildings %}
+                <option value="{{ building.pk }}" {% if building == meeting.room.building %}selected{% endif %}>
+                    {{ building }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-sm-1">
+            <select name="room" value="{{ meeting.pk }}">
+                <option value="any">Any</option>
+                <optgroup name="roomOptions">
+                    {% for room in meeting.room.building.rooms.all %}
+                    <option value="{{ room.pk }}" {% if room == meeting.room %}selected{% endif %}>
+                        {{ room.number }}
+                    </option>
+                    {% endfor %}
+                </optgroup>
+            </select>
+        </div>
+        <div class="col-sm-2">
+            {{ meeting.professor }}
+        </div>
+    </div>
+    {% endfor %}
+    <div id="meetingContainer" class="row">
+    </div>
+</div>
+
+
+{% endblock %} 
+{% block scripts %}
+    <script src={% static 'message.js' %}></script> 
+    <script src={% static 'edit_section.js' %}></script> 
+{% endblock %}

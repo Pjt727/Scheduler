@@ -46,11 +46,14 @@ urlpatterns = [
     ## pages
     path('claim/', claim_views.claim, name='claim'),
     path('my_meetings/', claim_views.my_meetings, name='my_meetings'),
+    path('edit_section/<int:section>', claim_views.edit_section, name='edit_section'),
     ## json responses
     path('course_search/', claim_views.course_search, name='course_search'),
     path('section_search/', claim_views.section_search, name='section_search'),
     path('submit_claim/', claim_views.submit_claim, name="submit_claim"),
     path('get_meetings/', claim_views.get_meetings, name='get_meetings'),
+    path('get_meetings_edit_section/', claim_views.get_meetings_edit_section, name='get_meetings_edit_section'),
+    path('get_rooms_edit_section', claim_views.get_rooms_edit_section, name='get_room_edit_section'),
     
     # Head views
     ## pages

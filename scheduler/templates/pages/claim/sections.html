@@ -123,9 +123,9 @@
             </td>
             {% elif allocation %}
             <td>
-                <button type="button" data-bs-toggle="modal">
+                <a href="{% url 'edit_section' section=section.pk %}" data-bs-toggle="modal">
                     Edit
-                </button>
+                </a>
             </td>
             {% endif %}
         </tr>

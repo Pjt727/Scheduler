@@ -53,9 +53,20 @@ def add_department_allocations(department_allocation: pd.DataFrame) -> None:
         MaristDB.DepartmentAllocation.objects.get_or_create(
             department=dep_allo_row['department'],
             allocation_group=dep_allo_row['allocation_group'],
-            number_of_classrooms=dep_allo_row['allocation']
+            number_of_classrooms=dep_allo_row['allocation'],
         )
-    
+
+def add_general_purpose_classes(gp_df: pd.DataFrame) -> None:
+    for _, gp_row in gp_df.iterrows():
+        MaristDB.Room.objects.get_or_create(
+            building = gp_row['building'],
+            number=gp_row['number'],
+            capacity=gp_row['capacity'],
+            classification=gp_row['classification'],
+            is_general_purpose=True,
+        )
+
+
 # driver function
 def create_all():
     STATIC_DATA_PATH: str = f"{settings.BASE_DIR}/banner/data/static"
@@ -111,3 +122,10 @@ def create_all():
         "allocation_group": allocation_group_convertor,
     }))
     
+    @lru_cache
+    def building_convertor(building_code) -> MaristDB.Building:
+        return MaristDB.Building.objects.get(code=building_code)
+    gp_df = pd.read_csv(f"{STATIC_DATA_PATH}/GeneralPurposeClasses.csv", converters={
+        "building": building_convertor,
+    })
+    add_general_purpose_classes(gp_df)
