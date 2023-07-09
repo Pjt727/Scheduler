@@ -47,7 +47,7 @@ def get_meeting_row(meeting: Meeting) -> int:
         timedelta(hours=19, minutes=45): 10,
         timedelta(hours=20): 10,
         timedelta(hours=21): 11,
-        timedelta(hours=22, minutes=30): 12
+        timedelta(hours=22): 12
     }
     meeting_seconds = meeting.time_block.start_end_time.start.hour * 3600 + meeting.time_block.start_end_time.start.minute * 60
     closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))

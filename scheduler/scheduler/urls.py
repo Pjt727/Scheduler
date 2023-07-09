@@ -54,6 +54,7 @@ urlpatterns = [
     path('get_meetings/', claim_views.get_meetings, name='get_meetings'),
     path('get_meetings_edit_section/', claim_views.get_meetings_edit_section, name='get_meetings_edit_section'),
     path('get_rooms_edit_section', claim_views.get_rooms_edit_section, name='get_room_edit_section'),
+    path('get_meeting_details/', claim_views.get_meeting_details, name='get_meeting_details'),
     
     # Head views
     ## pages

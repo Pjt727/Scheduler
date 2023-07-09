@@ -86,7 +86,8 @@
   }
   
   .event {
-    border-radius: 5px;
+    border-radius: 10px;
+    border: 5px solid;
     padding: 5px;
     margin-right: 10px;
     margin-bottom: 7px;
@@ -100,46 +101,99 @@
   }
 
   .calendar0 {
-    background-color: #8baf97;
-    border-color: #8ac08a;
+    background-color: "#fd7f6f";
+    border-color: "#fd7f6f";
     
   }
 
   .calendar1 {
-    background-color: #d7dbef;
-    border-color: #bcc3e5;
+    background-color: #7eb0d5;
+    border-color: #7eb0d5;
   }
   
   .calendar2 {
-    background-color: #b3e1f7;
-    border-color: #81cdf2;
+    background-color: #b2e061;
+    border-color: #b2e061;
   }
 
   .calendar3 {
-    background-color: #f5c6c6;
-    border-color: #fad3d3;
+    background-color:#bd7ebe;
+    border-color: #bd7ebe;
     
   }
 
   .calendar4 {
-    background-color: #a3a3a3;
-    border-color: #7e7e7e;
+    background-color: #ffb55a;
+    border-color: #ffb55a;
   }
   
   .calendar5 {
-    background-color: #8baf97;
-    border-color: #8ac08a;
+    background-color:#ffee65;
+    border-color: #ffee65;
   }
   
   .calendar6 {
-    background-color: #f1b3f7;
-    border-color: #ec9fe2;
+    background-color: #beb9db;
+    border-color: #beb9db;
   }
   
   .calendar7 {
-    background-color: #f1cfa8;
-    border-color: #f8c28f;
+    background-color: #fdcce5;
+    border-color: #fdcce5;
   }
+
+  .calendar8 {
+    background-color: #8bd3c7;
+    border-color: #8bd3c7;
+  }
+
+  .calendar9 {
+    background-color: #8bd3c7;
+    border-color: #777777; 
+  }
+
+  .calendar10 {
+    background-color: #fdcce5;
+    border-color: #777777;
+  }
+  
+  .calendar11 {
+    background-color: #beb9db;
+    border-color: #777777;
+  }
+
+  .calendar12 {
+    background-color: #ffee65;
+    border-color: #777777;
+    
+  }
+
+  .calendar13 {
+    background-color: #ffb55a;
+    border-color: #777777;
+  }
+  
+  .calendar14 {
+    background-color:#bd7ebe;
+    border-color: #777777;
+  }
+  
+  .calendar15 {
+    background-color: #b2e061;
+    border-color: #777777;
+  }
+  
+  .calendar16 {
+    background-color: #7eb0d5;
+    border-color: #777777;
+  }
+
+  .calendar17 {
+    background-color: #fd7f6f;
+    border-color: #777777;
+  }
+
+
 
   .current {
     font-weight: bold;

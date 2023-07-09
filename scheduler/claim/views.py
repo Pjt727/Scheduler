@@ -148,7 +148,35 @@ def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
     
     return JsonResponse(response_data)
     
+    
+@login_required
+def get_meeting_details(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+    
+    # not get check
+    if request.method != 'GET':
+        response_data['error'] = GET_ERR_MESSAGE
+        response_data['ok'] = False
+        return JsonResponse(response_data)
+    
+    meeting = request.GET.get('meeting')
+    meeting: Meeting = Meeting.objects.get(pk=meeting)
 
+    is_shared_section = meeting.section.meetings.exclude(professor=meeting.section.primary_professor).exists()
+
+    data = {
+        'section': meeting.section,
+        'meeting': meeting,
+        'is_shared_section': is_shared_section
+    }
+    meeting_details_template = render(request, 'meeting_details.html', context=data).content.decode()
+
+    response_data['ok'] = True
+    response_data['meeting_details_html'] = meeting_details_template
+
+    return JsonResponse(response_data)
+
+    
     
 
 @login_required

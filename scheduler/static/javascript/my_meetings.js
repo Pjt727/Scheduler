@@ -25,6 +25,12 @@ function getMeetings(sortColumn = null, sortType = null){
                 new bootstrap.Popover(popoverTriggerEl);
             });
 
+            lastMeeting = null;
+            const meetingDetailButtons = document.getElementsByName('meetingDetail');
+            meetingDetailButtons.forEach(button => {
+                button.addEventListener('click', () => meetingDetails(button.getAttribute('value'))); 
+            })
+
             
         })
 }

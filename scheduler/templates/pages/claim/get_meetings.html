@@ -23,7 +23,7 @@
     <div class="time-double" style="grid-row:8"><div>06:15&nbsp&nbsp</div><div>06:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:9"><div>07:45&nbsp&nbsp</div><div>08:00&nbsp&nbsp</div></div>
     <div class="time" style="grid-row:10"><div>09:00</div></div>
-    <div class="time" style="grid-row:11"><div>10:30</div></div>
+    <div class="time" style="grid-row:11"><div>10:00</div></div>
     <div class="filler-col"></div>
     <div class="meeting-col" style="grid-column:3"></div>
     <div class="meeting-col" style="grid-column:4"></div>
@@ -43,20 +43,32 @@
     <div class="meeting-row" style="grid-row:9"></div>
     <div class="meeting-row" style="grid-row:10"></div>
     <div class="meeting-row" style="grid-row:11"></div>
+    <div id="editContainer"></div>
     {% regroup meetings by section as sections %}
     {% for section in sections %}
       {% for meeting in section.list %}
       
-      <div class="event calendar{{ forloop.parentloop.counter|modulo:8 }}"
+      <div startTime="{{ meeting.time_block.start_end_time.start_input }}"
+        endTime="{{ meeting.time_block.start_end_time.end_input }}"
+        day="{{ meeting.time_block.day }}"
+        room="{{ meeting.room.pk }}"
+        class="event calendar{{ forloop.parentloop.counter|modulo:16 }}"
+        name="addedMeetings"
+        meeting="{{ meeting.section }}"
         style="grid-column: {{ meeting|get_meeting_col }}; grid-row: {{ meeting|get_meeting_row }}/span {{ meeting|get_meeting_span }};">
-        <a type="button" class="btn btn-outline-secondary fw-bold"
-        data-bs-toggle="popover" data-bs-placement="right"
-        data-bs-title="{{ meeting.time_block.start_end_time }}"
-        data-bs-content="{{ meeting.room }}">
         {{ meeting.section }}
-        </a>       
+        <svg name="meetingDetail" value="{{ meeting.pk }}" data-bs-toggle="collapse" href="#meetingDetails" aria-expanded="false" aria-controls="meetingsDetails" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
+          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
+        </svg>
       </div>
       {% endfor %}
     {% endfor %}
+  </div>
+  <div class="collapse collapse-horizontal position-absolute top-0 end-0" id="meetingDetails" style="z-index: 11;">
+    <div id="meetingDetailsContainer" class="card card-body" style="width: 400px;">
+    </div>
+    <button data-bs-toggle="collapse" href="#meetingDetails" type="button" role="button" class="btn-close position-absolute top-0 end-0" aria-controls="meetingsDetails" aria-expanded="true" aria-label="Close">
+    </button>
   </div>
 </div>

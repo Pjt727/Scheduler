@@ -269,7 +269,18 @@ class Section(models.Model):
 
     def __repr__(self) -> str:
         return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}, request={self.request}"
-    
+        
+    def meetings_sorted(self): 
+        return self.meetings.order_by(models.Case(
+            models.When(time_block__day=Day.MONDAY, then=1),
+            models.When(time_block__day=Day.TUESDAY, then=2),
+            models.When(time_block__day=Day.WEDNESDAY, then=3),
+            models.When(time_block__day=Day.THURSDAY, then=4),
+            models.When(time_block__day=Day.FRIDAY, then=5),
+            models.When(time_block__day=Day.SATURDAY, then=6),
+            models.When(time_block__day=Day.SUNDAY, then=7),
+        ))
+
     def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:
         field_names = {
         'sortTitle': 'course__title',
@@ -301,18 +312,8 @@ class Meeting(models.Model):
    
     objects = NonRequestManager()
     request_objects = RequestManager()
-    
-    def interferes_time(self, day: str, start_time: time, end_time: time) -> bool:
-        if day != self.time_block.day:
-            return False
-        if start_time <= self.time_block.start_end_time.end and end_time >= self.time_block.start_end_time.start:
-            return True
-        return False
-    
-    def interferes_meeting(self, meeting: 'Meeting') -> bool:
-        return self.interferes_time(day=meeting.time_block.day, start_time=meeting.time_block.start_end_time.start, end_time=meeting.time_block.start_end_time.end)
-        
 
+    
 
     def __str__(self) -> str:
         return f"{self.time_block.day} {self.time_block.start_end_time}"
