@@ -6,7 +6,7 @@
 {% block title %}My Meetings{% endblock %}
 {% block content %}
 <label for="id_term">Term:</label>
-<select name="term" class="form-control" id="id_term">
+<select name="term" class="form-select" id="id_term">
     {% for term in terms %}
         {% if forloop.first %}
             <option value="{{ term.pk }}" selected>{{ term }}</option>

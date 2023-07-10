@@ -11,7 +11,7 @@
         <div class="col">
             <div class="p-2">
                 <label for="id_term">Term:</label>
-                <select name="term" class="form-control" id="id_term">
+                <select name="term" class="form-select" id="id_term">
                     {% for term in terms %}
                         {% if forloop.first %}
                             <option value="{{ term.pk }}" selected>{{ term }}</option>
@@ -23,7 +23,7 @@
             </div>
             <div class="p-2">
                 <label for="id_department">Department:</label>
-                <select name="department" class="form-control" id="id_department">
+                <select name="department" class="form-select" id="id_department">
                     <option value="any" value selected>Any</option>
                     {% for department in departments %}
                         <option value="{{ department.pk }}">{{ department }}</option>
@@ -33,7 +33,7 @@
 
             <div class="p-2">
                 <label for="id_subject">Subject:</label>
-                <select name="subject" class="form-control" id="id_subject">
+                <select name="subject" class="form-select" id="id_subject">
                     <option value="any" value selected>Any</option>
                     {% for subject in subjects %}
                         <option value="{{ subject.pk }}" department="{{ subject.department.pk }}">{{ subject }}</option>

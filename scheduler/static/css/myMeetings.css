@@ -100,9 +100,19 @@
     background-color: #f1f3f4;
   }
 
+  .hoverCalendar {
+    background-color: #999999;
+    border-color: #888888;
+  }
+
+  .selectedCalendar {
+    background-color: #666666;
+    border-color: #555555;
+  }
+
   .calendar0 {
-    background-color: "#fd7f6f";
-    border-color: "#fd7f6f";
+    background-color: #fd7f6f;
+    border-color: #fd7f6f;
     
   }
 

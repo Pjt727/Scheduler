@@ -36,13 +36,17 @@
     {% for meeting in section.meetings.all %}
     
     <div class="row displayRow" value="{{ meeting.pk }}" inputRow="inputRow{{ forloop.counter }}" isChanged="false"
-        startTime="{{meeting.time_block.start_end_time.end_input}}" endTime="{{meeting.time_block.start_end_time.end_input}}"
+        startTime="{{meeting.time_block.start_end_time.start_input}}" endTime="{{meeting.time_block.start_end_time.end_input}}"
         day="{{ meeting.time_block.day }}" room="{{ meeting.room.pk }}">
         <div name="timeBlock" class="col-sm-6 text-start">
             {{ meeting.time_block.start_end_time }} &nbsp {{ meeting.time_block.day }}
         </div>
-        <div name="place" class="col-sm-5 text-start">
+        <div name="place" buildingValue="{% if meeting.room %}{{ meeting.room.building.pk }}{% else %}any{% endif %}" class="col-sm-5 text-start">
+            {% if meeting.room %}
             {{ meeting.room }}
+            {% else %}
+            Any Building Any Room
+            {% endif %}
         </div>
         <div class="col-sm-1" name="editCol">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
@@ -52,7 +56,7 @@
         </div>
     </div>
 
-    <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden>
+    <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden="true">
         <div class="col-sm-6 text-start">
 
             <input type="time" name="startTime" min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.start_input}}">
@@ -68,7 +72,7 @@
         </div>
         <div class="col-sm-5 text-start">
             <select name="building">
-                <option value="any">Any</option>
+                <option value="any">Any Building</option>
                 {% for building in buildings %}
                 <option value="{{ building.pk }}" {% if building == meeting.room.building %}selected{% endif %}>
                     {{ building }}
@@ -76,7 +80,7 @@
                 {% endfor %}
             </select>
             <select name="room" value="{{ meeting.pk }}">
-                <option value="any">Any</option>
+                <option value="any">Any Room</option>
                 <optgroup name="roomOptions">
                     {% for room in meeting.room.building.rooms.all %}
                     <option value="{{ room.pk }}" {% if room == meeting.room %}selected{% endif %}>
