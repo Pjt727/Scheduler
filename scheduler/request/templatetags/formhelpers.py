@@ -1,5 +1,5 @@
 from django import template
-from claim.models import Meeting, Day
+from claim.models import Meeting, Day, TimeBlock
 from datetime import timedelta
 
 register = template.Library()
@@ -13,7 +13,7 @@ def get_item(dictionary: dict, key):
     return dictionary.get(key)
 
 @register.filter
-def get_meeting_col(meeting: Meeting) -> int:
+def get_time_block_col(time_block: TimeBlock) -> int:
     codes_to_col = {
         Day.MONDAY: 3,
         Day.TUESDAY: 4,
@@ -24,10 +24,10 @@ def get_meeting_col(meeting: Meeting) -> int:
         Day.SUNDAY: 9,
     }
 
-    return codes_to_col[meeting.time_block.day]
+    return codes_to_col[time_block.day]
 
 @register.filter
-def get_meeting_row(meeting: Meeting) -> int:
+def get_time_block_row(time_block: TimeBlock) -> int:
     times_to_col = {
         timedelta(hours=8): 2,
         timedelta(hours=9): 3,
@@ -49,13 +49,13 @@ def get_meeting_row(meeting: Meeting) -> int:
         timedelta(hours=21): 11,
         timedelta(hours=22): 12
     }
-    meeting_seconds = meeting.time_block.start_end_time.start.hour * 3600 + meeting.time_block.start_end_time.start.minute * 60
+    meeting_seconds = time_block.start_end_time.start.hour * 3600 + time_block.start_end_time.start.minute * 60
     closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
     return times_to_col[closest_time_delta]
 
 @register.filter
-def get_meeting_span(meeting: Meeting) -> int:
-    start_end_time= meeting.time_block.start_end_time
+def get_time_block_span(time_block: TimeBlock) -> int:
+    start_end_time= time_block.start_end_time
     start_seconds = start_end_time.start.hour * 3600 + start_end_time.start.minute * 60
     end_seconds = start_end_time.end.hour * 3600 + start_end_time.end.minute * 60
 

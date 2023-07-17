@@ -38,7 +38,10 @@
     <div class="row displayRow" value="{{ meeting.pk }}" inputRow="inputRow{{ forloop.counter }}" isChanged="false"
         startTime="{{meeting.time_block.start_end_time.start_input}}" endTime="{{meeting.time_block.start_end_time.end_input}}"
         day="{{ meeting.time_block.day }}" room="{{ meeting.room.pk }}">
-        <div name="timeBlock" class="col-sm-6 text-start">
+        <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
+            {{ forloop.counter }}
+        </div>
+        <div name="timeBlock" class="col-sm-5 text-start">
             {{ meeting.time_block.start_end_time }} &nbsp {{ meeting.time_block.day }}
         </div>
         <div name="place" buildingValue="{% if meeting.room %}{{ meeting.room.building.pk }}{% else %}any{% endif %}" class="col-sm-5 text-start">
@@ -57,7 +60,10 @@
     </div>
 
     <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden="true">
-        <div class="col-sm-6 text-start">
+        <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
+            {{ forloop.counter }}
+        </div>
+        <div class="col-sm-5 text-start">
 
             <input type="time" name="startTime" min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.start_input}}">
             &nbsp-&nbsp

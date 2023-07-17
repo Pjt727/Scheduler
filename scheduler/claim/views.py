@@ -106,7 +106,6 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     section = request.GET.get('section')
     section: Section = Section.objects.get(pk=section)
     room = request.GET.get('room')
-    professor = Professor.objects.get(user=request.user)
     
     meetings = Meeting.objects.none()
 
@@ -118,9 +117,17 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
         meetings |= Meeting.objects.filter(room=room, section__term=section.term).exclude(time_block__in=meetings.values('time_block'))
 
     meetings = meetings.exclude(section=section).distinct()
+
+    overlaps_meeting = Q()
+    for meeting in meetings.all():
+        overlaps_meeting |= Q(day=meeting.time_block.day,
+                              start_end_time__start__lte=meeting.time_block.start_end_time.end,
+                              start_end_time__end__gte=meeting.time_block.start_end_time.start)
+    open_time_block =  TimeBlock.objects.filter(number__isnull=False).exclude(overlaps_meeting).all()
     data = {
         "meetings": meetings,
-        "term": section.term
+        "term": section.term,
+        "open_time_blocks": open_time_block
     }
     get_meetings_template = render(request, "get_meetings.html", data).content.decode()
 

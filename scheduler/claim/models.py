@@ -265,7 +265,7 @@ class Section(models.Model):
         unique_together = ('course', 'term', 'number', 'request')
 
     def __str__(self) -> str:
-        return f"{self.course.subject}-{self.number}"     
+        return f"{self.course.subject} {self.course.code}-{self.number}"     
 
     def __repr__(self) -> str:
         return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}, request={self.request}"

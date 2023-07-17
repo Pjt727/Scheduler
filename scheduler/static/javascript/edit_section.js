@@ -1,6 +1,7 @@
 function timeInputToSeconds(timeInput){
-    const [hours, minutes]= timeInput.split(',')
-    return parseInt(hours)*60*60 + parseInt(minutes)*60
+    const [hours, minutes]= timeInput.split(':')
+    const seconds = parseInt(hours)*60*60 + parseInt(minutes)*60;
+    return seconds;
 }
 
 function getMeetingPosition(time_start, time_end, day){
@@ -173,6 +174,7 @@ function submitInputRow(inputRow){
 
     const newStartTimeSeconds = timeInputToSeconds(newStartTime);
     const newEndTimeSeconds = timeInputToSeconds(newEndTime);
+
     if(newEndTimeSeconds <= newStartTimeSeconds){
         errorMessage(`Invalid start and end time. The end time cannot be prior to the start time.`)
         return false;
@@ -189,7 +191,7 @@ function submitInputRow(inputRow){
         return false;
     }
 
-    const addedMeetings = document.getElementsByClassName('addedMeetings');
+    const addedMeetings = document.getElementsByName('addedMeetings');
     for (const addedMeeting of addedMeetings){
         const startTime = addedMeeting.getAttribute('startTime');
         const startTimeSeconds = timeInputToSeconds(startTime);
@@ -198,6 +200,7 @@ function submitInputRow(inputRow){
         const day = addedMeeting.getAttribute('day');
         const room = addedMeeting.getAttribute('room');
 
+        console.log(newDay + " " + startTimeSeconds + " " + endTimeSeconds)
         if(day != newDay){
             continue;
         }else if(!(newStartTimeSeconds  <= endTimeSeconds  && newEndTimeSeconds  >= startTimeSeconds)){

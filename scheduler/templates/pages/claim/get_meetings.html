@@ -55,7 +55,7 @@
         class="event calendar{{ forloop.parentloop.counter|modulo:16 }}"
         name="addedMeetings"
         meeting="{{ meeting.section }}"
-        style="grid-column: {{ meeting|get_meeting_col }}; grid-row: {{ meeting|get_meeting_row }}/span {{ meeting|get_meeting_span }};">
+        style="grid-column: {{ meeting.time_block|get_time_block_col }}; grid-row: {{ meeting.time_block|get_time_block_row }}/span {{ meeting.time_block|get_time_block_span }};">
         {{ meeting.section }}
         <svg name="meetingDetail" value="{{ meeting.pk }}" data-bs-toggle="collapse" href="#meetingDetails" aria-expanded="false" aria-controls="meetingsDetails" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
@@ -63,6 +63,16 @@
         </svg>
       </div>
       {% endfor %}
+    {% endfor %}
+    {% for time_block in open_time_blocks %}
+      <div startTime="{{ meeting.time_block.start_end_time.start_input }}" endTime="{{ meeting.time_block.start_end_time.end_input }}"
+        style="grid-column: {{ time_block|get_time_block_col }}; grid-row: {{ time_block|get_time_block_row }}/span {{ time_block|get_time_block_span }};">
+        Open Time Slot
+    </div>
+        
+
+
+
     {% endfor %}
   </div>
   <div class="collapse collapse-horizontal position-absolute top-0 end-0" id="meetingDetails" style="z-index: 11;">
