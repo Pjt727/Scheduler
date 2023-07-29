@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from authentication.models import Professor
-from request.models import RequestItem
 from datetime import time
 
 
@@ -46,25 +45,12 @@ class Day:
 
 # Makes it so that to get items that are still in request you must explicitly ask for them
 # This is done so there is never accidental additions of objects that are requested in the wrong place
-class NonRequestManager(models.Manager):
-    def get_queryset(self) -> QuerySet:
-        return super().get_queryset().filter(request__isnull=True)
-
-class RequestManager(models.Manager):
-    def get_queryset(self) -> QuerySet:
-        return super().get_queryset().filter(request__isnull=False)
-
 
 class Building(models.Model):
     verbose_name = "Building"
 
     name = models.CharField(max_length=30)
     code = models.CharField(max_length=2)
-
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='building_requests', null=True, blank=True, default=None)
-
-    objects = NonRequestManager()
-    request_objects = RequestManager()
 
     def __str__(self) -> str:
         return f"{self.name}"
@@ -89,10 +75,7 @@ class Room(models.Model):
     is_general_purpose = models.BooleanField(null=True, blank=True, default=False)
     
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='room_requests', null=True, blank=True, default=None)
 
-    objects = NonRequestManager()
-    request_objects = RequestManager()
 
     class Meta:
         ordering = ['number']
@@ -110,10 +93,7 @@ class StartEndTime(models.Model):
     start = models.TimeField()
     end = models.TimeField()
 
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='start_end_time_requests', null=True, blank=True, default=None)
     
-    objects = NonRequestManager()
-    request_objects = RequestManager()
     
     def __str__(self) -> str:
         return f"{self.start.strftime('%I:%M %p')} - {self.end.strftime('%I:%M %p')}"
@@ -131,10 +111,7 @@ class Department(models.Model):
     code = models.CharField(max_length=5)
 
     chair = models.ForeignKey(Professor, related_name="departments", on_delete=models.CASCADE, blank=True, null=True, default=None)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='department_requests', null=True, blank=True, default=None)
    
-    objects = NonRequestManager()
-    request_objects = RequestManager()
     
     def __str__(self) -> str:
         return self.name
@@ -173,10 +150,7 @@ class TimeBlock(models.Model):
 
     allocation_groups = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None)
     start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='time_block_requests', null=True, blank=True, default=None)
    
-    objects = NonRequestManager()
-    request_objects = RequestManager()
 
     def add_allocation_groups(self):
         assert self.number is None
@@ -204,11 +178,7 @@ class Subject(models.Model):
     description = models.CharField(max_length=100, blank=True, null=True, default=None)
 
     department = models.ForeignKey(Department, related_name="subjects", null=True, on_delete=models.CASCADE)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='subject_requests', null=True, blank=True, default=None)
    
-    objects = NonRequestManager()
-    request_objects = RequestManager()
-    
     def __str__(self) -> str:
         return self.code
     
@@ -228,10 +198,7 @@ class Course(models.Model):
     corequisite = models.CharField(max_length=100, blank=True, null=True, default=None)
 
     subject = models.ForeignKey(Subject, related_name="courses", null=True, on_delete=models.SET_NULL)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='course_requests', null=True, blank=True, default=None)
    
-    objects = NonRequestManager()
-    request_objects = RequestManager()
     
     def __str__(self) -> str:
         return f"{self.subject}: {self.code}"
@@ -273,15 +240,11 @@ class Section(models.Model):
 
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="sections", max_length=20)
     course = models.ForeignKey(Course, related_name="sections", on_delete=models.CASCADE)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='section_requests',
-                                    null=True, blank=True, default=None)
     primary_professor = models.ForeignKey(Professor, related_name="sections", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     
-    objects = NonRequestManager()
-    request_objects = RequestManager()
 
     class Meta:
-        unique_together = ('course', 'term', 'number', 'request')
+        unique_together = ('course', 'term', 'number',)
 
     def __str__(self) -> str:
         return f"{self.course.subject} {self.course.code}-{self.number}"     
@@ -329,10 +292,7 @@ class Meeting(models.Model):
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
     professor = models.ForeignKey(Professor, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='meeting_requests', null=True, blank=True, default=None)
    
-    objects = NonRequestManager()
-    request_objects = RequestManager()
 
     
 

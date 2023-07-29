@@ -1,78 +1,21 @@
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup, Meeting, DepartmentAllocation, Room, Building
-from django.db.models import Q, Case, When, IntegerField, Sum
-from django.db.models.functions import Coalesce
+from .models import *
+from django.db.models import Q
 from datetime import time, timedelta, datetime
 from .utils import *
+from django.views.decorators.http import require_http_methods
 import json
 
 POST_ERR_MESSAGE = "Only post requests are allowed!"
 GET_ERR_MESSAGE = "Only get requests are allowed!"
 
-## pages
-
-@login_required
-def claim(request: HttpRequest) -> HttpResponse:
-    professor = Professor.objects.get(user=request.user)
-    data = {
-        'departments': Department.objects.all(),
-        'subjects': Subject.objects.all(),
-        'courses': Course.objects.all(),
-        # could change this to limit from a certain year
-        'previous_courses': Course.objects.filter(sections__meetings__professor=professor).distinct(),
-        'terms': Term.objects.all().order_by('-year',
-            Case(
-                When(season=Term.FALL, then=1),
-                When(season=Term.WINTER, then=2),
-                When(season=Term.SPRING, then=3),
-                When(season=Term.SUMMER, then=4),
-                default=0,
-                output_field=IntegerField(),
-            )),
-        'days': Day.DAY_CHOICES,
-    }
-    return render(request, 'claim.html', context=data)
-
-@login_required
-def my_meetings(request: HttpRequest) -> HttpResponse:
-    data = {
-        # could change this to limit from a certain year
-        'terms': Term.objects.all().order_by('-year',
-            Case(
-                When(season=Term.FALL, then=1),
-                When(season=Term.WINTER, then=2),
-                When(season=Term.SPRING, then=3),
-                When(season=Term.SUMMER, then=4),
-                default=0,
-                output_field=IntegerField(),
-            )),
-    }
-    return render(request, 'my_meetings.html', context=data)
-
-def edit_section(request: HttpRequest, section: int) -> HttpResponse:
-    section = Section.objects.get(pk=section)
-
-    data = {
-        "professor": Professor.objects.get(user=request.user),
-        "section": section,
-        "days": Day.CODE_TO_VERBOSE.items(), 
-        "buildings": Building.objects.all()
-    }
-
-    return render(request, 'edit_section.html', context=data)
-
 ## api 
 @login_required
+@require_http_methods(["GET"])
 def get_meetings(request: HttpRequest) -> JsonResponse:
     response_data = {}
-
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
     
     term = request.GET.get('term')
     term = Term.objects.get(pk=term)
@@ -96,6 +39,7 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
 
 
 @login_required
+@require_http_methods(["GET"])
 def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     response_data = {}
 
@@ -215,14 +159,9 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     return JsonResponse(response_data)
 
 @login_required
+@require_http_methods(["GET"])
 def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
     response_data = {}
-    
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
     
     building = request.GET.get('building')
     building = Building.objects.get(pk=building)
@@ -235,14 +174,9 @@ def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
     
     
 @login_required
+@require_http_methods(["GET"])
 def get_meeting_details(request: HttpRequest) -> JsonResponse:
     response_data = {}
-    
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
     
     meeting = request.GET.get('meeting')
     meeting: Meeting = Meeting.objects.get(pk=meeting)
@@ -261,20 +195,11 @@ def get_meeting_details(request: HttpRequest) -> JsonResponse:
 
     return JsonResponse(response_data)
 
-    
-    
-
 @login_required
+@require_http_methods(["GET"])
 def course_search(request: HttpRequest) -> JsonResponse:
     response_data = {}
     
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
-    
-
     department = request.GET.get('department')
     subject = request.GET.get('subject')
     query = request.GET.get('search')
@@ -303,15 +228,10 @@ def course_search(request: HttpRequest) -> JsonResponse:
     return JsonResponse(response_data)
     
 @login_required
+@require_http_methods(["POST"])
 def section_search(request: HttpRequest) -> JsonResponse:
     response_data = {}
 
-    # not get check
-    if request.method != 'POST':
-        response_data['error'] = POST_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
-    
     data: dict = json.loads(request.body)
 
     term = data.get('term')
@@ -382,14 +302,9 @@ def section_search(request: HttpRequest) -> JsonResponse:
     return JsonResponse(response_data)
 
 @login_required
+@require_http_methods(["GET"])
 def submit_claim(request: HttpRequest) -> JsonResponse:
     response_data = {}
-
-    # not get check
-    if request.method != 'POST':
-        response_data['error'] = POST_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
     
     data: dict = json.loads(request.body)
     meeting_ids: list[str] = data.get("meetings", [])
@@ -439,4 +354,3 @@ def submit_claim(request: HttpRequest) -> JsonResponse:
     response_data['success_message'] = "Successfully claimed all meetings."
     response_data['ok'] = True
     return JsonResponse(response_data)
-

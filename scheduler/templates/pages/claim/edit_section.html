@@ -11,28 +11,6 @@
            {{ section }} 
         </div>
     </div>
-    <div class="row">
-        <div class="col">
-            {{ section.course }}
-        </div>
-        <div class="col">
-            {{ section.course.title }}
-        </div>
-        <div class="col">
-            {{ section.course.subject.department }}
-        </div>
-        <div class="col">
-            {{ section.primary_professor }}
-        </div>
-        <div class="col">
-            Credit Hours:  {{ section.course.credits }}
-        </div>
-    </div>
-    <div class="row justify-content-md-center">
-        <div class="col col-lg-2">
-            Meetings
-        </div>
-    </div>
     <div>
     {% for meeting in section.meetings.all %}
     <div class="row displayRow" value="{{ meeting.pk }}" inputRow="inputRow{{ forloop.counter }}" isChanged="false"
@@ -108,7 +86,7 @@
     <div class="row">
         <div class="col text-start">
             <input type="checkbox" id="enforceDepartmentConstraints" checked>
-            <label for="enforceDepartmentConstraints">Enforce Department Contraints</label> 
+            <label for="enforceDepartmentConstraints">Enforce Department Constraints</label> 
         </div>
         <div class="col text-end">
             <button type="button" class="btn btn-primary">Submit</button>

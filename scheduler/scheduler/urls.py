@@ -17,7 +17,8 @@ from django.contrib import admin
 from django.urls import path
 import authentication.views as auth_views
 import request.views as request_views
-import claim.views as claim_views
+import claim.page_views as claim_page_views
+import claim.api_views as claim_api_views
 import heads.views as heads_views
 from django.views.generic import TemplateView
 
@@ -36,25 +37,20 @@ urlpatterns = [
 
     # request views
     ## pages
-    path('make_request/', request_views.make_request, name='make_request'),
-    ## json responses
-    path('get_form/<str:form_id>', request_views.get_form, name='get_form'),
-    path('request_submit/', request_views.request_submit, name='request_submit'),
-    path('request_add/<str:form_id>', request_views.request_add, name='request_add'),
 
     # Claim views
     ## pages
-    path('claim/', claim_views.claim, name='claim'),
-    path('my_meetings/', claim_views.my_meetings, name='my_meetings'),
-    path('edit_section/<int:section>', claim_views.edit_section, name='edit_section'),
+    path('claim/', claim_page_views.claim, name='claim'),
+    path('my_meetings/', claim_page_views.my_meetings, name='my_meetings'),
+    path('edit_section/<int:section>', claim_page_views.edit_section, name='edit_section'),
     ## json responses
-    path('course_search/', claim_views.course_search, name='course_search'),
-    path('section_search/', claim_views.section_search, name='section_search'),
-    path('submit_claim/', claim_views.submit_claim, name="submit_claim"),
-    path('get_meetings/', claim_views.get_meetings, name='get_meetings'),
-    path('get_meetings_edit_section/', claim_views.get_meetings_edit_section, name='get_meetings_edit_section'),
-    path('get_rooms_edit_section', claim_views.get_rooms_edit_section, name='get_room_edit_section'),
-    path('get_meeting_details/', claim_views.get_meeting_details, name='get_meeting_details'),
+    path('course_search/', claim_api_views.course_search, name='course_search'),
+    path('section_search/', claim_api_views.section_search, name='section_search'),
+    path('submit_claim/', claim_api_views.submit_claim, name="submit_claim"),
+    path('get_meetings/', claim_api_views.get_meetings, name='get_meetings'),
+    path('get_meetings_edit_section/', claim_api_views.get_meetings_edit_section, name='get_meetings_edit_section'),
+    path('get_rooms_edit_section', claim_api_views.get_rooms_edit_section, name='get_room_edit_section'),
+    path('get_meeting_details/', claim_api_views.get_meeting_details, name='get_meeting_details'),
     
     # Head views
     ## pages
