@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.db.models.query import QuerySet
 from authentication.models import Professor
 from request.models import RequestItem
@@ -75,16 +76,16 @@ class Building(models.Model):
 class Room(models.Model):
     verbose_name = "Room"
 
-    CLASSROOM = 'classroom'
-    LAB = 'lab'
+    LECTURE = 'LEC'
+    LAB = 'LAB'
     CLASSIFICATIONS = (
-        (CLASSROOM, 'Classroom'),
-        (LAB, 'Lab'),
+        (LECTURE, 'Lecture'),
+        (LAB, 'Laboratory'),
     )
 
     number = models.CharField(max_length=6)
     classification = models.CharField(max_length=20, choices=CLASSIFICATIONS)
-    capacity = models.IntegerField()
+    capacity = models.IntegerField(null=True, blank=True, default=False)
     is_general_purpose = models.BooleanField(null=True, blank=True, default=False)
     
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
@@ -121,7 +122,7 @@ class StartEndTime(models.Model):
         return self.start.strftime('%H:%M')
 
     def end_input(self) -> str:
-        return self.end.strftime('%I:%M')
+        return self.end.strftime('%H:%M')
 
 class Department(models.Model):
     verbose_name = "Department"
@@ -143,7 +144,7 @@ class Department(models.Model):
     
 
 class AllocationGroup(models.Model):
-    verbose_name = "Block Group"
+    verbose_name = "Slot Group"
 
 
 class DepartmentAllocation(models.Model):
@@ -154,25 +155,39 @@ class DepartmentAllocation(models.Model):
     department = models.ForeignKey(Department, related_name="department_allocations", on_delete=models.CASCADE)
     allocation_group = models.ForeignKey(AllocationGroup, related_name="department_allocations", on_delete=models.CASCADE)
 
+
     def __repr__(self) -> str:
         return f"number of classroom={self.number_of_classrooms}, time block={self.allocation_group.time_blocks.all()}, department={self.department}"
-
-
 
 
 class TimeBlock(models.Model):
     verbose_name = "Time Block"
 
+    # These numbers occur at the same time so may need special formatting
+    LONG_NIGHT_NUMBERS = [21, 22, 23, 24] # 6:30-9:15's
+    SHORT_NIGHT_NUMBERS = [17, 18, 19, 20] # 6:30-7:45's & 8:00-9:15's
     day = models.CharField(max_length=2, choices=Day.DAY_CHOICES)
+
     # if this is None it means that it is an abnormal time slot
     number = models.IntegerField(null=True, blank=True, default=None)
 
-    allocation_group = models.ForeignKey(AllocationGroup, related_name="time_blocks", on_delete=models.CASCADE, null=True, blank=True, default=None)
+    allocation_groups = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None)
     start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='time_block_requests', null=True, blank=True, default=None)
    
     objects = NonRequestManager()
     request_objects = RequestManager()
+
+    def add_allocation_groups(self):
+        assert self.number is None
+        tms = TimeBlock.objects.filter(number__isnull=False).filter(
+            day=self.day,
+            start_end_time__start__lte = self.start_end_time.end,
+            start_end_time__end__gte = self.start_end_time.start
+        )
+
+        for tm in tms:
+            self.allocation_groups.add(tm.allocation_groups.first())
     
     def __str__(self) -> str:
         return f"{self.number}, {self.day}"
@@ -180,15 +195,13 @@ class TimeBlock(models.Model):
     def __repr__(self) -> str:
         return f"block={self.number}, day={self.day}, time={self.start_end_time}"
     
-        
-
-
 
 
 class Subject(models.Model):
     verbose_name = "Subject"
 
     code = models.CharField(max_length=10)
+    description = models.CharField(max_length=100, blank=True, null=True, default=None)
 
     department = models.ForeignKey(Department, related_name="subjects", null=True, on_delete=models.CASCADE)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='subject_requests', null=True, blank=True, default=None)
@@ -206,9 +219,13 @@ class Subject(models.Model):
 class Course(models.Model):
     verbose_name = "Course"
 
+    banner_id = models.IntegerField(blank=True, null=True, default=None)
     code = models.CharField(max_length=5)
     credits = models.IntegerField()
     title = models.CharField(max_length=50)
+    description = models.CharField(max_length=1000, blank=True, null=True, default=None)
+    prerequisite = models.CharField(max_length=100, blank=True, null=True, default=None)
+    corequisite = models.CharField(max_length=100, blank=True, null=True, default=None)
 
     subject = models.ForeignKey(Subject, related_name="courses", null=True, on_delete=models.SET_NULL)
     request = models.OneToOneField(RequestItem, on_delete=models.CASCADE, related_name='course_requests', null=True, blank=True, default=None)
@@ -248,8 +265,10 @@ class Term(models.Model):
 class Section(models.Model):
     verbose_name = "Section"
     
+    banner_course = models.CharField(max_length=10)
     number = models.CharField(blank=True, max_length=5)
     campus = models.CharField(max_length=20)
+
     soft_cap = models.IntegerField(blank=True, default=0)
 
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="sections", max_length=20)
@@ -302,7 +321,9 @@ class Meeting(models.Model):
     
     start_date = models.DateField(null=True, blank=True, default=None)
     end_date = models.DateField(null=True, blank=True, default=None)
-    style = models.CharField(max_length=20, default="Lecture", blank=True, null=True)
+
+    style_code = models.CharField(max_length=20, default="LEC", blank=True, null=True)
+    style_description = models.CharField(max_length=20, default="Lecture", blank=True, null=True)
 
     section = models.ForeignKey(Section, related_name="meetings", null=True, on_delete=models.CASCADE)
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)

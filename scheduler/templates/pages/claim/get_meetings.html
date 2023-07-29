@@ -12,7 +12,7 @@
     <div class="day">Saturday</div>
     <div class="day">Sunday</div>
   </div>
-  <div class="content">
+  <div class="content" id="meetingsGrid">
     <div class="time" style="grid-row:1"><div>08:00</div></div>
     <div class="time-double" style="grid-row:2"><div>09:00&nbsp&nbsp</div><div>09:15&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:3"><div>10:45&nbsp&nbsp</div><div>11:00&nbsp&nbsp</div></div>
@@ -43,7 +43,6 @@
     <div class="meeting-row" style="grid-row:9"></div>
     <div class="meeting-row" style="grid-row:10"></div>
     <div class="meeting-row" style="grid-row:11"></div>
-    <div id="editContainer"></div>
     {% regroup meetings by section as sections %}
     {% for section in sections %}
       {% for meeting in section.list %}
@@ -64,9 +63,10 @@
       </div>
       {% endfor %}
     {% endfor %}
-    {% for time_block in open_time_blocks %}
-      <div startTime="{{ meeting.time_block.start_end_time.start_input }}" endTime="{{ meeting.time_block.start_end_time.end_input }}"
-        style="grid-column: {{ time_block|get_time_block_col }}; grid-row: {{ time_block|get_time_block_row }}/span {{ time_block|get_time_block_span }};">
+    {% for time_slot in open_time_blocks %}
+      <div class="openSlots event justify-content-center" startTime="{{ time_slot.start }}" endTime="{{ time_slot.end }}"
+        day="{{ time_slot.day }}"
+        style="grid-column: {{ time_slot.time_block|get_time_block_col }}; grid-row: {{ time_slot.time_block|get_time_block_row }}/span {{ time_slot.time_block|get_time_block_span }};">
         Open Time Slot
     </div>
         

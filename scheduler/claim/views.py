@@ -2,9 +2,10 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import Department, Course, Subject, Professor, Term, Section, Meeting, Day, TimeBlock, StartEndTime, AllocationGroup, Meeting, DepartmentAllocation, Room, Building
-from django.db.models import Q, Case, When, IntegerField, Subquery, OuterRef
+from django.db.models import Q, Case, When, IntegerField, Sum
 from django.db.models.functions import Coalesce
 from datetime import time, timedelta, datetime
+from .utils import *
 import json
 
 POST_ERR_MESSAGE = "Only post requests are allowed!"
@@ -93,6 +94,7 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
 
     return JsonResponse(response_data)
 
+
 @login_required
 def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     response_data = {}
@@ -104,30 +106,106 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
         return JsonResponse(response_data)
 
     section = request.GET.get('section')
-    section: Section = Section.objects.get(pk=section)
+    if section:
+        section: Section = Section.objects.get(pk=section)
+
     room = request.GET.get('room')
+    building = request.GET.get('building')
     
     meetings = Meeting.objects.none()
 
     if section.primary_professor:
         meetings |= section.primary_professor.meetings.filter(section__term=section.term)
     
-    if room != 'null' and room != 'any':
+    if room and (room != 'any'):
         room: Room = Room.objects.get(pk=room)
         meetings |= Meeting.objects.filter(room=room, section__term=section.term).exclude(time_block__in=meetings.values('time_block'))
+    meetings = meetings.exclude(section=section)
+    meetings = meetings.distinct()
 
-    meetings = meetings.exclude(section=section).distinct()
+    # Timing is complicated...
+    total_seconds_added = 0
+    if request.GET.get('is_input') != 'true':
+        data = {
+            "meetings": meetings,
+            "term": section.term,
+        }
+        get_meetings_template = render(request, "get_meetings.html", data).content.decode()
+
+        response_data['ok'] = True
+        response_data['get_meetings_template'] = get_meetings_template
+
+        return JsonResponse(response_data)
+        
+
+    open_time_slots = []
+    total_seconds = int(request.GET.get('total_seconds'))
+    total_seconds = timedelta(seconds=total_seconds)
+    total_seconds_added = total_seconds - timedelta(hours=1, minutes=15)
+    total_seconds_added = 0 if total_seconds_added < timedelta(seconds=0) else total_seconds_added
 
     overlaps_meeting = Q()
     for meeting in meetings.all():
+        start_end_time = meeting.time_block.start_end_time
+
+        start_time_d = timedelta(hours=start_end_time.start.hour, minutes=start_end_time.start.minute) - total_seconds_added
+        start_time = time(hour=start_time_d.seconds // 3600, minute=(start_time_d.seconds % 3600) // 60)
+
         overlaps_meeting |= Q(day=meeting.time_block.day,
-                              start_end_time__start__lte=meeting.time_block.start_end_time.end,
-                              start_end_time__end__gte=meeting.time_block.start_end_time.start)
-    open_time_block =  TimeBlock.objects.filter(number__isnull=False).exclude(overlaps_meeting).all()
+            start_end_time__start__lte=meeting.time_block.start_end_time.end,
+            start_end_time__end__gte=start_time)
+
+    open_time_block_candidates =  TimeBlock.objects.filter(number__isnull=False).exclude(overlaps_meeting).filter().all()
+
+    for candidate in open_time_block_candidates:
+        
+        start_time: time = candidate.start_end_time.start
+        start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute) + total_seconds
+        end_time_to_exist = time(hour=start_time_d.seconds // 3600, minute=(start_time_d.seconds % 3600 ) // 60)
+        tm = TimeBlock.objects.filter(number__isnull=False)
+        
+        tm = tm.filter(day=candidate.day, start_end_time__end=end_time_to_exist) 
+
+        if not tm.exists():
+            continue
+
+        enforce_department_constraints = request.GET.get('enforce_department_constraints') == 'true'
+        if room == 'any':
+            open_rooms = get_available_rooms(
+                building=building,
+                start_time=start_time,
+                end_time=end_time_to_exist,
+                day=candidate.day,
+                department=section.course.subject.department,
+                term=section.term,
+                enforce_department_constraints=enforce_department_constraints
+            )
+            if not open_rooms.exists(): continue
+        else:
+            exceeds_department_allocation = False
+            if enforce_department_constraints:
+                exceeds_department_allocation = will_exceed_department_allocation(
+                    start_time=start_time,
+                    end_time=end_time_to_exist,
+                    day=candidate.day,
+                    department=section.course.subject.department,
+                    term=section.term
+                )
+            if exceeds_department_allocation and room.is_general_purpose: continue
+
+
+        open_time_slots.append({
+            'start': start_time.strftime('%H:%M'),
+            'end': end_time_to_exist.strftime('%H:%M'),
+            'day': candidate.day,
+            'time_block': candidate
+        })
+        
+
     data = {
         "meetings": meetings,
         "term": section.term,
-        "open_time_blocks": open_time_block
+        "open_time_blocks": open_time_slots
     }
     get_meetings_template = render(request, "get_meetings.html", data).content.decode()
 
@@ -201,8 +279,9 @@ def course_search(request: HttpRequest) -> JsonResponse:
     subject = request.GET.get('subject')
     query = request.GET.get('search')
     count = int(request.GET.get('count'))
+    term = request.GET.get('term')
 
-    courses_qs = Course.objects
+    courses_qs = Course.objects.filter(sections__term=term).distinct()
     if department != 'any': courses_qs = courses_qs.filter(subject__department=department)
     if subject != 'any': courses_qs = courses_qs.filter(subject=subject)
     if query:

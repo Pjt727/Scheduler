@@ -31,22 +31,13 @@ def add_time_blocks(time_block_df: pd.DataFrame) -> None:
         
 def add_allocation_groups(allocation_group_df: pd.DataFrame) -> None:
     for _, allo_row in allocation_group_df.iterrows():
-        add_allo_group = False
-        time_block_populated = False
         allo_group = MaristDB.AllocationGroup()
         time_blocks = allo_row["time_blocks"]
+        allo_group.save()
         for time_block in time_blocks:
-            if time_block.allocation_group is None:
-                add_allo_group = True
-                time_block.allocation_group = allo_group
-                continue
-            time_block_populated = True
-        if add_allo_group and time_block_populated:
-            raise ValueError("A set of time blocks' allocation group was partially loaded")
-        if add_allo_group: 
-            allo_group.save()
-            for time_block in time_blocks:
-                time_block.save()
+            time_block: MaristDB.TimeBlock = time_block
+            time_block.save()
+            time_block.allocation_groups.add(allo_group)
 
 def add_department_allocations(department_allocation: pd.DataFrame) -> None:
     for _, dep_allo_row in department_allocation.iterrows():
@@ -115,7 +106,7 @@ def create_all():
     @lru_cache
     def allocation_group_convertor(allocation_group) -> list[MaristDB.AllocationGroup]:
         allocation_group_row = allocation_group_df.iloc[int(allocation_group)]
-        return list(allocation_group_row["time_blocks"])[0].allocation_group
+        return list(allocation_group_row["time_blocks"])[0].allocation_groups.first()
     
     add_department_allocations(pd.read_csv(f"{STATIC_DATA_PATH}/DepartmentAllocation.csv", converters={
         "department": department_convertor,
@@ -129,3 +120,4 @@ def create_all():
         "building": building_convertor,
     })
     add_general_purpose_classes(gp_df)
+

@@ -8,34 +8,37 @@ class Command(BaseCommand):
     help = "Adds non-existing class information to the database"
 
     def add_arguments(self, parser: CommandParser) -> None:
-        parser.add_argument("terms", nargs="+", type=str, help="The terms used for the data SeasonYear or 'all'")
+        parser.add_argument("years", nargs="+", type=str, help="The years used for the Year (XXXX) or 'all'")
 
-        parser.add_argument("--force", action="store_true", help="Continues the loading process even if some sections fail to be added to the database")
     
     @transaction.atomic
     def handle(self, *args, **options) -> None:
-        BANNER_DUMP_PATH = f"{settings.BASE_DIR}/banner/data/classes"
-        valid_terms = [term for term in os.listdir(BANNER_DUMP_PATH) if os.path.isdir(os.path.join(BANNER_DUMP_PATH, term))]
+        BANNER_DUMP_PATH = os.path.join(settings.BASE_DIR, 'banner', 'data', 'classes')
         
-        if any(map(lambda term: term.upper() == 'ALL', options["terms"])):
-            course_errs, section_errs = create_terms(terms=valid_terms, force=options["force"])
+        sections: list[str] = []
+        years = set()
+
+        for file in os.listdir(BANNER_DUMP_PATH):
+            if not os.path.isfile(os.path.join(BANNER_DUMP_PATH, file)): continue
+            if file.startswith('sections'):
+                sections.append(file)
+                years.add(file[-9:-5])
+        
+        
+        if any(map(lambda term: term.upper() == 'ALL', options["years"])):
+            section_paths = map(lambda f: os.path.join(BANNER_DUMP_PATH, f), sections)
+            create_terms(section_paths=section_paths)
         else:
-            invalid_terms: filter = filter(lambda term: term not in valid_terms, options['terms'])
-            if len(invalid_terms) != 0:
-                raise CommandError(f"{', '.join(invalid_terms)} term(s) are invalid or not stored. These are the stored terms: {','.join(valid_terms)}")
-            course_errs, section_errs = create_terms(terms=options["terms"], force=options["force"]) 
+            invalid_years = []
+            for year in options["years"]:
+                if year not in years: invalid_years.append(year)
+            if len(invalid_years) != 0:
+                raise CommandError(f"{', '.join(invalid_years)} year(s) are invalid or not stored. These are the stored years: {','.join(years)}")
+            selected_sections = []
+            for section in sections:
+                if any(year in section for year in options["years"]):
+                    selected_sections.append(section) 
+            section_paths = map(lambda f: os.path.join(BANNER_DUMP_PATH, f), selected_sections)
+            create_terms(section_paths=section_paths) 
         
         self.stdout.write(self.style.SUCCESS('Successfully added class information to the database'))
-        if course_errs or section_errs:
-            tab = "----"
-            unique_course_errs = set(course_errs)
-            unique_section_errs = set(section_errs)
-            self.stdout.write(self.style.ERROR(f'However {len(course_errs)} course(s) and {len(section_errs)} section(s) were silenced: '))
-            self.stdout.write(self.style.ERROR(f'\nCourse Errors'))
-            for unique_course_err in unique_course_errs:
-                self.stdout.write(self.style.ERROR(f'{tab}{unique_course_err} X {course_errs.count(unique_course_err)}'))
-
-            self.stdout.write(self.style.ERROR(f'\n\nSection Errors'))
-            for unique_section_err in unique_section_errs:
-                self.stdout.write(self.style.ERROR(f'{tab}{unique_section_err} X {section_errs.count(unique_section_err)}'))
-

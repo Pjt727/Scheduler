@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
 {% endblock %}
 {% block title %}Edit Section{% endblock %} {% block content %}
+{% csrf_token %}
 <div class="container text-center">
     <div class="row justify-content-md-center">
         <div id="section" value="{{ section.pk }}" class="col col-lg-2">
@@ -34,10 +35,9 @@
     </div>
     <div>
     {% for meeting in section.meetings.all %}
-    
     <div class="row displayRow" value="{{ meeting.pk }}" inputRow="inputRow{{ forloop.counter }}" isChanged="false"
         startTime="{{meeting.time_block.start_end_time.start_input}}" endTime="{{meeting.time_block.start_end_time.end_input}}"
-        day="{{ meeting.time_block.day }}" room="{{ meeting.room.pk }}">
+        day="{{ meeting.time_block.day }}" room="{{ meeting.room.pk }}" counter="{{ forloop.counter}}">
         <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
             {{ forloop.counter }}
         </div>
@@ -59,7 +59,7 @@
         </div>
     </div>
 
-    <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden="true">
+    <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden="true" counter="{{ forloop.counter}}">
         <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
             {{ forloop.counter }}
         </div>
@@ -78,7 +78,6 @@
         </div>
         <div class="col-sm-5 text-start">
             <select name="building">
-                <option value="any">Any Building</option>
                 {% for building in buildings %}
                 <option value="{{ building.pk }}" {% if building == meeting.room.building %}selected{% endif %}>
                     {{ building }}
@@ -105,9 +104,21 @@
     </div>
 
     {% endfor %}
-    <div id="meetingContainer" class="row">
+    <br>
+    <div class="row">
+        <div class="col text-start">
+            <input type="checkbox" id="enforceDepartmentConstraints" checked>
+            <label for="enforceDepartmentConstraints">Enforce Department Contraints</label> 
+        </div>
+        <div class="col text-end">
+            <button type="button" class="btn btn-primary">Submit</button>
+        </div>
     </div>
 </div>
+<br>
+<div id="meetingContainer">
+</div>
+
 
 
 {% endblock %} 

@@ -2,7 +2,7 @@
 <div class="container">
     <div class="row justify-content-md-center">
         <div class="col col-lg-10 fw-bold">
-            Meeting for {{ section }}
+            {{ section }}
         </div>
     </div>
     <div class="row">
@@ -50,12 +50,17 @@
 {% else %}
 <div class="container">
     <div class="row justify-content-md-center">
-        <div class="col col-lg-10 fw-bold">
-            Meeting for {{ section }}
+        <div class="col col-lg-8 fs-3 fw-bold">
+            {{ section }}
+        </div>
+        <div class="col col-lg-2 fw-bold">
+            <a href="{% url 'edit_section' section=section.pk %}">
+                Edit
+            </a>
         </div>
     </div>
     <div class="row">
-        <div class="col col-sm-5 fst-italic text-sm-start">
+        <div class="col col-sm-8 fst-italic text-end">
             {{ section.primary_professor }}
         </div>
     </div>
@@ -67,27 +72,11 @@
             Credit Hours: {{ section.course.credits }}
         </div>
     </div>
-    <br>
     <div class="row justify-content-md-center fs-4">
-        <div class="col col-lg-8 fw-bold">
-            All Meetings
-        </div>
-        <div class="col col-lg- fw-bold">
-            <a href="{% url 'edit_section' section=section.pk %}">
-                Edit
-            </a>
-        </div>
     </div>
 
     <div class="row">
         <table class="table">
-            <thead>
-                <tr class="fs-5">
-                    <th scope="col">Day</th>
-                    <th scope="col">Time</th>
-                    <th scope="col">Room</th>
-                </tr>
-            </thead>
             <tbody>
             {% for meeting_section in section.meetings_sorted.all %}
                 <tr {% if meeting_section == meeting %}class="fst-italic fw-bold"{% endif %}>

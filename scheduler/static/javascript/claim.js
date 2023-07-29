@@ -115,6 +115,7 @@ function updateCourseLiveSearch(){
     const selectedDepartment = departmentSelect.options[departmentSelect.selectedIndex].value
     const subjectSelect = document.getElementById("id_subject");
     const selectedSubject = subjectSelect.options[subjectSelect.selectedIndex].value;
+    const term = document.getElementById('id_term').options[document.getElementById('id_term').selectedIndex].getAttribute('value');
 
     const search = document.getElementById('id_course-text');
     const url = new URL('course_search/', window.location.origin);
@@ -122,6 +123,7 @@ function updateCourseLiveSearch(){
     url.searchParams.set('subject', selectedSubject);
     url.searchParams.set('search', search.textContent)
     url.searchParams.set('count', count)
+    url.searchParams.set('term', term)
 
     fetch(url, {
         method: 'get',
