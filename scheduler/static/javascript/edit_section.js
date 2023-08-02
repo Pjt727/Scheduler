@@ -212,12 +212,20 @@ function buildingChange(inputRow){
         });
 }
 
+let meetings_are_loading = false;
 function updateMeetings(inputRow = null){
+    if(meetings_are_loading){return;}
 
     const url = new URL('get_meetings_edit_section/', window.location.origin);
 
-    const section = document.getElementById('section').getAttribute('value');
-    url.searchParams.set('section', section);
+    const sections = [];
+    
+    const section_sections = document.getElementsByName('section');
+    section_sections.forEach((sec) => {
+        sections.push(sec.getAttribute('value'))
+    });
+
+    url.searchParams.set('sections', sections);
     if (inputRow) {
         const roomSelect = inputRow.querySelector('[name="room"]');
         const room = roomSelect.value;
@@ -237,6 +245,8 @@ function updateMeetings(inputRow = null){
     } else {
         url.searchParams.set('is_input', false);
     }
+
+    meetings_are_loading = true
     
     fetch(url, {
         method: 'get',
@@ -253,13 +263,20 @@ function updateMeetings(inputRow = null){
             lastMeeting = null; // for collapse
             const meetingDetailButtons = document.getElementsByName('meetingDetail');
             meetingDetailButtons.forEach(button => {
-                button.addEventListener('click', () => meetingDetails(button.getAttribute('value'))); 
+                button.addEventListener('click', () => meetingDetails(button.getAttribute('value'), true)); 
             })
-            
-            const displayRows = document.getElementsByClassName('displayRow');
-            let inputRowId = null;
+
+            let displayRows
             if(inputRow){
-                inputRowId = inputRow.id;
+                const section = document.querySelector(`[name="section"][value="${inputRow.getAttribute("section")}"]`);
+                displayRows = section.querySelectorAll('.displayRow');
+            } else{
+                displayRows = [];
+            }
+
+            let counter_check = null;
+            if(inputRow){
+                counter_check = inputRow.getAttribute('counter')
                 const newStartTime = inputRow.querySelector('[name="startTime"]').value;
                 const newEndTime = inputRow.querySelector('[name="endTime"]').value;
                 const newDay = inputRow.querySelector('[name="day"]').value;
@@ -297,8 +314,9 @@ function updateMeetings(inputRow = null){
                     true,
                 )
             } 
+
             for( const displayRow of displayRows){
-                if(!(displayRow.getAttribute('inputRow') === inputRowId)){
+                if(!(displayRow.getAttribute('counter') === counter_check)){
                     const startTime = displayRow.getAttribute('startTime');
                     const endTime = displayRow.getAttribute('endTime');
                     const day = displayRow.getAttribute('day')
@@ -311,6 +329,8 @@ function updateMeetings(inputRow = null){
             }
 
             addOpenTimeSlotListeners();
+
+            meetings_are_loading = false;
         })
 }
 
@@ -334,7 +354,9 @@ function checkInputRow(inputRow){
         return {'isValid': false, 'reason': errorMessage };
     }
 
-    const displayRow = document.querySelector(`[inputRow=${inputRow.id}]`);
+    const section = document.querySelector(`[name="section"][value="${inputRow.getAttribute("section")}"]`);
+
+    const displayRow = section.querySelector(`.displayRow[counter="${inputRow.getAttribute("counter")}"]`)
     
     const sameStartTime = displayRow.getAttribute('startTime') === newStartTime;
     const sameEndTime = displayRow.getAttribute('endTime') === newEndTime;
@@ -394,7 +416,9 @@ function submitInputRow(inputRow){
     const newRoom = roomSelect.value;
     const roomVerbose = roomSelect.options[roomSelect.selectedIndex].innerText.trim();
 
-    const displayRow = document.querySelector(`[inputRow=${inputRow.id}]`);
+    const section = document.querySelector(`[name="section"][value="${inputRow.getAttribute("section")}"]`);
+
+    const displayRow = section.querySelector(`.displayRow[counter="${inputRow.getAttribute("counter")}"]`)
     
     displayRow.setAttribute('startTime', newStartTime);
     displayRow.setAttribute('endTime', newEndTime);
@@ -422,14 +446,14 @@ function submitInputRow(inputRow){
     return true;
 }
 
-function addEditSubmitListeners(){
-    const meetingDisplayRows = document.getElementsByClassName('displayRow');
-    const meetingInputRows = document.getElementsByClassName('inputRow');
+function addEditSubmitListeners(section_group){
+    const meetingDisplayRows = section_group.querySelectorAll('.displayRow');
+    const meetingInputRows = section_group.querySelectorAll('.inputRow');
 
     Array.from(meetingDisplayRows).forEach(meetingRow => {
         const onActivate = (meetingRow) => {
-            const inputRowId = meetingRow.getAttribute('inputRow');
-            const inputRow = document.getElementById(inputRowId);
+            const counter = meetingRow.getAttribute('counter');
+            const inputRow = section_group.querySelector(`.inputRow[counter="${counter}"]`);
 
             // hide all input rows and submit if the input row was shown
             for(const row of meetingInputRows){
@@ -473,7 +497,8 @@ function addEditSubmitListeners(){
 
         const submitCol = meetingRow.querySelector('[name="submitCol"]');
         submitCol.addEventListener('click', ()=>{
-            const displayRow = document.querySelector(`[inputRow=${meetingRow.id}]`);
+            const counter = meetingRow.getAttribute('counter');
+            const displayRow = section_group.querySelector(`.displayRow[counter="${counter}"]`);
             const is_valid = submitInputRow(meetingRow);
             console.log(is_valid)
             if (!is_valid){
@@ -496,8 +521,38 @@ function addEditSubmitListeners(){
     })
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    addEditSubmitListeners();
-    updateMeetings();
+function addSection(section){
+    const sectionSections = document.getElementsByName('section');
+    for(let i=0; i < sectionSections.length; i++){
 
+        if (sectionSections[i].getAttribute('value') == section){
+            errorMessage("You are already editing that section!")
+            return;
+        }
+    }
+
+    const url = new URL('get_edit_section/', window.location.origin);
+
+    url.searchParams.set('section', section)
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data=> {
+            const editSectionHtml = data['edit_section_html'];
+
+            const newSection = document.createElement('section');
+            newSection.setAttribute('name', 'section');
+            newSection.setAttribute('value', section);
+            newSection.innerHTML = editSectionHtml;
+
+            const sections = document.getElementById('sections');
+            sections.appendChild(newSection);
+            addEditSubmitListeners(newSection);
+        })
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const firstSectionGroup = document.querySelector('[name="section"]');
+    addEditSubmitListeners(firstSectionGroup);
+    updateMeetings();
 });

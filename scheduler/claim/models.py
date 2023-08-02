@@ -288,6 +288,9 @@ class Meeting(models.Model):
     style_code = models.CharField(max_length=20, default="LEC", blank=True, null=True)
     style_description = models.CharField(max_length=20, default="Lecture", blank=True, null=True)
 
+    # is whether other meetings have the same time block and room
+    is_sharable = models.BooleanField(default=False, blank=True)
+
     section = models.ForeignKey(Section, related_name="meetings", null=True, on_delete=models.CASCADE)
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)

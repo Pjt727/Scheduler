@@ -6,82 +6,11 @@
 {% block title %}Edit Section{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="container text-center">
-    <div class="row justify-content-md-center">
-        <div id="section" value="{{ section.pk }}" class="col col-lg-2">
-           {{ section }} 
-        </div>
-    </div>
-    <div>
-    {% for meeting in section.meetings.all %}
-    <div class="row displayRow" value="{{ meeting.pk }}" inputRow="inputRow{{ forloop.counter }}" isChanged="false"
-        startTime="{{meeting.time_block.start_end_time.start_input}}" endTime="{{meeting.time_block.start_end_time.end_input}}"
-        day="{{ meeting.time_block.day }}" room="{{ meeting.room.pk }}" counter="{{ forloop.counter}}">
-        <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
-            {{ forloop.counter }}
-        </div>
-        <div name="timeBlock" class="col-sm-5 text-start">
-            {{ meeting.time_block.start_end_time }} &nbsp {{ meeting.time_block.day }}
-        </div>
-        <div name="place" buildingValue="{% if meeting.room %}{{ meeting.room.building.pk }}{% else %}any{% endif %}" class="col-sm-5 text-start">
-            {% if meeting.room %}
-            {{ meeting.room }}
-            {% else %}
-            Any Building Any Room
-            {% endif %}
-        </div>
-        <div class="col-sm-1" name="editCol">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
-                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
-            </svg>
-        </div>
-    </div>
-
-    <div class="row inputRow" id="inputRow{{ forloop.counter }}" value="{{ meeting.pk }}" hidden="true" counter="{{ forloop.counter}}">
-        <div class="col-sm-1 fw-bold" name="counter" value="{{ forloop.counter }}">
-            {{ forloop.counter }}
-        </div>
-        <div class="col-sm-5 text-start">
-
-            <input type="time" name="startTime" min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.start_input}}">
-            &nbsp-&nbsp
-            <input type="time" name="endTime"  min="00:00" max="23:59" value="{{ meeting.time_block.start_end_time.end_input}}">
-            <select name="day">
-            {% for code, day in days %}
-                <option value="{{ code }}" {% if meeting.time_block.day == code %}selected{% endif %}>
-                    {{ day }} 
-                </option>
-            {% endfor %}
-            </select>
-        </div>
-        <div class="col-sm-5 text-start">
-            <select name="building">
-                {% for building in buildings %}
-                <option value="{{ building.pk }}" {% if building == meeting.room.building %}selected{% endif %}>
-                    {{ building }}
-                </option>
-                {% endfor %}
-            </select>
-            <select name="room" value="{{ meeting.pk }}">
-                <option value="any">Any Room</option>
-                <optgroup name="roomOptions">
-                    {% for room in meeting.room.building.rooms.all %}
-                    <option value="{{ room.pk }}" {% if room == meeting.room %}selected{% endif %}>
-                        {{ room.number }}
-                    </option>
-                    {% endfor %}
-                </optgroup>
-            </select>
-        </div>
-        <div class="col-sm-1" name="submitCol">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-square" viewBox="0 0 16 16">
-                <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
-                <path d="M10.97 4.97a.75.75 0 0 1 1.071 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.235.235 0 0 1 .02-.022z"/>
-            </svg>
-        </div>
-    </div>
-
-    {% endfor %}
+    <section id="sections"> 
+        <section name="section" value="{{ section.pk }}">
+            {% include 'section_edit.html' with section=section days=days buildings=buildings %}
+        </section>
+    </section>
     <br>
     <div class="row">
         <div class="col text-start">
@@ -96,9 +25,6 @@
 <br>
 <div id="meetingContainer">
 </div>
-
-
-
 {% endblock %} 
 {% block scripts %}
     <script src={% static 'message.js' %}></script> 

@@ -1,69 +1,29 @@
-{% if is_shared_section %}
-<div class="container">
-    <div class="row justify-content-md-center">
-        <div class="col col-lg-10 fw-bold">
-            {{ section }}
-        </div>
-    </div>
-    <div class="row">
-        <div class="col col-lg-8">
-            {{ section.course.title }}
-        </div>
-        <div class="col col-lg-4">
-            Credit Hours: {{ section.course.credits }}
-        </div>
-    </div>
-    <div class="row justify-content-md-center">
-        <div class="col col-lg-7 fw-bold">
-            All Meetings
-        </div>
-        <div class="col col-lg-3 fw-bold">
-            <a href="{% url 'edit_section' section=section.pk %}">
-                Edit
-            </a>
-        </div>
-    </div>
-
-    <div class="row">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th scope="col">Day</th>
-                    <th scope="col">Time</th>
-                    <th scope="col">Room</th>
-                    <th scope="col">Professor</th>
-                </tr>
-            </thead>
-            <tbody>
-            {% for meeting_section in section.meetings.all %}
-                <tr {% if meeting_section == meeting %}class="fst-italic fw-bold"{% endif %}>
-                    <td>{{ meeting_section.time_block.day }}</td>
-                    <td>{{ meeting_section.time_block.start_end_time }}</td>
-                    <td>{{ meeting_section.room }}</td>
-                    <td>{{ meeting_section.professor }}</td>
-                </tr>
-            {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% else %}
 <div class="container">
     <div class="row justify-content-md-center">
         <div class="col col-lg-8 fs-3 fw-bold">
             {{ section }}
         </div>
+        {% if in_edit_mode %}
+        <div class="col col-lg-5 fw-bold">
+            <a onclick="addSection({{ section.pk }});">
+                Edit in Group
+            </a>
+        </div>
+        {% else %}
         <div class="col col-lg-2 fw-bold">
             <a href="{% url 'edit_section' section=section.pk %}">
                 Edit
             </a>
         </div>
+        {% endif %}
     </div>
-    <div class="row">
-        <div class="col col-sm-8 fst-italic text-end">
+    {% if not is_shared_section %}
+    <div class="row fst-italic">
+        <div class="col col-md-auto fst-italic">
             {{ section.primary_professor }}
         </div>
     </div>
+    {% endif %}
     <div class="row">
         <div class="col col-lg-7">
             {{ section.course.title }}
@@ -83,10 +43,12 @@
                     <td>{{ meeting_section.time_block.day }}</td>
                     <td>{{ meeting_section.time_block.start_end_time }}</td>
                     <td>{{ meeting_section.room }}</td>
+                    {% if is_shared_section %}
+                    <td>{{ meeting_section.professor }}
+                    {% endif %}
                 </tr>
             {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
-{% endif %}

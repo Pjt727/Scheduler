@@ -49,6 +49,7 @@ urlpatterns = [
     path('submit_claim/', claim_api_views.submit_claim, name="submit_claim"),
     path('get_meetings/', claim_api_views.get_meetings, name='get_meetings'),
     path('get_meetings_edit_section/', claim_api_views.get_meetings_edit_section, name='get_meetings_edit_section'),
+    path('get_edit_section/', claim_api_views.get_edit_section, name='get_edit_section'),
     path('get_rooms_edit_section', claim_api_views.get_rooms_edit_section, name='get_room_edit_section'),
     path('get_meeting_details/', claim_api_views.get_meeting_details, name='get_meeting_details'),
     

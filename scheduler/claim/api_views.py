@@ -49,10 +49,10 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
         response_data['ok'] = False
         return JsonResponse(response_data)
 
-    section = request.GET.get('section')
-    if section:
-        section: Section = Section.objects.get(pk=section)
-
+    sections = request.GET.get('sections').split(',')
+    if sections:
+        sections = Section.objects.filter(pk__in=sections)
+        section: Section = sections.first()
     room = request.GET.get('room')
     building = request.GET.get('building')
     
@@ -160,6 +160,24 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
 
 @login_required
 @require_http_methods(["GET"])
+def get_edit_section(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+    section = request.GET.get('section')
+    section = Section.objects.get(pk=section)
+    response_data['ok'] = True
+
+    data = {
+        'section': section,
+        "days": Day.CODE_TO_VERBOSE.items(), 
+        "buildings": Building.objects.all()
+    }
+    response_data['edit_section_html'] = render(request, 'section_edit.html', context=data).content.decode()
+
+    return JsonResponse(response_data)
+
+
+@login_required
+@require_http_methods(["GET"])
 def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
     response_data = {}
     
@@ -179,6 +197,7 @@ def get_meeting_details(request: HttpRequest) -> JsonResponse:
     response_data = {}
     
     meeting = request.GET.get('meeting')
+    in_edit_mode = request.GET.get('in_edit_mode') == 'true'
     meeting: Meeting = Meeting.objects.get(pk=meeting)
 
     is_shared_section = meeting.section.meetings.exclude(professor=meeting.section.primary_professor).exists()
@@ -186,7 +205,8 @@ def get_meeting_details(request: HttpRequest) -> JsonResponse:
     data = {
         'section': meeting.section,
         'meeting': meeting,
-        'is_shared_section': is_shared_section
+        'is_shared_section': is_shared_section,
+        'in_edit_mode': in_edit_mode 
     }
     meeting_details_template = render(request, 'meeting_details.html', context=data).content.decode()
 
