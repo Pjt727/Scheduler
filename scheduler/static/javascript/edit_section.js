@@ -79,26 +79,35 @@ function getMeetingPosition(startTime, endTime, day){
     return {"row": row, "col": col, "span": span}
 }
 
-function addMeetingToTable(startTime, endTime, day, text, counter, isSelected=true, isHidden=false){
+function addMeetingToTable(startTime, endTime, day, text, sectionPk, counter, classCounter, isSelected=true, isHidden=false, doScale=false){
 
     const {row, col, span} = getMeetingPosition(startTime, endTime, day)
     const meeting = document.createElement('div');
+
+    // calendar 9 - 17 are bordered css classes
+    const calendarClass = `calendar${(classCounter  % 8) + 9}`
+
     if(isSelected){
-        meeting.classList.add('event', 'selectedCalendar');
-        meeting.setAttribute('id', `selected${counter}`)
+        meeting.classList.add('event', calendarClass,  'selectedCalendar');
+        meeting.setAttribute('id', `selected${sectionPk}${counter}`)
         meeting.style.userSelect = 'none';
         if(isHidden){
             meeting.style.display = 'none';
         }
     } else{
-        meeting.classList.add('event', 'hoverCalendar');
-        meeting.setAttribute('id', `hover${counter}`)
+        meeting.classList.add('event', 'hoverCalendar', calendarClass);
+        meeting.setAttribute('id', `hover${sectionPk}${counter}`)
         meeting.addEventListener('mouseout', leaveMeeting)
         meeting.addEventListener('click', clickMeeting)
         meeting.style.display = 'none';
         meeting.style.userSelect = 'none';
         meeting.style.cursor = 'pointer';
     }
+    if(doScale){
+        meeting.style.transform = "scale(1.2)"
+    }
+
+    
 
     meeting.style.gridColumn = col;
     meeting.style.gridRow = `${row}/span ${span}`;
@@ -110,6 +119,78 @@ function addMeetingToTable(startTime, endTime, day, text, counter, isSelected=tr
 
 }
 
+function addInputRow(inputRow, sectionPk, sectionCounter){
+    const newStartTime = inputRow.querySelector('[name="startTime"]').value;
+    const newEndTime = inputRow.querySelector('[name="endTime"]').value;
+    const newDay = inputRow.querySelector('[name="day"]').value;
+    const counter = inputRow.getAttribute('counter');
+
+    const {isValid} = checkInputRow(inputRow);
+
+    if(isValid){
+        addMeetingToTable(
+            newStartTime,
+            newEndTime,
+            newDay,
+            `Meeting ${counter} (Editing)`,
+            sectionPk,
+            counter,
+            sectionCounter,
+            true,
+            false,
+            true,
+        )
+    } else {
+        addMeetingToTable(
+            newStartTime,
+            newEndTime,
+            newDay,
+            `Meeting ${counter} (Editing)`,
+            sectionPk,
+            counter,
+            sectionCounter,
+            true,
+            true,
+            true,
+        )
+    }
+    // hover
+    addMeetingToTable(
+        newStartTime,
+        newEndTime,
+        newDay,
+        null,
+        sectionPk,
+        counter,
+        sectionCounter,
+        false,
+        true,
+        true
+    )
+}
+
+function addDisplayRow(displayRow, sectionPk, sectionCounter, titleForNonEditing=null){
+    const startTime = displayRow.getAttribute('startTime');
+    const endTime = displayRow.getAttribute('endTime');
+    const day = displayRow.getAttribute('day')
+    const counter = displayRow.getAttribute('counter')
+    let text;
+    if(titleForNonEditing === null){
+        text = `Meeting ${counter}`
+    } else {
+        text = titleForNonEditing;
+    }
+    addMeetingToTable(
+        startTime, 
+        endTime, 
+        day,
+        text,
+        sectionPk,
+        counter,
+        sectionCounter,
+    )
+}
+
 function openTimeSlotEnter(e){
     const openTimeBlock = e.target;
 
@@ -118,14 +199,22 @@ function openTimeSlotEnter(e){
     const day = openTimeBlock.getAttribute('day');
 
     const inputRows = document.getElementsByClassName('inputRow');
+    let inputRow;
     let counter
-    for(const inputRow of inputRows){
-        if(!inputRow.hidden){
-            counter = inputRow.getAttribute('counter')
+    for(const row of inputRows){
+        if(!row.hidden){
+            inputRow = row;
+            counter = row.getAttribute('counter')
         }
     }
 
-    const meeting = document.getElementById(`hover${counter}`)
+    const sectionGroup = document.querySelector(
+        `[name="section"][value="${inputRow.getAttribute('section')}"]`
+    );
+
+    const sectionPk = sectionGroup.getAttribute('value');
+
+    const meeting = document.getElementById(`hover${sectionPk}${counter}`)
     meeting.setAttribute('startTime', startTime);
     meeting.setAttribute('endTime', endTime);
     meeting.setAttribute('day', day);
@@ -160,7 +249,13 @@ function clickMeeting(e){
     inputRow.querySelector('[name="endTime"]').value = endTime;
     inputRow.querySelector('[name="day"]').value = day;
 
-    const meetingSelect = document.getElementById(`selected${counter}`);
+    const sectionGroup = document.querySelector(
+        `[name="section"][value="${inputRow.getAttribute('section')}"]`
+    );
+
+    const sectionPk = sectionGroup.getAttribute('value');
+
+    const meetingSelect = document.getElementById(`selected${sectionPk}${counter}`);
     const {col, row, span} = getMeetingPosition(startTime, endTime, day);
 
     meetingSelect.style.gridColumn = col;
@@ -226,7 +321,8 @@ function updateMeetings(inputRow = null){
     });
 
     url.searchParams.set('sections', sections);
-    if (inputRow) {
+    if (!(inputRow === null)) {
+        const primarySection = inputRow.getAttribute('section');
         const roomSelect = inputRow.querySelector('[name="room"]');
         const room = roomSelect.value;
         const building = inputRow.querySelector('[name="building"]').value;
@@ -236,7 +332,7 @@ function updateMeetings(inputRow = null){
         const totalSeconds = timeInputToSeconds(endTime) - timeInputToSeconds(startTime);
         const enforceDepartmentConstraints = document.getElementById('enforceDepartmentConstraints').checked;
 
-
+        url.searchParams.set('primary_section', primarySection);
         url.searchParams.set('building', building);
         url.searchParams.set('room', room);
         url.searchParams.set('total_seconds', totalSeconds);
@@ -256,6 +352,9 @@ function updateMeetings(inputRow = null){
     })
         .then(response => response.json())
         .then(data => {
+            if(!data['ok']){
+                console.error(data['error']);
+            }
             const meetingsTemplate = data['get_meetings_template'];
             const meetingsContainer = document.getElementById('meetingContainer');
             meetingsContainer.innerHTML = meetingsTemplate;
@@ -266,67 +365,34 @@ function updateMeetings(inputRow = null){
                 button.addEventListener('click', () => meetingDetails(button.getAttribute('value'), true)); 
             })
 
-            let displayRows
+            let counterCheck = null;
+            let currentSection = null;
             if(inputRow){
-                const section = document.querySelector(`[name="section"][value="${inputRow.getAttribute("section")}"]`);
-                displayRows = section.querySelectorAll('.displayRow');
-            } else{
-                displayRows = [];
-            }
-
-            let counter_check = null;
-            if(inputRow){
-                counter_check = inputRow.getAttribute('counter')
-                const newStartTime = inputRow.querySelector('[name="startTime"]').value;
-                const newEndTime = inputRow.querySelector('[name="endTime"]').value;
-                const newDay = inputRow.querySelector('[name="day"]').value;
-                const counter = inputRow.getAttribute('counter');
-
-                const {isValid} = checkInputRow(inputRow);
-
-                if(isValid){
-                    addMeetingToTable(
-                        newStartTime,
-                        newEndTime,
-                        newDay,
-                        `Meeting ${counter} (Editing)`,
-                        counter
-                    )
-                } else {
-                    addMeetingToTable(
-                        newStartTime,
-                        newEndTime,
-                        newDay,
-                        `Meeting ${counter} (Editing)`,
-                        counter,
-                        true,
-                        true,
-                    )
-                }
-                // hover
-                addMeetingToTable(
-                    newStartTime,
-                    newEndTime,
-                    newDay,
-                    `Meeting ${counter} (Editing)`,
-                    counter,
-                    false,
-                    true,
-                )
+                counterCheck = inputRow.getAttribute('counter');
+                currentSection = inputRow.getAttribute('section')
             } 
 
-            for( const displayRow of displayRows){
-                if(!(displayRow.getAttribute('counter') === counter_check)){
-                    const startTime = displayRow.getAttribute('startTime');
-                    const endTime = displayRow.getAttribute('endTime');
-                    const day = displayRow.getAttribute('day')
-                    const counter = displayRow.getAttribute('counter')
-                    addMeetingToTable(startTime, endTime, day,
-                        `Meeting ${counter}`,
-                        counter
-                    )
+            const sectionGroups = document.querySelectorAll(`[name="section"]`);
+            
+            
+            for(let i=0; i < sectionGroups.length; i++){
+                const section = sectionGroups[i];
+
+                const displayRows = section.querySelectorAll('.displayRow');
+                const sectionPk = section.getAttribute("value");
+                for( const displayRow of displayRows){
+                    const counter = displayRow.getAttribute('counter');
+                    if(((counter === counterCheck)
+                        && (sectionPk === currentSection))){
+                        addInputRow(inputRow, sectionPk, i)
+                    } else if(sectionPk === currentSection){
+                        addDisplayRow(displayRow, sectionPk, i);
+                    } else {
+                        const title = section.querySelector('[name="title"]');
+                        addDisplayRow(displayRow, sectionPk, i, `${counter}: ${title.innerHTML.trim()}`);
+                    }
                 }
-            }
+            };
 
             addOpenTimeSlotListeners();
 
@@ -446,19 +512,18 @@ function submitInputRow(inputRow){
     return true;
 }
 
-function addEditSubmitListeners(section_group){
-    const meetingDisplayRows = section_group.querySelectorAll('.displayRow');
-    const meetingInputRows = section_group.querySelectorAll('.inputRow');
-
-    Array.from(meetingDisplayRows).forEach(meetingRow => {
+function addEditSubmitListeners(sectionGroup){
+    Array.from(sectionGroup.querySelectorAll('.displayRow')).forEach(meetingRow => {
         const onActivate = (meetingRow) => {
+            const meetingDisplayRows = document.querySelectorAll('.displayRow');
+            const meetingInputRows = document.querySelectorAll('.inputRow');
             const counter = meetingRow.getAttribute('counter');
-            const inputRow = section_group.querySelector(`.inputRow[counter="${counter}"]`);
+            const inputRow = sectionGroup.querySelector(`.inputRow[counter="${counter}"]`);
 
             // hide all input rows and submit if the input row was shown
+            console.log(meetingInputRows)
             for(const row of meetingInputRows){
                 if(row.hidden===false){
-
                     const isValid = submitInputRow(row);
                     if(!isValid){
                         return;
@@ -466,6 +531,7 @@ function addEditSubmitListeners(section_group){
                     row.hidden = true;
                 }
             }
+            console.log('spacing')
 
             // show all display rows
             Array.from(meetingDisplayRows).forEach(row =>{
@@ -484,7 +550,7 @@ function addEditSubmitListeners(section_group){
         editCol.addEventListener('click', () => onActivate(meetingRow));
     });
 
-    Array.from(meetingInputRows).forEach(meetingRow => {
+    Array.from(sectionGroup.querySelectorAll('.inputRow')).forEach(meetingRow => {
         const buildingSelect = meetingRow.querySelector('[name="building"]');
         buildingSelect.addEventListener('change', ()=>{
             buildingChange(meetingRow);
@@ -498,9 +564,8 @@ function addEditSubmitListeners(section_group){
         const submitCol = meetingRow.querySelector('[name="submitCol"]');
         submitCol.addEventListener('click', ()=>{
             const counter = meetingRow.getAttribute('counter');
-            const displayRow = section_group.querySelector(`.displayRow[counter="${counter}"]`);
+            const displayRow = sectionGroup.querySelector(`.displayRow[counter="${counter}"]`);
             const is_valid = submitInputRow(meetingRow);
-            console.log(is_valid)
             if (!is_valid){
                 return;
             }
@@ -512,6 +577,7 @@ function addEditSubmitListeners(section_group){
 
     const enforceDepartmentConstraints = document.getElementById('enforceDepartmentConstraints');
     enforceDepartmentConstraints.addEventListener('change', () => {
+        const meetingInputRows = document.querySelectorAll('.inputRow');
         for(const meetingInputRow of meetingInputRows){
             if(!meetingInputRow.hidden){
                 updateMeetings(meetingInputRow);
@@ -548,6 +614,15 @@ function addSection(section){
             const sections = document.getElementById('sections');
             sections.appendChild(newSection);
             addEditSubmitListeners(newSection);
+            let inputRow = null;
+            const inputRows = document.getElementsByClassName('inputRow');
+
+            Array.from(inputRows).forEach( row => {
+                if(!row.hidden){
+                    inputRow = row;
+                }
+            });
+            updateMeetings(inputRow);
         })
 }
 

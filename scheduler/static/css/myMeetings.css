@@ -87,7 +87,6 @@
   
   .event {
     border-radius: 10px;
-    border: 5px solid;
     padding: 5px;
     margin-right: 10px;
     margin-bottom: 7px;
@@ -100,113 +99,109 @@
     background-color: #f1f3f4;
   }
 
+  .calendar0 {
+    background-color: #fd7f6f;
+  }
+
+  .calendar1 {
+    background-color: #7eb0d5;
+  }
+  
+  .calendar2 {
+    background-color: #b2e061;
+  }
+
+  .calendar3 {
+    background-color:#bd7ebe;
+  }
+
+  .calendar4 {
+    background-color: #ffb55a;
+  }
+  
+  .calendar5 {
+    background-color:#ffee65;
+  }
+  
+  .calendar6 {
+    background-color: #beb9db;
+  }
+  
+  .calendar7 {
+    background-color: #fdcce5;
+  }
+
+  .calendar8 {
+    background-color: #8bd3c7;
+  }
+
+  .calendar9 {
+    background-color: #8bd3c7;
+    border: 5px;
+    border-style: solid;
+    border-color: #1eaa93; 
+  }
+
+  .calendar10 {
+    background-color: #fdcce5;
+    border: 5px solid;
+    border-color: #7c4b64;
+  }
+  
+  .calendar11 {
+    background-color: #beb9db;
+    border: 5px solid;
+    border-color: #615b86;
+  }
+
+  .calendar12 {
+    background-color: #ffee65;
+    border: 5px solid;
+    border-color: #7e7740;
+  }
+
+  .calendar13 {
+    background-color: #ffb55a;
+    border: 5px solid;
+    border-color: #684e2e;
+  }
+  
+  .calendar14 {
+    background-color:#bd7ebe;
+    border: 5px solid;
+    border-color: #bd7ebe;
+  }
+  
+  .calendar15 {
+    background-color: #b2e061;
+    border: 5px solid;
+    border-color: #65862b;
+  }
+  
+  .calendar16 {
+    background-color: #7eb0d5;
+    border: 5px solid;
+    border-color: #356b94;
+  }
+
+  .calendar17 {
+    background-color: #fd7f6f;
+    border: 5px solid;
+    border-color: #61403b;
+  }
+
   .openSlots {
     border: none;
   }
 
   .hoverCalendar {
-    background-color: #999999;
-    border-color: #888888;
+    border-style: dashed;
+    opacity: 0.5;
   }
 
   .selectedCalendar {
-    background-color: #666666;
-    border-color: #555555;
+    border-style: dashed;
   }
-
-  .calendar0 {
-    background-color: #fd7f6f;
-    border-color: #fd7f6f;
-    
-  }
-
-  .calendar1 {
-    background-color: #7eb0d5;
-    border-color: #7eb0d5;
-  }
-  
-  .calendar2 {
-    background-color: #b2e061;
-    border-color: #b2e061;
-  }
-
-  .calendar3 {
-    background-color:#bd7ebe;
-    border-color: #bd7ebe;
-    
-  }
-
-  .calendar4 {
-    background-color: #ffb55a;
-    border-color: #ffb55a;
-  }
-  
-  .calendar5 {
-    background-color:#ffee65;
-    border-color: #ffee65;
-  }
-  
-  .calendar6 {
-    background-color: #beb9db;
-    border-color: #beb9db;
-  }
-  
-  .calendar7 {
-    background-color: #fdcce5;
-    border-color: #fdcce5;
-  }
-
-  .calendar8 {
-    background-color: #8bd3c7;
-    border-color: #8bd3c7;
-  }
-
-  .calendar9 {
-    background-color: #8bd3c7;
-    border-color: #777777; 
-  }
-
-  .calendar10 {
-    background-color: #fdcce5;
-    border-color: #777777;
-  }
-  
-  .calendar11 {
-    background-color: #beb9db;
-    border-color: #777777;
-  }
-
-  .calendar12 {
-    background-color: #ffee65;
-    border-color: #777777;
-    
-  }
-
-  .calendar13 {
-    background-color: #ffb55a;
-    border-color: #777777;
-  }
-  
-  .calendar14 {
-    background-color:#bd7ebe;
-    border-color: #777777;
-  }
-  
-  .calendar15 {
-    background-color: #b2e061;
-    border-color: #777777;
-  }
-  
-  .calendar16 {
-    background-color: #7eb0d5;
-    border-color: #777777;
-  }
-
-  .calendar17 {
-    background-color: #fd7f6f;
-    border-color: #777777;
-  }
-
 
 
   .current {

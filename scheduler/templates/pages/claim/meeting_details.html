@@ -3,11 +3,13 @@
         <div class="col col-lg-8 fs-3 fw-bold">
             {{ section }}
         </div>
+    </div>
+    <div class="row justify-content-md-center">
         {% if in_edit_mode %}
         <div class="col col-lg-5 fw-bold">
-            <a onclick="addSection({{ section.pk }});">
+            <button type="button" class="btn btn-outline-primary" onclick="addSection({{ section.pk }});">
                 Edit in Group
-            </a>
+            </button>
         </div>
         {% else %}
         <div class="col col-lg-2 fw-bold">
@@ -18,12 +20,13 @@
         {% endif %}
     </div>
     {% if not is_shared_section %}
-    <div class="row fst-italic">
-        <div class="col col-md-auto fst-italic">
+    <div class="row fst-italic justify-content-end">
+        <div class="col fst-italic col-md-auto">
             {{ section.primary_professor }}
         </div>
     </div>
     {% endif %}
+    <br>
     <div class="row">
         <div class="col col-lg-7">
             {{ section.course.title }}

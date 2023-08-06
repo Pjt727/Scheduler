@@ -13,15 +13,8 @@ def claim(request: HttpRequest) -> HttpResponse:
         'courses': Course.objects.all(),
         # could change this to limit from a certain year
         'previous_courses': Course.objects.filter(sections__meetings__professor=professor).distinct(),
-        'terms': Term.objects.all().order_by('-year',
-            Case(
-                When(season=Term.FALL, then=1),
-                When(season=Term.WINTER, then=2),
-                When(season=Term.SPRING, then=3),
-                When(season=Term.SUMMER, then=4),
-                default=0,
-                output_field=IntegerField(),
-            )),
+        'terms': Term.objects.all(),
+            
         'days': Day.DAY_CHOICES,
     }
     return render(request, 'claim.html', context=data)
@@ -30,15 +23,7 @@ def claim(request: HttpRequest) -> HttpResponse:
 def my_meetings(request: HttpRequest) -> HttpResponse:
     data = {
         # could change this to limit from a certain year
-        'terms': Term.objects.all().order_by('-year',
-            Case(
-                When(season=Term.FALL, then=1),
-                When(season=Term.WINTER, then=2),
-                When(season=Term.SPRING, then=3),
-                When(season=Term.SUMMER, then=4),
-                default=0,
-                output_field=IntegerField(),
-            )),
+        'terms': Term.objects.all(),
     }
     return render(request, 'my_meetings.html', context=data)
 

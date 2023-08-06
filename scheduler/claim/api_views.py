@@ -43,36 +43,46 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
 def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     response_data = {}
 
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
+    is_input: bool = request.GET.get('is_input') == 'true'
 
     sections = request.GET.get('sections').split(',')
-    if sections:
-        sections = Section.objects.filter(pk__in=sections)
-        section: Section = sections.first()
+    primary_section = request.GET.get('primary_section')
+    
+    if is_input:
+        try:
+            sections = Section.objects.filter(pk__in=sections)
+            primary_section: Section = sections.get(pk=primary_section)
+        except Section.DoesNotExist:
+            response_data['ok'] = False
+            response_data['error'] = "Section data not found"
+
+        if sections.exclude(term=primary_section.term):
+            response_data['ok'] = False
+            response_data['error'] = "To edit in the same group sections must be in the same term"
+    else:
+        primary_section = Section.objects.get(pk=sections[0])
+
     room = request.GET.get('room')
     building = request.GET.get('building')
+    if building is not None:
+        building = Building.objects.get(pk=building)
     
     meetings = Meeting.objects.none()
 
-    if section.primary_professor:
-        meetings |= section.primary_professor.meetings.filter(section__term=section.term)
+    if primary_section.primary_professor:
+        meetings |= primary_section.primary_professor.meetings.filter(section__term=primary_section.term)
     
     if room and (room != 'any'):
         room: Room = Room.objects.get(pk=room)
-        meetings |= Meeting.objects.filter(room=room, section__term=section.term).exclude(time_block__in=meetings.values('time_block'))
-    meetings = meetings.exclude(section=section)
+        meetings |= Meeting.objects.filter(room=room, section__term=primary_section.term).exclude(time_block__in=meetings.values('time_block'))
+
+    meetings = meetings.exclude(section__in=sections)
     meetings = meetings.distinct()
 
-    # Timing is complicated...
-    total_seconds_added = 0
-    if request.GET.get('is_input') != 'true':
+    if not is_input:
         data = {
             "meetings": meetings,
-            "term": section.term,
+            "term": primary_section.term,
         }
         get_meetings_template = render(request, "get_meetings.html", data).content.decode()
 
@@ -80,7 +90,9 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
         response_data['get_meetings_template'] = get_meetings_template
 
         return JsonResponse(response_data)
-        
+
+    # Timing is complicated...
+    total_seconds_added = 0
 
     open_time_slots = []
     total_seconds = int(request.GET.get('total_seconds'))
@@ -90,9 +102,7 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
 
     overlaps_meeting = Q()
     for meeting in meetings.all():
-        start_end_time = meeting.time_block.start_end_time
-
-        start_time_d = timedelta(hours=start_end_time.start.hour, minutes=start_end_time.start.minute) - total_seconds_added
+        start_time_d = meeting.time_block.start_end_time.start_delta() - total_seconds_added
         start_time = time(hour=start_time_d.seconds // 3600, minute=(start_time_d.seconds % 3600) // 60)
 
         overlaps_meeting |= Q(day=meeting.time_block.day,
@@ -114,27 +124,26 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
             continue
 
         enforce_department_constraints = request.GET.get('enforce_department_constraints') == 'true'
-        if room == 'any':
-            open_rooms = get_available_rooms(
-                building=building,
+        exceeds_department_allocation = False
+        if enforce_department_constraints:
+            exceeds_department_allocation = will_exceed_department_allocation(
                 start_time=start_time,
                 end_time=end_time_to_exist,
                 day=candidate.day,
-                department=section.course.subject.department,
-                term=section.term,
-                enforce_department_constraints=enforce_department_constraints
+                department=primary_section.course.subject.department,
+                term=primary_section.term
+            )
+
+        if room == 'any':
+            open_rooms = building.get_available_rooms(
+                start_time=start_time,
+                end_time=end_time_to_exist,
+                day=candidate.day,
+                term=primary_section.term,
+                include_general=exceeds_department_allocation
             )
             if not open_rooms.exists(): continue
         else:
-            exceeds_department_allocation = False
-            if enforce_department_constraints:
-                exceeds_department_allocation = will_exceed_department_allocation(
-                    start_time=start_time,
-                    end_time=end_time_to_exist,
-                    day=candidate.day,
-                    department=section.course.subject.department,
-                    term=section.term
-                )
             if exceeds_department_allocation and room.is_general_purpose: continue
 
 
@@ -142,13 +151,14 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
             'start': start_time.strftime('%H:%M'),
             'end': end_time_to_exist.strftime('%H:%M'),
             'day': candidate.day,
-            'time_block': candidate
+            'time_block': candidate,
+            'number': tm.first().number
         })
         
 
     data = {
         "meetings": meetings,
-        "term": section.term,
+        "term": primary_section.term,
         "open_time_blocks": open_time_slots
     }
     get_meetings_template = render(request, "get_meetings.html", data).content.decode()
@@ -374,3 +384,16 @@ def submit_claim(request: HttpRequest) -> JsonResponse:
     response_data['success_message'] = "Successfully claimed all meetings."
     response_data['ok'] = True
     return JsonResponse(response_data)
+
+
+@login_required
+@require_http_methods(["POST"])
+def add_rows(request: HttpRequest) -> JsonResponse:
+    response_data = {}
+
+    edit_row: EditMeeting = []
+    for row in request.POST.get('edit_rows'):
+        row: dict
+        start = row.get()
+
+

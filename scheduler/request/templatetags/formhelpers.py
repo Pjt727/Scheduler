@@ -1,6 +1,6 @@
 from django import template
 from claim.models import Meeting, Day, TimeBlock
-from datetime import timedelta
+from datetime import timedelta, time
 
 register = template.Library()
 
@@ -65,3 +65,11 @@ def get_time_block_span(time_block: TimeBlock) -> int:
 @register.filter
 def modulo(num, val):
     return num % val
+
+@register.filter
+def time_display(time: time) -> str:
+    return time.strftime('%H:%M %p')
+
+@register.filter
+def time_input(time: time) -> str:
+    return time.strftime('%H:%M')

@@ -8,7 +8,7 @@
 <div class="container text-center">
     <section id="sections"> 
         <section name="section" value="{{ section.pk }}">
-            {% include 'section_edit.html' with section=section days=days buildings=buildings %}
+            {% include 'section_edit.html' with section=section days=days buildings=buildings start_section=True %}
         </section>
     </section>
     <br>

@@ -49,6 +49,7 @@ def dep_allo(request: HttpRequest) -> JsonResponse:
         response_data['ok'] = False
         return JsonResponse(response_data)
     department = request.GET.get('department')
+    department = Department.objects.get(pk=department)
     term = request.GET.get('term')
 
     
@@ -61,12 +62,7 @@ def dep_allo(request: HttpRequest) -> JsonResponse:
     for department_allocation in DepartmentAllocation.objects.filter(department=department).all():
         number_dict = {}
 
-        number_dict["count"] = Room.objects.filter(
-            meetings__section__course__subject__department=department,
-            meetings__section__term=term,
-            is_general_purpose=True,
-            meetings__time_block__in=department_allocation.allocation_group.time_blocks.all()
-        ).distinct().count()
+        number_dict["count"] = department_allocation.count_rooms(term)
 
         number_dict["max"] = department_allocation.number_of_classrooms
         numbers_allo_group[department_allocation.allocation_group.pk] = number_dict

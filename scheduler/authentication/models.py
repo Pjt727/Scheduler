@@ -1,5 +1,8 @@
 from django.contrib.auth.models import User
 from django.db import models
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from claim.models import Meeting
 
 class Professor(models.Model):
     verbose_name = "Professor"
@@ -13,6 +16,7 @@ class Professor(models.Model):
 
     user = models.OneToOneField(User, on_delete=models.SET_NULL, related_name='professor', null=True, blank=True, default=None)
 
+    meetings: models.QuerySet['Meeting']
     def __str__(self) -> str:
         return f"{self.title} {self.last_name}"
     
