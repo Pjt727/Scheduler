@@ -1,6 +1,6 @@
 <br>
 <div class="row justify-content-md-center">
-    <div name="title" class="col col-lg-10">
+    <div name="title" class="col col-lg-10" value="{{ section.pk }}">
         {{ section }} 
     </div>
     <div name="toggleVisibility" class="col col-sm-1">
@@ -19,6 +19,13 @@
     </div>
 </div>
 <div>
+<section name="data-rows">
 {% for meeting in section.meetings.all %}
 {% include 'row_edit.html' with start_time=meeting.time_block.start_end_time.start end_time=meeting.time_block.start_end_time.end day=meeting.time_block.day counter=forloop.counter days=days buildings=buildings meeting=meeting building=meeting.room.building room=meeting.room %}
 {% endfor %}
+</section>
+<div class="row justify-content-md-center">
+    <div name="addRows" class="col col-lg-10">
+        +
+    </div>
+</div>

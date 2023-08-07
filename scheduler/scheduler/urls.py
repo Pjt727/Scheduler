@@ -52,6 +52,7 @@ urlpatterns = [
     path('get_edit_section/', claim_api_views.get_edit_section, name='get_edit_section'),
     path('get_rooms_edit_section', claim_api_views.get_rooms_edit_section, name='get_room_edit_section'),
     path('get_meeting_details/', claim_api_views.get_meeting_details, name='get_meeting_details'),
+    path('add_rows/', claim_api_views.add_rows, name='add_rows'),
     
     # Head views
     ## pages

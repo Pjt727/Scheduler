@@ -391,9 +391,33 @@ def submit_claim(request: HttpRequest) -> JsonResponse:
 def add_rows(request: HttpRequest) -> JsonResponse:
     response_data = {}
 
-    edit_row: EditMeeting = []
+    edit_rows: list[EditMeeting] = []
     for row in request.POST.get('edit_rows'):
-        row: dict
-        start = row.get()
+        edit_meeting = EditMeeting.create(row)
+        edit_rows.append(edit_meeting)
+
+    section: Section = request.POST.get('section')
+    new_edit_rows = section.get_recommendations(edit_rows)
+
+    edit_rows_html = []
+    for row in new_edit_rows:
+        data = {
+            'start_time': row.start_time,
+            'end_time': row.end_time,
+            'day': row.day,
+            'counter': row.counter,
+            'buildings': Building.objects.all(),
+            'building': row.building,
+            'meeting': row.meeting,
+            'room': row.room,
+        }
+
+        edit_rows_html.append(render(request, 'edit_meeting_row.html', context=data).content.decode())
+    
+    response_data['ok'] = True
+    response_data['edit_rows_html'] = edit_rows_html
+
+    return JsonResponse(response_data)
 
 
+    

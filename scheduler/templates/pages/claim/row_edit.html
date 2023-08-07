@@ -2,12 +2,11 @@
 <div class="row displayRow" value="{{ meeting.pk }}"  isChanged="false"
     startTime="{{start_time|time_input }}" endTime="{{end_time|time_input}}"
     day="{{ day }}" room="{{ room.pk }}" counter="{{ counter}}"
-    section="{{ section.pk }}">
+    section="{{ section.pk }}" building={{ building.pk }}>
     <div class="col-sm-1 fw-bold" name="counter" value="{{ counter }}">
         {{ counter }}
     </div>
     <div name="timeBlock" class="col-sm-5 text-start">
-        <!-- This needs to be changed-->
         {{ start_time|time_display }} - {{ end_time|time_display }} &nbsp {{ day }}
     </div>
     <div name="place" buildingValue="{% if room %}{{ building.pk }}{% else %}any{% endif %}" class="col-sm-5 text-start">

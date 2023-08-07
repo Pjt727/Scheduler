@@ -363,7 +363,7 @@ function updateMeetings(inputRow = null){
             const meetingDetailButtons = document.getElementsByName('meetingDetail');
             meetingDetailButtons.forEach(button => {
                 button.addEventListener('click', () => meetingDetails(button.getAttribute('value'), true)); 
-            })
+            });
 
             let counterCheck = null;
             let currentSection = null;
@@ -624,6 +624,41 @@ function addSection(section){
             });
             updateMeetings(inputRow);
         })
+}
+
+function addRow(section){
+    const meetingRowsData = [];
+
+    const displayRows = section.querySelectorAll('.displayRow');
+    for(const displayRow of displayRows){
+        const meetingRowData = {}
+        meetingRowData['startTime'] = displayRow.getAttribute('startTime');
+        meetingRowData['endTime'] = displayRow.getAttribute('endTime');
+        meetingRowData['day'] = displayRow.getAttribute('day');
+        meetingRowData['room'] = displayRow.getAttribute('room');
+        meetingRowData['building'] = displayRow.getAttribute('building');
+        meetingRowData['counter'] = displayRow.getAttribute('counter');
+        meetingRowData['meeting'] = displayRow.getAttribute('meeting');
+        meetingRowsData.push(meetingRowData);
+    }
+
+    const sectionPk = section.querySelector('[name="title"').value
+    const url = new URL('add_rows/', window.location.origin);
+
+    url.searchParams.set('edit_rows', meetingRowsData);
+    url.searchParams.set('section', sectionPk);
+
+    fetch(url, {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+
+        });
+   
 }
 
 document.addEventListener('DOMContentLoaded', () => {
