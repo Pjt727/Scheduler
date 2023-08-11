@@ -18,12 +18,33 @@
             <label for="enforceDepartmentConstraints">Enforce Department Constraints</label> 
         </div>
         <div class="col text-end">
-            <button type="button" class="btn btn-primary">Submit</button>
+            <button type="button" id="submitAll" class="btn btn-primary">Submit</button>
         </div>
     </div>
 </div>
 <br>
 <div id="meetingContainer">
+</div>
+<!-- Button trigger modal -->
+<div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table">
+            <tbody id="warningsBody">
+            </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="hardSubmitAll" type="button" class="btn btn-primary">Submit Anyways</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %} 
 {% block scripts %}

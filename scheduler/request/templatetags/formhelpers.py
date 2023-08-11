@@ -67,9 +67,15 @@ def modulo(num, val):
     return num % val
 
 @register.filter
-def time_display(time: time) -> str:
-    return time.strftime('%H:%M %p')
+def time_display(t: time) -> str:
+    try:
+        return t.strftime('%I:%M %p')
+    except AttributeError:
+        return ''
 
 @register.filter
-def time_input(time: time) -> str:
-    return time.strftime('%H:%M')
+def time_input(t: time) -> str:
+    try:
+        return t.strftime('%H:%M')
+    except AttributeError:
+        return ''

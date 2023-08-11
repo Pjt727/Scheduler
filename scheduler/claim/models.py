@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from django.db import models
 from django.db.models import Q, Case, When, Sum, IntegerField, Subquery, OuterRef, F, Count, Max
 from django.db.models.functions import Coalesce
@@ -62,15 +63,22 @@ class Building(models.Model):
     def __repr__(self) -> str:
         return f"name={self.name}, code={self.code}"    
     
-    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term', include_general: bool) -> QuerySet['Room']:
-        open_rooms: QuerySet[Room] = self.rooms.exclude(
+    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term', include_general: bool, section: 'Section' = None) -> QuerySet['Room']:
+        in_time_frame = Q(
             meetings__section__term=term,
             meetings__time_block__day=day,
             meetings__time_block__start_end_time__start__lte=end_time,
             meetings__time_block__start_end_time__end__gte=start_time,
         )
+        if section is None:
+            open_rooms: QuerySet[Room] = self.rooms.exclude(in_time_frame)
+        else:
+            open_rooms: QuerySet[Room] = self.rooms.exclude(
+                ~Q(meetings__section=section) & in_time_frame
+            )
 
-        if not include_general:
+
+        if include_general:
             return open_rooms
 
         return open_rooms.exclude(is_general_purpose=True)
@@ -190,7 +198,7 @@ class AllocationGroup(models.Model):
 
     def is_night(self) -> bool:
         return self.time_blocks.filter(
-                number__in=TimeBlock.LONG_NIGHT_NUMBERS.extend(TimeBlock.SHORT_NIGHT_NUMBERS)
+                number__in=TimeBlock.LONG_NIGHT_NUMBERS
             ).exists()
 
 
@@ -360,17 +368,19 @@ class Term(models.Model):
 
 @dataclass
 class EditMeeting:
-    start_time: timedelta
-    end_time: timedelta
+    start_time: time
+    end_time: time
     day: str
     building: Building
     room: Room | None
     meeting: 'Meeting'
     counter: int | None
+    professor: Professor = None
+    is_deleted: bool = False
 
-    def create(edit_meeting: dict) -> 'EditMeeting':
-        start_time = edit_meeting['start_time']
-        end_time = edit_meeting['end_time']
+    def create(edit_meeting: dict, is_deleted: bool = False) -> 'EditMeeting':
+        start_time = edit_meeting['startTime']
+        end_time = edit_meeting['endTime']
         
         start_time = time.fromisoformat(start_time)
         end_time = time.fromisoformat(end_time)
@@ -382,11 +392,17 @@ class EditMeeting:
             building = Building.objects.get(pk=building)
         
         room = edit_meeting.get('room')
-        if isinstance(room, str):
+        if (room == 'any') or (room == '') or (room is None):
+            room = None
+        else:
             room = Room.objects.get(pk=room)
+
         meeting = edit_meeting.get('meeting')
-        if isinstance(meeting, str):
+        if (meeting == '') or (meeting is None):
+            meeting = None
+        else:
             meeting = Meeting.objects.get(pk=meeting)
+
         counter = edit_meeting['counter']
         
         return EditMeeting(
@@ -397,9 +413,45 @@ class EditMeeting:
             room=room,
             meeting=meeting,
             counter=counter,
+            is_deleted=is_deleted
         )
-        
+    
+    def get_warnings(section_edit_meetings: list[tuple['Section', list['EditMeeting']]]) -> list[tuple[str, str]]:
+        DANGER = 'danger'
+        flattened: list[tuple[Section, EditMeeting]] = []
+        for section, edit_meetings in section_edit_meetings:
+            for edit_meeting in edit_meetings:
+                flattened.append((section, edit_meeting))
 
+        problems: list[tuple[str, str]] = []
+        for i, section_meeting1 in enumerate(flattened[:-1]):
+            section1, edit_meeting1 = section_meeting1
+            for section2, edit_meeting2 in flattened[i+1:]:
+                overlapping_time = (edit_meeting1.start_time_d() <= edit_meeting2.end_time_d()) \
+                    and (edit_meeting1.end_time_d() >= edit_meeting2.start_time_d()) 
+                same_day = (edit_meeting1.day == edit_meeting2.day)
+                if not (overlapping_time and same_day): continue
+                same_room = (edit_meeting1.room == edit_meeting2.room) \
+                    and (edit_meeting1.room is not None)
+                if same_room:
+                    message = f"Meeting {edit_meeting1.counter} from {section1} overlaps {edit_meeting1.room} with meeting {edit_meeting2.counter} from {section2}."
+                    problems.append((DANGER, message))
+                    continue
+                same_professor = (edit_meeting1.professor == edit_meeting2.room) \
+                    and (edit_meeting1.room is not None)
+                if same_professor:
+                    message = f"Meeting {edit_meeting1.counter} from {section1} overlaps professor with meeting {edit_meeting2.counter} from {section2}."
+                    problems.append((DANGER, message))
+        return problems
+
+    def resolve(self) -> None:
+        pass
+
+    def start_time_d(self):
+        return timedelta(hours=self.start_time.hour, minutes=self.start_time.minute)
+
+    def end_time_d(self):
+        return timedelta(hours=self.end_time.hour, minutes=self.end_time.minute)
 
 
 class Section(models.Model):
@@ -424,7 +476,7 @@ class Section(models.Model):
         return f"{self.course.subject} {self.course.code}-{self.number}"     
 
     def __repr__(self) -> str:
-        return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}, request={self.request}"
+        return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}"
         
     def meetings_sorted(self): 
         return self.meetings.order_by(models.Case(
@@ -437,39 +489,114 @@ class Section(models.Model):
             models.When(time_block__day=Day.SUNDAY, then=7),
         ))
 
+    def get_warnings(self, edit_meetings: list[EditMeeting], section_pks: list[str], professor: Professor = None) -> list[tuple[str, str]]:
+        DANGER = 'danger'
+        WARNING = 'warning'
+        problems: list[tuple[str, str]]= []
 
-    def get_recommendations(self, partial_meetings: list[EditMeeting] | None = None, last_counter: int = 0 ) -> list[EditMeeting]:
+        
+        # room empty check
+        meetings = Meeting.objects.filter(section__term=self.term).exclude(section__pk__in=section_pks)
+
+        # TODO change this once sharable meetings gets changed
+        for edit_meeting in edit_meetings:
+            if edit_meeting.room is None: continue
+            overlaps_time_room = Q(
+                time_block__start_end_time__start__lte = edit_meeting.end_time,
+                time_block__start_end_time__end__gte = edit_meeting.start_time,
+                time_block__day = edit_meeting.day,
+                room=edit_meeting.room
+            )
+
+            overlapping_sections: set[str] = set(map(lambda m: str(m.section), meetings.filter(overlaps_time_room).all()))
+            if overlapping_sections:
+                sections = ", ".join(overlapping_sections)
+                problems.append((DANGER, f"Meeting {edit_meeting.counter} overlaps {edit_meeting.room} with {sections}."))
+
+        professor = self.primary_professor if professor is None else professor
+        if professor is not None:
+            for edit_meeting in edit_meetings:
+                overlaps_time_room = Q(
+                    time_block__start_end_time__start__lte = edit_meeting.end_time,
+                    time_block__start_end_time__end__gte = edit_meeting.start_time,
+                    time_block__day = edit_meeting.day,
+                    professor=professor
+                )
+                
+                overlapping_sections: set[str] = set(map(lambda m: str(m.section), meetings.filter(overlaps_time_room).all()))
+
+                if overlapping_sections:
+                    sections = ", ".join(overlapping_sections)
+                    problems.append((DANGER, f"Meeting {edit_meeting.counter} overlaps professor with {sections}."))
+
+        # regular time check
+        total_time = sum(map(lambda t: t.end_time_d() - t.start_time_d(), edit_meetings), start=timedelta())
+
+        if total_time not in self.course.get_approximate_times():
+            problems.append((WARNING, f'The total time for this section does not match {self.course.credits} credit hours.'))
+
+        for edit_meeting in edit_meetings:
+            if edit_meeting.room is None: continue
+            if not edit_meeting.room.is_general_purpose: continue
+            time_blocks = TimeBlock.get_official_time_blocks(edit_meeting.start_time, edit_meeting.end_time, day=edit_meeting.day)
+            department_allocations = DepartmentAllocation.objects.filter(
+                department = self.course.subject.department,
+                allocation_group__in = time_blocks.values('allocation_groups')
+            )
+            # when doing multiple sections in the request that add to the same allocation group
+            #   This will not work properly
+            if any(map(lambda d_a: d_a.exceeds_allocation(self.term), department_allocations.all())):
+                problems.append((WARNING, f"Meeting {edit_meeting.counter} exceeds department constraints for that time slot."))
+        
+        # TODO implement a warning for giving a professor too many teaching hours
+
+        return problems
+
+    def no_recommendation(counter: str = 1, building: Building = None) -> EditMeeting:
+        t_s = time(hour=0, minute=0)
+        t_e = time(hour=1, minute=15)
+
+        return EditMeeting(start_time=t_s, end_time=t_e, day=Day.MONDAY, building=building, room=None, meeting=None, counter=counter)
+
+    # recommendations currently to not take into account meetings in the group
+    def get_recommendations(self, partial_meetings: list[EditMeeting] | None = None) -> None:
         if partial_meetings is None: partial_meetings = []
 
-        existing_time = sum(map(lambda t: t.end_time - t.start_time, partial_meetings))
-        possible_times_to_achieve = map(lambda approx: approx - existing_time, self.course.get_approximate_times())
+        existing_time = sum(map(lambda t: t.end_time_d() - t.start_time_d(),
+            filter(lambda m: not m.is_deleted, partial_meetings)), start=timedelta())
 
-        meetings = []
-
-        if any(map(lambda time: time == timedelta(0), possible_times_to_achieve)):
-            return meetings
-        
+        possible_times_to_achieve = list(map(lambda approx: approx - existing_time, self.course.get_approximate_times()))
 
         if len(partial_meetings) == 0:
             desired_building = Building.recommend(self.course, self.term)
-        elif partial_meetings[1].building is not None:
-            desired_building = partial_meetings[1].building
+        elif partial_meetings[0].building is not None:
+            desired_building = partial_meetings[0].building
         else:
             desired_building = Building.recommend(self.course, self.term) 
+
+        count = '1' if len(partial_meetings) == 0 else str(int(partial_meetings[-1].counter) + 1)
+        if any(map(lambda time: time == timedelta(days=0), possible_times_to_achieve)):
+            print('early exit 1')
+            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building))
+            return
         
         if any(map(lambda approx: approx == TimeBlock.ONE_BLOCK * 3, possible_times_to_achieve)):
+            print("recommending 3")
             partial_meetings.extend(self.recommend_2_time_blocks(desired_building))
             edit_meeting = self.recommend_1_time_block(desired_building, partial_meetings)
             if edit_meeting is not None:
                 partial_meetings.append(edit_meeting)
         elif any(map(lambda approx: approx == TimeBlock.ONE_BLOCK * 2, possible_times_to_achieve)):
-            partial_meetings.extend(self.recommend_2_time_blocks(desired_building))
+            print("recommending 2")
+            partial_meetings.extend(self.recommend_2_time_blocks(desired_building, partial_meetings))
         elif any(map(lambda approx: approx == TimeBlock.ONE_BLOCK, possible_times_to_achieve)):
+            print("recommending 1")
             edit_meeting = self.recommend_1_time_block(desired_building, partial_meetings)
             if edit_meeting is not None:
                 partial_meetings.append(edit_meeting)
         else:
-            edit_meeting = EditMeeting(start_time=None, end_time=None, building=desired_building, room=None, meeting=None, counter=None)
+            print('early exit 2')
+            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building))
             
     def recommend_2_time_blocks(self, building: Building = None, partial_meetings: list[EditMeeting] = None) -> list[EditMeeting]:
         if building is None:
@@ -477,7 +604,7 @@ class Section(models.Model):
         if partial_meetings is None:
             partial_meetings = []
         if not partial_meetings:
-            last_counter = 0
+            last_counter = "0"
         else:
             last_counter = partial_meetings[-1].counter
         allocations_counted: list[tuple[DepartmentAllocation, int]] = []
@@ -487,8 +614,9 @@ class Section(models.Model):
         for dep_allo in department_allocations.all():
             allocations_counted.append( (dep_allo, dep_allo.count_rooms(self.term)) )
         
-        allocations_counted.sort(key=lambda a_c: a_c[0])
+        allocations_counted.sort(key=lambda a_c: a_c[1])
 
+        meetings_to_add: list[EditMeeting] = []
         for a_c in allocations_counted:
             department_allocation  = a_c[0]
             count = a_c[1]
@@ -503,12 +631,12 @@ class Section(models.Model):
             available_rooms = building.get_available_rooms_in_number(number, self.term, include_general, True)
 
             if available_rooms.exists(): continue
-            for time_block in allocation_group.time_blocks.all():
+            for time_block in allocation_group.time_blocks.filter(number__isnull=False).all():
                 start_time = time_block.start_end_time.start
                 end_time = time_block.start_end_time.end
                 day = time_block.day
-                last_counter += 1
-                partial_meetings.append(EditMeeting(
+                last_counter = str(int(last_counter) + 1)
+                meetings_to_add.append(EditMeeting(
                     start_time=start_time,
                     end_time=end_time,
                     day=day,
@@ -517,13 +645,18 @@ class Section(models.Model):
                     meeting=None,
                     counter=last_counter,
                 ))
-            return partial_meetings
-        partial_meetings.append([EditMeeting(start_time=None, end_time=None, building=building, room=None, meeting=None, counter=last_counter + 1)])
-        return partial_meetings
+            return meetings_to_add
+        meetings_to_add.append(Section.no_recommendation(counter=last_counter, building=building))
+        return meetings_to_add
 
-    def recommend_1_time_block(self, building: Building, partial_meetings: list[EditMeeting] | None, last_counter: int = 0) -> list[EditMeeting]:
+    def recommend_1_time_block(self, building: Building, partial_meetings: list[EditMeeting] | None) -> list[EditMeeting]:
         time_blocks_info: list[tuple[TimeBlock, int, Room]] = []
         if partial_meetings is None:
+            last_counter = 0
+        else:
+            last_counter = partial_meetings[-1].counter
+        print(last_counter)
+        if any([partial_meetings is None, all(map(lambda m: m.is_deleted, partial_meetings))]):
             partial_meetings = []
             time_blocks = TimeBlock.objects \
                 .filter(number__isnull=False) \
@@ -539,7 +672,7 @@ class Section(models.Model):
                     (time_block, count, None)
                 )
         else:
-            for edit_meeting in partial_meetings:
+            for edit_meeting in filter(lambda m: not m.is_deleted,partial_meetings):
                 start = edit_meeting.start_time
                 end = edit_meeting.end_time
                 day = edit_meeting.day
@@ -578,31 +711,35 @@ class Section(models.Model):
             day = time_block.day
 
             include_general = count < department_allocation.number_of_classrooms
-            open_rooms = building.get_available_rooms(start_time, end_time, day, self.term, include_general)
-
+            print(include_general)
+            open_rooms = building.get_available_rooms(start_time, end_time, day, self.term, include_general, section=self)
+            
+            print(time_block, count, room)
             if not open_rooms.exists(): continue
 
+            for r in open_rooms:
+                print(r, r.pk)
             try:
                 if room is not None:
-                    desired_room = open_rooms.get(pk=room.pk)
+                    print(room.pk)
+                    desired_room = open_rooms.get(id=room.pk)
                 else:
                     desired_room = None # question on whether we should select the room
             except Room.DoesNotExist:
                 continue
 
-            partial_meetings.append(EditMeeting(
+            return EditMeeting(
                 start_time=start_time,
                 end_time=end_time,
                 day=day,
                 building=building,
                 room=desired_room,
                 meeting=None,
-                counter=last_counter + 1
-            ))
-            return partial_meetings
+                counter=str(int(last_counter) + 1)
+            )
 
-        partial_meetings.append(EditMeeting(start_time=None, end_time=None, building=building, room=None, meeting=None, counter=last_counter + 1))
-        return partial_meetings
+        return Section.no_recommendation(counter=str(int(last_counter) + 1), building=building)
+         
 
     def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:
         field_names = {

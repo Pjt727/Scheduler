@@ -1,22 +1,39 @@
 {% load formhelpers %}
-<div class="row displayRow" value="{{ meeting.pk }}"  isChanged="false"
+<div class="row displayRow {% if is_deleted %}text-decoration-line-through{% endif %}" value="{{ meeting.pk }}"  isChanged="false"
     startTime="{{start_time|time_input }}" endTime="{{end_time|time_input}}"
     day="{{ day }}" room="{{ room.pk }}" counter="{{ counter}}"
-    section="{{ section.pk }}" building={{ building.pk }}>
+    section="{{ section.pk }}" building={{ building.pk }} isDeleted="{% if is_deleted %}true{% else %}false{% endif %}">
     <div class="col-sm-1 fw-bold" name="counter" value="{{ counter }}">
         {{ counter }}
     </div>
     <div name="timeBlock" class="col-sm-5 text-start">
         {{ start_time|time_display }} - {{ end_time|time_display }} &nbsp {{ day }}
     </div>
-    <div name="place" buildingValue="{% if room %}{{ building.pk }}{% else %}any{% endif %}" class="col-sm-5 text-start">
-        {% if room %}
-        {{ room }}
+    <div name="place" buildingValue="{% if building %}{{ building.pk }}{% else %}any{% endif %}" class="col-sm-4 text-start">
+        {% if building %}
+        {{ building }}
         {% else %}
-        Any Building Any Room
+        Any Building
+        {% endif %}
+        {% if room %}
+        {{ room.number }}
+        {% else %}
+        Any Room
         {% endif %}
     </div>
-    <div class="col-sm-1" name="editCol">
+    <div class="col-sm-1">
+        <svg style="display: {% if is_deleted %}none{% else %}block{% endif %}" name="deleteDisplay" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-square" viewBox="0 0 16 16">
+            <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
+        {% if meeting %}
+        <svg style="display: {% if is_deleted %}block{% else %}none{% endif %}" name="undoDisplay" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
+        </svg>
+        {% endif %}
+    </div>
+    <div class="col-sm-1" name="editCol" {% if is_deleted %}hidden{% endif %}>
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16">
             <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
             <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
@@ -41,7 +58,7 @@
         {% endfor %}
         </select>
     </div>
-    <div class="col-sm-5 text-start">
+    <div class="col-sm-4 text-start">
         <select name="building">
             {% for b in buildings %}
             <option value="{{ b.pk }}" {% if b == building %}selected{% endif %}>
@@ -59,6 +76,12 @@
                 {% endfor %}
             </optgroup>
         </select>
+    </div>
+    <div class="col-sm-1">
+        <svg style="display: block" name="deleteInput" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-x-square" viewBox="0 0 16 16">
+            <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
+            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+        </svg>
     </div>
     <div class="col-sm-1" name="submitCol">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-check-square" viewBox="0 0 16 16">

@@ -169,7 +169,7 @@ function addInputRow(inputRow, sectionPk, sectionCounter){
     )
 }
 
-function addDisplayRow(displayRow, sectionPk, sectionCounter, titleForNonEditing=null){
+function addDisplayRow(displayRow, sectionPk, sectionCounter, titleForNonEditing=null, isHidden=false){
     const startTime = displayRow.getAttribute('startTime');
     const endTime = displayRow.getAttribute('endTime');
     const day = displayRow.getAttribute('day')
@@ -188,6 +188,8 @@ function addDisplayRow(displayRow, sectionPk, sectionCounter, titleForNonEditing
         sectionPk,
         counter,
         sectionCounter,
+        true,
+        isHidden
     )
 }
 
@@ -377,19 +379,23 @@ function updateMeetings(inputRow = null){
             
             for(let i=0; i < sectionGroups.length; i++){
                 const section = sectionGroups[i];
+                const isToggled = section.querySelector('[name="toggleVisibility"]').getAttribute('isToggled') === "true";
 
                 const displayRows = section.querySelectorAll('.displayRow');
                 const sectionPk = section.getAttribute("value");
                 for( const displayRow of displayRows){
+                    if(displayRow.getAttribute('isDeleted') === 'true'){ continue }
                     const counter = displayRow.getAttribute('counter');
                     if(((counter === counterCheck)
                         && (sectionPk === currentSection))){
                         addInputRow(inputRow, sectionPk, i)
-                    } else if(sectionPk === currentSection){
-                        addDisplayRow(displayRow, sectionPk, i);
+                        continue;
+                    }
+                    if(sectionPk === currentSection){
+                        addDisplayRow(displayRow, sectionPk, i, null, isToggled);
                     } else {
                         const title = section.querySelector('[name="title"]');
-                        addDisplayRow(displayRow, sectionPk, i, `${counter}: ${title.innerHTML.trim()}`);
+                        addDisplayRow(displayRow, sectionPk, i, `${counter}: ${title.innerText.trim()}`, isToggled);
                     }
                 }
             };
@@ -512,16 +518,97 @@ function submitInputRow(inputRow){
     return true;
 }
 
-function addEditSubmitListeners(sectionGroup){
+function deleteRow(displayRow){
+    const section = document.querySelector(`[name="section"][value="${displayRow.getAttribute("section")}"]`);
+    const counter = displayRow.getAttribute('counter');
+    const inputRow = section.querySelector(`.inputRow[counter="${counter}"]`);
+    const isCreatedMeeting = displayRow.getAttribute('value').length > 0;
+
+    if(isCreatedMeeting){
+        displayRow.classList.add("text-decoration-line-through");
+        inputRow.hidden = true;
+        displayRow.hidden = false;
+        displayRow.querySelector('[name="editCol"]').hidden = true;
+        displayRow.querySelector('[name="deleteDisplay"]').style.display = "none"
+        displayRow.querySelector('[name="undoDisplay"]').style.display = "block"
+        displayRow.setAttribute('isDeleted', true);
+    } else {
+        displayRow.remove();
+        inputRow.remove();
+    }
+    updateMeetings();
+}
+
+function undoDeleteRow(displayRow){
+    displayRow.classList.remove("text-decoration-line-through");
+    displayRow.querySelector('[name="editCol"]').hidden = false;
+    displayRow.querySelector('[name="deleteDisplay"]').style.display = "block"
+    displayRow.querySelector('[name="undoDisplay"]').style.display = "none"
+    displayRow.setAttribute('isDeleted', false);
+    updateMeetings();
+}
+
+function toggleSectionVisibility(sectionGroup){
+    const toggleContainer = sectionGroup.querySelector('[name="toggleVisibility"]');
+    const toggleOn = toggleContainer.querySelector('[name="toggleOn"]');
+    const toggleOff = toggleContainer.querySelector('[name="toggleOff"]');
+    const toggleText = sectionGroup.querySelector('[name="toggleText"]');
+
+    if (toggleContainer.getAttribute("isToggled") === 'false'){
+        toggleOn.style.display = "none";
+        toggleOff.style.display = "block";
+        toggleContainer.setAttribute("isToggled", true) 
+        toggleText.style.display = "inline";
+    } else{
+        toggleOn.style.display = "block";
+        toggleOff.style.display = "none";
+        toggleContainer.setAttribute("isToggled", false) 
+        toggleText.style.display = "none";
+    }
+
+    let inputRow = null;
+    const inputRows = document.getElementsByClassName('inputRow');
+    for( const row of inputRows){
+        if(!row.hidden){inputRow = row}
+    }
+
+    updateMeetings(inputRow);
+}
+
+function addEditSubmitListeners(sectionGroup, addRowListener=true){
+    // add row listeners and enforce
+    if(addRowListener){
+        const addRowButton = sectionGroup.querySelector('[name="addRows"]');
+        addRowButton.addEventListener('click', ()=> addRows(sectionGroup));
+
+        const toggleContainer = sectionGroup.querySelector('[name="toggleVisibility"]');
+        const toggleOn = toggleContainer.querySelector('[name="toggleOn"]');
+        const toggleOff = toggleContainer.querySelector('[name="toggleOff"]');
+        toggleOn.addEventListener('click', () => toggleSectionVisibility(sectionGroup));
+        toggleOff.addEventListener('click', () => toggleSectionVisibility(sectionGroup));
+
+        const enforceDepartmentConstraints = document.getElementById('enforceDepartmentConstraints');
+        enforceDepartmentConstraints.addEventListener('change', () => {
+            const meetingInputRows = document.querySelectorAll('.inputRow');
+            for(const meetingInputRow of meetingInputRows){
+                if(!meetingInputRow.hidden){
+                    updateMeetings(meetingInputRow);
+                    return;
+                }
+            }
+        })
+    }
+
+    // display row listeners
     Array.from(sectionGroup.querySelectorAll('.displayRow')).forEach(meetingRow => {
         const onActivate = (meetingRow) => {
+            if(meetingRow.getAttribute('isDeleted') === "true"){ return }
             const meetingDisplayRows = document.querySelectorAll('.displayRow');
             const meetingInputRows = document.querySelectorAll('.inputRow');
             const counter = meetingRow.getAttribute('counter');
             const inputRow = sectionGroup.querySelector(`.inputRow[counter="${counter}"]`);
 
             // hide all input rows and submit if the input row was shown
-            console.log(meetingInputRows)
             for(const row of meetingInputRows){
                 if(row.hidden===false){
                     const isValid = submitInputRow(row);
@@ -531,7 +618,6 @@ function addEditSubmitListeners(sectionGroup){
                     row.hidden = true;
                 }
             }
-            console.log('spacing')
 
             // show all display rows
             Array.from(meetingDisplayRows).forEach(row =>{
@@ -548,8 +634,23 @@ function addEditSubmitListeners(sectionGroup){
 
         const editCol = meetingRow.querySelector('[name="editCol"]')
         editCol.addEventListener('click', () => onActivate(meetingRow));
+
+        // on undo and delete
+        const deleteDisplayRow = meetingRow.querySelector('[name="deleteDisplay"]');
+        deleteDisplayRow.addEventListener('click', () => deleteRow(meetingRow));
+        const counter = meetingRow.getAttribute('counter');
+        const inputRow = sectionGroup.querySelector(`.inputRow[counter="${counter}"]`);
+        const deleteInputRow = inputRow.querySelector('[name="deleteInput"]');
+        deleteInputRow.addEventListener('click', () => deleteRow(meetingRow));
+
+        const undoRow = meetingRow.querySelector('[name="undoDisplay"]');
+        if(undoRow != null) {
+            undoRow.addEventListener('click', () => undoDeleteRow(meetingRow));
+        }
+
     });
 
+    // input row listeners
     Array.from(sectionGroup.querySelectorAll('.inputRow')).forEach(meetingRow => {
         const buildingSelect = meetingRow.querySelector('[name="building"]');
         buildingSelect.addEventListener('change', ()=>{
@@ -575,16 +676,6 @@ function addEditSubmitListeners(sectionGroup){
         });
     });
 
-    const enforceDepartmentConstraints = document.getElementById('enforceDepartmentConstraints');
-    enforceDepartmentConstraints.addEventListener('change', () => {
-        const meetingInputRows = document.querySelectorAll('.inputRow');
-        for(const meetingInputRow of meetingInputRows){
-            if(!meetingInputRow.hidden){
-                updateMeetings(meetingInputRow);
-                return;
-            }
-        }
-    })
 }
 
 function addSection(section){
@@ -622,11 +713,21 @@ function addSection(section){
                     inputRow = row;
                 }
             });
+            newSection.querySelector('[name="remove"]').addEventListener('click', () => {
+                newSection.remove();
+                let inputRow = null;
+                Array.from(inputRows).forEach( row => {
+                    if(!row.hidden){
+                        inputRow = row;
+                    }
+                });
+                updateMeetings(inputRow);
+            });
             updateMeetings(inputRow);
         })
 }
 
-function addRow(section){
+function addRows(section){
     const meetingRowsData = [];
 
     const displayRows = section.querySelectorAll('.displayRow');
@@ -638,31 +739,146 @@ function addRow(section){
         meetingRowData['room'] = displayRow.getAttribute('room');
         meetingRowData['building'] = displayRow.getAttribute('building');
         meetingRowData['counter'] = displayRow.getAttribute('counter');
-        meetingRowData['meeting'] = displayRow.getAttribute('meeting');
+        meetingRowData['meeting'] = displayRow.getAttribute('value');
+        meetingRowData['isDeleted'] = displayRow.getAttribute('isDeleted');
         meetingRowsData.push(meetingRowData);
     }
 
-    const sectionPk = section.querySelector('[name="title"').value
+    const sectionPk = section.querySelector('[name="title"').getAttribute('value');
     const url = new URL('add_rows/', window.location.origin);
 
-    url.searchParams.set('edit_rows', meetingRowsData);
-    url.searchParams.set('section', sectionPk);
+    const payload = {
+        edit_rows: meetingRowsData,
+        section: sectionPk,
+    }
 
     fetch(url, {
         method: 'post',
         headers: {
             'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(response => response.json())
+        .then(data => {
+            const dataRows = section.querySelector('[name="data-rows"]')
+            const meetingRows = data['edit_rows_html'];
+            let htmlString = '';
+            for(const meetingRow of meetingRows){
+                htmlString += meetingRow;
+            }
+            dataRows.innerHTML = htmlString;
+
+            addEditSubmitListeners(section, false)
+            updateMeetings();
+        });
+   
+}
+
+function softSubmitAll(){
+
+    const sections = document.getElementsByName("section");
+    const sectionsData = [];
+    for(const section of sections){
+        const meetingRowsData = [];
+        const displayRows = section.querySelectorAll('.displayRow');
+        for(const displayRow of displayRows){
+            const meetingRowData = {}
+            meetingRowData['startTime'] = displayRow.getAttribute('startTime');
+            meetingRowData['endTime'] = displayRow.getAttribute('endTime');
+            meetingRowData['day'] = displayRow.getAttribute('day');
+            meetingRowData['room'] = displayRow.getAttribute('room');
+            meetingRowData['building'] = displayRow.getAttribute('building');
+            meetingRowData['counter'] = displayRow.getAttribute('counter');
+            meetingRowData['meeting'] = displayRow.getAttribute('value');
+            meetingRowData['isDeleted'] = displayRow.getAttribute('isDeleted');
+            meetingRowsData.push(meetingRowData);
         }
+        const sectionPk = section.getAttribute('value');
+        const dataTuple = [sectionPk, meetingRowsData];
+        sectionsData.push(dataTuple)
+    }
+
+    const url = new URL('get_warnings/', window.location.origin);
+
+    const payload = {
+        section_rows: sectionsData,
+    }
+
+    fetch(url, {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        },
+        body: JSON.stringify(payload)
+    })
+        .then(response => response.json())
+        .then(data => {
+            if(!data['are_problems']) { 
+                console.log('hello')
+                hardSubmitAll(sectionsData);
+                return;
+            }
+
+            const warningsModal = new bootstrap.Modal(document.getElementById('warnings'));
+            const warningsBody = document.getElementById('warningsBody');
+            warningsBody.innerHTML = data['section_problems_html'];
+            warningsModal.show();
+        });
+}
+
+function hardSubmitAll(){
+    const sections = document.getElementsByName("section");
+    const sectionsData = [];
+    for(const section of sections){
+        const meetingRowsData = [];
+        const displayRows = section.querySelectorAll('.displayRow');
+        for(const displayRow of displayRows){
+            const meetingRowData = {}
+            meetingRowData['startTime'] = displayRow.getAttribute('startTime');
+            meetingRowData['endTime'] = displayRow.getAttribute('endTime');
+            meetingRowData['day'] = displayRow.getAttribute('day');
+            meetingRowData['room'] = displayRow.getAttribute('room');
+            meetingRowData['building'] = displayRow.getAttribute('building');
+            meetingRowData['counter'] = displayRow.getAttribute('counter');
+            meetingRowData['meeting'] = displayRow.getAttribute('value');
+            meetingRowData['isDeleted'] = displayRow.getAttribute('isDeleted');
+            meetingRowsData.push(meetingRowData);
+        }
+        const sectionPk = section.getAttribute('value');
+        const dataTuple = [sectionPk, meetingRowsData];
+        sectionsData.push(dataTuple)
+    }
+    
+    const url = new URL('submit_section_changes/', window.location.origin);
+
+    const payload = {
+        section_rows: sectionsData,
+    }
+
+    fetch(url, {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrfmiddlewaretoken"]').value
+        },
+        body: JSON.stringify(payload)
     })
         .then(response => response.json())
         .then(data => {
 
         });
-   
+
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     const firstSectionGroup = document.querySelector('[name="section"]');
     addEditSubmitListeners(firstSectionGroup);
     updateMeetings();
+    const softSubmitButton = document.getElementById('submitAll');
+    softSubmitButton.addEventListener('click', softSubmitAll)
+    const hardSubmitButton = document.getElementById('hardSubmitAll');
+    hardSubmitButton.addEventListener('click', hardSubmitAll);
 });
