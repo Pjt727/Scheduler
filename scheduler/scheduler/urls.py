@@ -43,6 +43,7 @@ urlpatterns = [
     path('claim/', claim_page_views.claim, name='claim'),
     path('my_meetings/', claim_page_views.my_meetings, name='my_meetings'),
     path('edit_section/<int:section>', claim_page_views.edit_section, name='edit_section'),
+    path('message_hub/', claim_page_views.message_hub, name='message_hub'),
     ## json responses
     path('course_search/', claim_api_views.course_search, name='course_search'),
     path('section_search/', claim_api_views.section_search, name='section_search'),

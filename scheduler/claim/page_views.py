@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render 
 from django.contrib.auth.decorators import login_required
 from .models import *
+from request.models import *
 from django.db.models import Case, When, IntegerField 
 
 @login_required
@@ -27,6 +28,7 @@ def my_meetings(request: HttpRequest) -> HttpResponse:
     }
     return render(request, 'my_meetings.html', context=data)
 
+@login_required
 def edit_section(request: HttpRequest, section: int) -> HttpResponse:
     section = Section.objects.get(pk=section)
 
@@ -38,3 +40,15 @@ def edit_section(request: HttpRequest, section: int) -> HttpResponse:
     }
 
     return render(request, 'edit_section.html', context=data)
+
+@login_required
+def message_hub(request: HttpRequest) -> HttpResponse:
+    message_bundles = EditMeetingMessageBundle.objects.filter(
+        Q(sender=request.user.professor) | Q(recipient=request.user.professor)
+    )
+
+    context = {
+        'message_bundles': message_bundles
+    }
+
+    return render(request, 'messages.html', context=context)

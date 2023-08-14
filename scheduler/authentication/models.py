@@ -3,6 +3,7 @@ from django.db import models
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from claim.models import Meeting
+    from request.models import *
 
 class Professor(models.Model):
     verbose_name = "Professor"
@@ -17,6 +18,8 @@ class Professor(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, related_name='professor', null=True, blank=True, default=None)
 
     meetings: models.QuerySet['Meeting']
+    edit_requests_involving: models.QuerySet['EditMeetingRequest']
+    edit_request_bundles_sent: models.QuerySet['EditRequestBundle']
     def __str__(self) -> str:
         return f"{self.title} {self.last_name}"
     

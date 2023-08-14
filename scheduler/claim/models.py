@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from enum import Enum
 from django.db import models
-from django.db.models import Q, Case, When, Sum, IntegerField, Subquery, OuterRef, F, Count, Max
+from django.db.models import Q, Case, When, Sum, IntegerField, Subquery, OuterRef, F, Count, Max, Func
 from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 from authentication.models import Professor
 from datetime import time, timedelta
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from request.models import EditMeetingRequest
 
 
 class Day:
@@ -222,7 +225,6 @@ class DepartmentAllocation(models.Model):
             is_general_purpose=True,
             meetings__time_block__in=self.allocation_group.time_blocks.all()
         ).distinct().count()
-    
     def exceeds_allocation(self, term: 'Term', amount_adding=1):
         return self.count_rooms(term) + amount_adding > self.number_of_classrooms
     
@@ -378,7 +380,7 @@ class EditMeeting:
     professor: Professor = None
     is_deleted: bool = False
 
-    def create(edit_meeting: dict, is_deleted: bool = False) -> 'EditMeeting':
+    def create(edit_meeting: dict, is_deleted: bool = False, primary_professor: Professor = None) -> 'EditMeeting':
         start_time = edit_meeting['startTime']
         end_time = edit_meeting['endTime']
         
@@ -400,8 +402,11 @@ class EditMeeting:
         meeting = edit_meeting.get('meeting')
         if (meeting == '') or (meeting is None):
             meeting = None
+            professor = primary_professor
         else:
             meeting = Meeting.objects.get(pk=meeting)
+            professor = meeting.professor
+
 
         counter = edit_meeting['counter']
         
@@ -413,6 +418,7 @@ class EditMeeting:
             room=room,
             meeting=meeting,
             counter=counter,
+            professor=professor,
             is_deleted=is_deleted
         )
     
@@ -443,9 +449,20 @@ class EditMeeting:
                     message = f"Meeting {edit_meeting1.counter} from {section1} overlaps professor with meeting {edit_meeting2.counter} from {section2}."
                     problems.append((DANGER, message))
         return problems
+    def is_changed(self) -> bool:
+        if self.meeting is None:
+            return True
+        og_time_block = self.meeting.time_block
+        if og_time_block.day != self.day:
+            return True
+        if og_time_block.start_end_time.start != self.start_time:
+            return True
+        if og_time_block.start_end_time.end != self.end_time:
+            return True
+        if self.meeting.room != self.room:
+            return True
 
-    def resolve(self) -> None:
-        pass
+        return False
 
     def start_time_d(self):
         return timedelta(hours=self.start_time.hour, minutes=self.start_time.minute)
@@ -468,6 +485,7 @@ class Section(models.Model):
     primary_professor = models.ForeignKey(Professor, related_name="sections", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     
     meetings: QuerySet['Meeting']
+    edit_requests: QuerySet['EditMeetingRequest']
 
     class Meta:
         unique_together = ('course', 'term', 'number',)
@@ -552,13 +570,14 @@ class Section(models.Model):
 
         return problems
 
-    def no_recommendation(counter: str = 1, building: Building = None) -> EditMeeting:
+    def no_recommendation(counter: str = 1, building: Building = None, professor=None) -> EditMeeting:
         t_s = time(hour=0, minute=0)
         t_e = time(hour=1, minute=15)
 
-        return EditMeeting(start_time=t_s, end_time=t_e, day=Day.MONDAY, building=building, room=None, meeting=None, counter=counter)
+        return EditMeeting(start_time=t_s, end_time=t_e, day=Day.MONDAY, building=building, room=None, meeting=None, counter=counter, professor=professor)
 
     # recommendations currently to not take into account meetings in the group
+    # TODO add professors to reccomendaitons
     def get_recommendations(self, partial_meetings: list[EditMeeting] | None = None) -> None:
         if partial_meetings is None: partial_meetings = []
 
@@ -577,12 +596,12 @@ class Section(models.Model):
         count = '1' if len(partial_meetings) == 0 else str(int(partial_meetings[-1].counter) + 1)
         if any(map(lambda time: time == timedelta(days=0), possible_times_to_achieve)):
             print('early exit 1')
-            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building))
+            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building, professor=self.primary_professor))
             return
         
         if any(map(lambda approx: approx == TimeBlock.ONE_BLOCK * 3, possible_times_to_achieve)):
             print("recommending 3")
-            partial_meetings.extend(self.recommend_2_time_blocks(desired_building))
+            partial_meetings.extend(self.recommend_2_time_blocks(desired_building, partial_meetings))
             edit_meeting = self.recommend_1_time_block(desired_building, partial_meetings)
             if edit_meeting is not None:
                 partial_meetings.append(edit_meeting)
@@ -596,9 +615,10 @@ class Section(models.Model):
                 partial_meetings.append(edit_meeting)
         else:
             print('early exit 2')
-            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building))
+            partial_meetings.append(Section.no_recommendation(counter=count, building=desired_building, professor=self.primary_professor))
             
     def recommend_2_time_blocks(self, building: Building = None, partial_meetings: list[EditMeeting] = None) -> list[EditMeeting]:
+        professor = self.primary_professor # TODO change when shareable sections change
         if building is None:
             building = Building.recommend(self.course, self.term)
         if partial_meetings is None:
@@ -644,23 +664,46 @@ class Section(models.Model):
                     room=None, # Question on whether or not it should recommend a room in this case
                     meeting=None,
                     counter=last_counter,
+                    professor=professor
                 ))
             return meetings_to_add
-        meetings_to_add.append(Section.no_recommendation(counter=last_counter, building=building))
+        meetings_to_add.append(Section.no_recommendation(counter=last_counter, building=building, professor=professor))
         return meetings_to_add
 
     def recommend_1_time_block(self, building: Building, partial_meetings: list[EditMeeting] | None) -> list[EditMeeting]:
+        professor = self.primary_professor # TODO change this for shared sections
+        def get_all_time_blocks() -> QuerySet[TimeBlock]:
+            in_problematic_meetings = Q()
+            for m in partial_meetings:
+                if m.is_deleted: continue
+                in_problematic_meetings |= Q(
+                    start_end_time__start__lte=m.end_time,
+                    start_end_time__end__gte=m.start_time,
+                    day=m.day
+                )
+            if professor is not None:
+                for m in professor.meetings.filter(section__term=self.term).exclude(section__pk=self.pk).all():
+                    tm = m.time_block
+                    in_problematic_meetings |= Q(
+                    start_end_time__start__lte=tm.start_end_time.end,
+                    start_end_time__end__gte=tm.start_end_time.start,
+                    day=tm.day
+                )
+
+            time_blocks = TimeBlock.objects \
+                .filter(number__isnull=False) \
+                .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
+                .exclude(in_problematic_meetings)
+            
+            return time_blocks
         time_blocks_info: list[tuple[TimeBlock, int, Room]] = []
         if partial_meetings is None:
             last_counter = 0
+            partial_meetings = []
         else:
             last_counter = partial_meetings[-1].counter
-        print(last_counter)
         if any([partial_meetings is None, all(map(lambda m: m.is_deleted, partial_meetings))]):
-            partial_meetings = []
-            time_blocks = TimeBlock.objects \
-                .filter(number__isnull=False) \
-                .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS)
+            time_blocks = get_all_time_blocks()
             for time_block in time_blocks.all():
                 department_allocation = DepartmentAllocation.objects.get(
                     department = self.course.subject.department,
@@ -672,6 +715,8 @@ class Section(models.Model):
                     (time_block, count, None)
                 )
         else:
+            all_time_blocks = get_all_time_blocks()
+            time_blocks = time_blocks = TimeBlock.objects.none()
             for edit_meeting in filter(lambda m: not m.is_deleted,partial_meetings):
                 start = edit_meeting.start_time
                 end = edit_meeting.end_time
@@ -684,23 +729,24 @@ class Section(models.Model):
                 )
                 # sort of cheaty way to do this since this only works bc time blocks with the same number
                 #   are never on the same day
-                time_blocks = TimeBlock.objects.none()
                 for t_b in t_bs.all():
                     time_blocks |= TimeBlock.objects \
                         .filter(number=t_b.number) \
                         .exclude(day=t_b.day)
+            time_blocks = time_blocks.filter(pk__in=all_time_blocks.values('pk'))
+            if not time_blocks.exists():
+                time_blocks = all_time_blocks 
+            for time_block in time_blocks.all():
+                department_allocation = DepartmentAllocation.objects.get(
+                    department = self.course.subject.department,
+                    allocation_group=time_block.allocation_groups.first()
+                )
+                count = department_allocation.count_rooms(self.term)
+                time_blocks_info.append(
+                    (time_block, count, edit_meeting.room)
+                )
                 
-                if not time_blocks.exists(): continue
-                for time_block in time_blocks.all():
-                    department_allocation = DepartmentAllocation.objects.get(
-                        department = self.course.subject.department,
-                        allocation_group=time_block.allocation_groups.first()
-                    )
-                    count = department_allocation.count_rooms(self.term)
-                    time_blocks_info.append(
-                        (time_block, count, edit_meeting.room)
-                    )
-                
+        time_blocks_info.sort(key=lambda t_b: t_b[1])
         for time_block, count, room in time_blocks_info:
             department_allocation = DepartmentAllocation.objects.get(
                 department = self.course.subject.department,
@@ -710,18 +756,13 @@ class Section(models.Model):
             end_time = time_block.start_end_time.end
             day = time_block.day
 
-            include_general = count < department_allocation.number_of_classrooms
-            print(include_general)
-            open_rooms = building.get_available_rooms(start_time, end_time, day, self.term, include_general, section=self)
+            # include_general = count < department_allocation.number_of_classrooms
+            open_rooms = building.get_available_rooms(start_time, end_time, day, self.term, True, section=self)
             
-            print(time_block, count, room)
             if not open_rooms.exists(): continue
 
-            for r in open_rooms:
-                print(r, r.pk)
             try:
                 if room is not None:
-                    print(room.pk)
                     desired_room = open_rooms.get(id=room.pk)
                 else:
                     desired_room = None # question on whether we should select the room
@@ -735,10 +776,11 @@ class Section(models.Model):
                 building=building,
                 room=desired_room,
                 meeting=None,
-                counter=str(int(last_counter) + 1)
+                counter=str(int(last_counter) + 1),
+                professor=professor
             )
 
-        return Section.no_recommendation(counter=str(int(last_counter) + 1), building=building)
+        return Section.no_recommendation(counter=str(int(last_counter) + 1), building=building, professor=professor)
          
 
     def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:

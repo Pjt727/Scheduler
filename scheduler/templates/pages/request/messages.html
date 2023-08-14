@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}<link rel="stylesheet" href="{% static 'formSubmission.css' %}">{% endblock %}
+{% block title %}Message Hub{% endblock %} {% block content %}
+{% for message_bundle in message_bundles.all %}
+    {% regroup message_bundle.messages.all by section as section_messages %}
+    {% for section in section_messages %}
+    <table>
+        <thead><th>{{ section.grouper }}</th></thead>
+        {% for message in section.list %}
+            <tr><td>{{ message }}</td></tr>
+        {% endfor %}
+    </table>
+    <br>
+    {% endfor %}
+{% endfor %}
+{% endblock %}

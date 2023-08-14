@@ -2,6 +2,7 @@ from django.http import HttpRequest, JsonResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import *
+from request.models import *
 from django.db.models import Q
 from datetime import time, timedelta, datetime
 from .utils import *
@@ -390,13 +391,13 @@ def add_rows(request: HttpRequest) -> JsonResponse:
 
     data: dict = json.loads(request.body)
     edit_rows_raw = data.get('edit_rows', [])
+    section_pk = data['section']
+    section: Section = Section.objects.get(pk=section_pk)
     edit_rows: list[EditMeeting] = []
     for row in edit_rows_raw:
         is_deleted =  row['isDeleted'] == "true"
-        edit_meeting = EditMeeting.create(row, is_deleted=is_deleted)
+        edit_meeting = EditMeeting.create(row, is_deleted=is_deleted, primary_professor=section.primary_professor)
         edit_rows.append(edit_meeting)
-    section_pk = data['section']
-    section: Section = Section.objects.get(pk=section_pk)
     section.get_recommendations(edit_rows)
 
     edit_rows_html = []
@@ -432,6 +433,7 @@ def get_warnings(request: HttpRequest) -> JsonResponse:
     section_rows = data.get('section_rows', [])
     section_edit_meetings: list[tuple[Section, list[EditMeeting]]] = []
     section_pks: list[str] = []
+    are_changes = False
     for section_pk, edit_rows in section_rows:
         edit_meetings = []
         section_pks.append(section_pk)
@@ -439,8 +441,17 @@ def get_warnings(request: HttpRequest) -> JsonResponse:
         for row in edit_rows:
             # TODO add some logic for deleting rows?
             if row['isDeleted'] == "true": continue
-            edit_meetings.append(EditMeeting.create(row))
+            edit_meeting = EditMeeting.create(row)
+            if edit_meeting.is_changed(): are_changes = True
+            edit_meetings.append(edit_meeting)
         section_edit_meetings.append( (section, edit_meetings) )
+
+    if not are_changes:
+        response_data["are_problems"] = True
+        response_data["section_problems_html"] = "There are no changes"
+        return JsonResponse(response_data)
+
+
     are_problems = False
     section_problems: list[tuple[Section, list[tuple[str, str]]]] = []
     for section, edit_meetings in section_edit_meetings:
@@ -451,8 +462,6 @@ def get_warnings(request: HttpRequest) -> JsonResponse:
 
     group_problems = EditMeeting.get_warnings(section_edit_meetings)
     are_problems = are_problems or bool(group_problems)
-    print(are_problems)
-    
     response_data["are_problems"] = are_problems
     context = {
         'section_problems': section_problems,
@@ -469,20 +478,31 @@ def get_warnings(request: HttpRequest) -> JsonResponse:
 def submit_section_changes(request: HttpRequest) -> JsonResponse:
     response_data = {}
 
+    
     data: dict = json.loads(request.body)
     section_rows = data.get('section_rows', [])
     section_edit_meetings: list[tuple[Section, list[EditMeeting]]] = []
+    section_objects = []
     section_pks: list[str] = []
+    made_changes = False
     for section_pk, edit_rows in section_rows:
         edit_meetings = []
         section_pks.append(section_pk)
         section = Section.objects.get(pk=section_pk)
+        section_objects.append(section)
         for row in edit_rows:
             # TODO add some logic for deleting rows?
             if row['isDeleted'] == "true": continue
-            edit_meetings.append(EditMeeting.create(row))
+            edit_meeting = EditMeeting.create(row)
+            if edit_meeting.is_changed(): made_changes = True
+            edit_meetings.append(edit_meeting)
         section_edit_meetings.append( (section, edit_meetings) )
+    
+    if not made_changes:
+        response_data['adding'] = False
+        response_data['message'] = "There were no changes made!"
 
+    are_problems = False
     for section, edit_meetings in section_edit_meetings:
         problems = section.get_warnings(edit_meetings, section_pks=section_pks)
 
@@ -495,11 +515,39 @@ def submit_section_changes(request: HttpRequest) -> JsonResponse:
     are_problems = are_problems or group_problems
 
     response_data['adding'] = True
-    sections = ", ".join(map(lambda _, s: str(s), section_edit_meetings))
-    for _, edit_meetings in section_edit_meetings:
+    sections = ", ".join(map(lambda s: str(s), section_objects))
+    
+    update_meeting_message_bundle = EditMeetingMessageBundle(
+        status = EditMeetingMessageBundle.REQUESTED,
+        sender = request.user.professor
+    )
+    update_meeting_message_bundle.save()
+    edit_request_bundle = EditRequestBundle(
+        requester = request.user.professor
+    )
+    edit_request_bundle.save()
+    for section, edit_meetings in section_edit_meetings:
+        edit_section_request = EditSectionRequest(
+            is_primary = section.pk == section_pks[0],
+            section = section,
+            bundle=edit_request_bundle,
+        )
+        edit_section_request.save()
         for edit_meeting in edit_meetings:
-            edit_meeting.resolve()
-    response_data['message'] = f"{sections} were successfully changed."
+            edit_meeting_request = EditMeetingRequest(
+                start_time = edit_meeting.start_time,
+                end_time = edit_meeting.end_time,
+                day = edit_meeting.day,
+                building = edit_meeting.building,
+                room = edit_meeting.room,
+                professor = edit_meeting.professor,
+                original = edit_meeting.meeting,
+                edit_section = edit_section_request,
+            )
+            edit_meeting_request.save()
+            edit_meeting_request.freeze(bundle=update_meeting_message_bundle)
+    response_data['message'] = f"{sections} changes were successfully changed."
+
     return JsonResponse(response_data)
 
     
