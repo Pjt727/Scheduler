@@ -3,18 +3,27 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from .models import *
 from request.models import *
-from django.db.models import Case, When, IntegerField 
+from django.db.models import Case, When, IntegerField, Value
 
 @login_required
 def claim(request: HttpRequest) -> HttpResponse:
     professor = Professor.objects.get(user=request.user)
+    terms = Term.objects.all()
+    professor: Professor = request.user.professor
+    courses = Course.objects.filter(sections__term=terms.first()).distinct()
+    courses = courses.order_by('title')
+    # TODO implement if faster
+    # courses = Course.sort_with_prof(courses, professor).all()[:Course.SEARCH_INTERVAL]
+
+
     data = {
         'departments': Department.objects.all(),
         'subjects': Subject.objects.all(),
-        'courses': Course.objects.all(),
+        'courses': courses,
         # could change this to limit from a certain year
         'previous_courses': Course.objects.filter(sections__meetings__professor=professor).distinct(),
-        'terms': Term.objects.all(),
+        'terms': terms,
+        'has_results': True,
             
         'days': Day.DAY_CHOICES,
     }

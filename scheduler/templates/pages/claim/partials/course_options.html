@@ -1,0 +1,28 @@
+{% if not has_results%}
+{% if offset == 0 %}
+    {% if not courses %}
+    <div class="row align-items-center fw-bold">No results found</div>
+    {% else %}
+    <div class="row align-items-center fw-bold">Results not found with that subject/department widening scope</div>
+    {% endif %}
+{% endif %}
+{% endif %}
+{% for course in courses %}
+<section 
+    {% if forloop.last %}
+        hx-get="{% url 'get_course_options' offset=next_offset %}"
+        hx-trigger="intersect once" 
+        hx-swap="afterend" 
+    {% endif %}
+    >
+    <div class="row align-items-start pb-2"
+        hx-target="#courseMultiSelect"
+        hx-get="{% url 'add_course_pill' course=course.pk %}"
+        hx-include="#courseMultiSelect"
+        hx-swap="beforeend"
+    >
+        <div class="col">{{course.title}}</div>
+        <div class="col-2">{{course.code}}</div>
+    </div>
+</section>
+{% endfor %}

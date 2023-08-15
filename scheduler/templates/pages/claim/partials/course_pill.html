@@ -1,0 +1,7 @@
+{% if course %}
+<span class="badge text-bg-light fs-5 m-2">
+    <input name="course" value="{{ course.pk }}" hidden></input>
+    {{ course.subject.code }}: {{ course.code }}
+    <button type="button" class="btn-close" aria-label="Close" onclick="event.target.parentNode.remove()">
+</span>
+{% endif %}

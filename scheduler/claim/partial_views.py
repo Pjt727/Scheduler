@@ -1,4 +1,4 @@
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from .models import *
@@ -9,7 +9,99 @@ from .utils import *
 from django.views.decorators.http import require_http_methods
 import json
 
-## api 
+
+@login_required
+@require_http_methods(["GET"])
+def get_course_search(request: HttpRequest) -> HttpResponse:
+    term_pk = request.GET.get("term")
+    term = Term.objects.get(pk=term_pk)
+
+    department_pk = request.GET.get("department")
+    subject_pk = request.GET.get("subject")
+    course_query = request.GET.get("course_query")
+
+    # TODO Maybe remedy sort of glitch since we do not know when input was just changed this code cannot be fixed as is
+    #   problem/feature: changing department to any wont work if subject is not any since it will repopulate the subject's department
+    subjects = Subject.objects.filter(courses__sections__term=term_pk).distinct()
+    if subject_pk == "any" and department_pk == "any":
+        department = None
+        subject = None
+    elif department_pk == "any":
+        subject = Subject.objects.get(pk=subject_pk)
+        department = subject.department
+        department_pk = department.pk
+    elif subject_pk == "any":
+        department = Department.objects.get(pk=department_pk)
+        subject = None
+    else:
+        subject = Subject.objects.get(pk=subject_pk)
+        department = Department.objects.get(pk=department_pk)
+
+    if department is not None:
+        subjects = subjects.filter(department=department)
+
+    courses, has_results = Course.search(course_query, term_pk, department_pk, subject_pk)
+    courses = courses.order_by('title')
+    # TODO implement if can be made faster
+    # courses = Course.sort_with_prof(courses, professor=request.user.professor)
+
+    context = {
+        'terms': Term.objects.all(),
+        'selected_term': term,
+        'departments': Department.objects.all(),
+        'selected_department': department,
+        'subjects': subjects.distinct().all(),
+        'selected_subject': subject,
+        'course_query': course_query,
+        'courses': courses.all()[:Course.SEARCH_INTERVAL],
+
+        'has_results': has_results
+    }
+
+    return render(request, 'course_search.html', context=context)
+
+@login_required
+@require_http_methods(["GET"])
+def get_course_options(request: HttpRequest, offset: int) -> HttpResponse:
+    term_pk = request.GET.get("term")
+    term = Term.objects.get(pk=term_pk)
+
+    department_pk = request.GET.get("department")
+    subject_pk = request.GET.get("subject")
+    course_query = request.GET.get("course_query")
+
+    courses, has_results = Course.search(course_query, term, department_pk, subject_pk)
+    courses = courses.order_by('title')
+    # TODO implement if can be made faster
+    # courses = Course.sort_with_prof(courses, professor=request.user.professor)
+
+    context = {
+        'courses': courses.all()[offset : offset+Course.SEARCH_INTERVAL],
+        'offset': offset,
+        'next_offset': offset + Course.SEARCH_INTERVAL,
+        'has_results': has_results
+    }
+
+    return render(request, 'course_options.html', context=context)
+
+@login_required
+@require_http_methods(["GET"])
+def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
+    
+    courses = request.GET.getlist("course", [])
+
+    if str(course) in courses:
+        return render(request, 'course_pill.html')
+
+    course = Course.objects.get(pk=course)
+
+    context = {
+        "course": course
+    }
+
+    return render(request, 'course_pill.html', context=context)
+
+
 @login_required
 @require_http_methods(["GET"])
 def get_meetings(request: HttpRequest) -> JsonResponse:
@@ -223,60 +315,40 @@ def get_meeting_details(request: HttpRequest) -> JsonResponse:
 
     return JsonResponse(response_data)
 
+    
 @login_required
 @require_http_methods(["GET"])
-def course_search(request: HttpRequest) -> JsonResponse:
-    response_data = {}
-    
-    department = request.GET.get('department')
-    subject = request.GET.get('subject')
-    query = request.GET.get('search')
-    count = int(request.GET.get('count'))
+def section_search(request: HttpRequest) -> HttpResponse:
+
+    courses = request.GET.getlist("course", [])
+    if not isinstance(courses, list):
+        courses = [courses]
+
     term = request.GET.get('term')
-
-    courses_qs = Course.objects.filter(sections__term=term).distinct()
-    if department != 'any': courses_qs = courses_qs.filter(subject__department=department)
-    if subject != 'any': courses_qs = courses_qs.filter(subject=subject)
-    if query:
-        items_q = Q()
-        for item in query.split():
-            item = item.replace('&nbsp;', '') # remove white space
-            items_q &= Q(code__icontains=item) | Q(title__icontains=item)
-        courses_qs = courses_qs.filter(items_q)
-
-    courses = []
-    bottom: bool = courses_qs.all().count() <= count
-    for course in courses_qs.all().order_by('title')[:count]:
-        courses.append({'pk': course.pk, 'title': course.title, 'code': course.code, 'subject': course.subject.code,})
     
-    response_data['ok'] = True
-    response_data['bottom'] = bottom
-    response_data['courses'] = courses
+    # TODO implement
+    # exclusion_times = data.get('exclusion_times', [])
+    does_fit = request.GET.get('fits', False)
+    is_available = request.GET.get('available', False)
 
-    return JsonResponse(response_data)
-    
-@login_required
-@require_http_methods(["POST"])
-def section_search(request: HttpRequest) -> JsonResponse:
-    response_data = {}
+    sort_column = request.GET.get('sortColumn')
+    sort_type = request.GET.get('sortType')
+    start_slice = int(request.GET.get('startSlice', 0))
+    end_slice = int(request.GET.get('endSlice', Section.SEARCH_INTERVAL))
+    original_length = 0 
+    context = {
+        "sections": [],
+        "claim": True,
+        "sort_column": sort_column,
+        "sort_type": sort_type,
+        "start_slice": start_slice,
+        "end_slice": min(end_slice, original_length),
+        "original_length": original_length,
+        "search_interval": Section.SEARCH_INTERVAL,
+    }
 
-    data: dict = json.loads(request.body)
-
-    term = data.get('term')
-    courses = data.get('courses')
     if not courses:
-        response_data['ok'] = True
-        response_data['section_html'] = ''
-        return JsonResponse(response_data)
-    
-    exclusion_times = data.get('exclusion_times', [])
-    does_fit = data.get('does_fit', False)
-    is_available = data.get('is_available', False)
-
-    sort_column = data.get('sort_column')
-    sort_type = data.get('sort_type')
-    start_slice = data.get('start_slice')
-    end_slice = data.get('end_slice')
+        return render(request, "sections.html", context=context)
 
     professor = Professor.objects.get(user=request.user)
     section_qs = Section.objects.filter(term=term, course__in=courses)
@@ -284,50 +356,36 @@ def section_search(request: HttpRequest) -> JsonResponse:
     if is_available:
         section_qs = section_qs.filter(meetings__professor__isnull=True)
 
+    # TODO also move implementation
+    # if exclusion_times:
+    #     exclusion_query = Q()
+    #     for exclusion_time in exclusion_times:
+    #         day = exclusion_time['day']
+    #         start_time = time.fromisoformat(exclusion_time['start_time'])
+    #         end_time = time.fromisoformat(exclusion_time['end_time'])
 
-    if exclusion_times:
-        exclusion_query = Q()
-        for exclusion_time in exclusion_times:
-            day = exclusion_time['day']
-            start_time = time.fromisoformat(exclusion_time['start_time'])
-            end_time = time.fromisoformat(exclusion_time['end_time'])
-
-            exclusion_query |= Q(meetings__time_block__day=day,
-                                meetings__time_block__start_end_time__start__lte=end_time,
-                                meetings__time_block__start_end_time__end__gte=start_time)
-        section_qs = section_qs.exclude(exclusion_query)
+    #         exclusion_query |= Q(meetings__time_block__day=day,
+    #                             meetings__time_block__start_end_time__start__lte=end_time,
+    #                             meetings__time_block__start_end_time__end__gte=start_time)
+    #     section_qs = section_qs.exclude(exclusion_query)
 
     # Exclude all meetings that overlap with professor meetings
-    if does_fit:
-        #TODO make it also take into consideration if the start and end date
-        professor_meetings = professor.meetings.filter(section__term=term)
-        exclusion_query = Q()
-        for meeting in professor_meetings.all():
-            exclusion_query |= Q(meetings__time_block__day=meeting.time_block.day,
-                                meetings__time_block__start_end_time__start__lte=meeting.time_block.start_end_time.end,
-                                meetings__time_block__start_end_time__end__gte=meeting.time_block.start_end_time.start)
 
-        section_qs = section_qs.exclude(exclusion_query)
+    if does_fit:
+        section_qs = section_qs.exclude(professor.section_in_meetings())
     
     section_qs = Section.sort_sections(section_qs=section_qs, sort_column=sort_column, sort_type=sort_type)
     original_length = len(section_qs)
-    section_qs = section_qs[start_slice:end_slice]
+    print(start_slice, end_slice)
+    print(original_length)
+    sections = section_qs[start_slice:end_slice]
+    context["sections"] = sections
+    context["end_slice"] = min(end_slice, original_length)
+    context["original_length"] = original_length
 
-    sections_template = render(request, "sections.html", {
-        "sections": section_qs,
-        "claim": True,
-        "sort_column": sort_column,
-        "sort_type": sort_type,
-        "sort_column": sort_column,
-        "sort_type": sort_type,
-        "start_slice": start_slice,
-        "end_slice": min(end_slice, original_length),
-        "original_length": original_length  
-    }).content.decode()
 
-    response_data['ok'] = True
-    response_data['section_html'] = sections_template
-    return JsonResponse(response_data)
+    return render(request, "sections.html", context=context)
+
 
 @login_required
 @require_http_methods(["GET"])

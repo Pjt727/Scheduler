@@ -18,7 +18,7 @@ from django.urls import path
 import authentication.views as auth_views
 import request.views as request_views
 import claim.page_views as claim_page_views
-import claim.api_views as claim_api_views
+import claim.partial_views as claim_partial_views
 import heads.views as heads_views
 from django.views.generic import TemplateView
 
@@ -44,18 +44,20 @@ urlpatterns = [
     path('my_meetings/', claim_page_views.my_meetings, name='my_meetings'),
     path('edit_section/<int:section>', claim_page_views.edit_section, name='edit_section'),
     path('message_hub/', claim_page_views.message_hub, name='message_hub'),
-    ## json responses
-    path('course_search/', claim_api_views.course_search, name='course_search'),
-    path('section_search/', claim_api_views.section_search, name='section_search'),
-    path('submit_claim/', claim_api_views.submit_claim, name="submit_claim"),
-    path('get_meetings/', claim_api_views.get_meetings, name='get_meetings'),
-    path('get_meetings_edit_section/', claim_api_views.get_meetings_edit_section, name='get_meetings_edit_section'),
-    path('get_edit_section/', claim_api_views.get_edit_section, name='get_edit_section'),
-    path('get_rooms_edit_section', claim_api_views.get_rooms_edit_section, name='get_room_edit_section'),
-    path('get_meeting_details/', claim_api_views.get_meeting_details, name='get_meeting_details'),
-    path('add_rows/', claim_api_views.add_rows, name='add_rows'),
-    path('get_warnings/', claim_api_views.get_warnings, name='get_warnings'),
-    path('submit_section_changes/', claim_api_views.submit_section_changes, name='submit_section_changes'),
+    ## partial responses
+    path('get_course_search/', claim_partial_views.get_course_search, name="get_course_search"),
+    path('get_course_options/<int:offset>', claim_partial_views.get_course_options, name='get_course_options'),
+    path('add_course_pill/<int:course>', claim_partial_views.add_course_pill, name='add_course_pill'),
+    path('section_search/', claim_partial_views.section_search, name='section_search'),
+    path('submit_claim/', claim_partial_views.submit_claim, name="submit_claim"),
+    path('get_meetings/', claim_partial_views.get_meetings, name='get_meetings'),
+    path('get_meetings_edit_section/', claim_partial_views.get_meetings_edit_section, name='get_meetings_edit_section'),
+    path('get_edit_section/', claim_partial_views.get_edit_section, name='get_edit_section'),
+    path('get_rooms_edit_section', claim_partial_views.get_rooms_edit_section, name='get_room_edit_section'),
+    path('get_meeting_details/', claim_partial_views.get_meeting_details, name='get_meeting_details'),
+    path('add_rows/', claim_partial_views.add_rows, name='add_rows'),
+    path('get_warnings/', claim_partial_views.get_warnings, name='get_warnings'),
+    path('submit_section_changes/', claim_partial_views.submit_section_changes, name='submit_section_changes'),
     
     # Head views
     ## pages

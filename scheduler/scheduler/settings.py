@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "django_htmx",
     'authentication',
     'claim',
     'request',
@@ -60,6 +61,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django_htmx.middleware.HtmxMiddleware"
 ]
 
 ROOT_URLCONF = 'scheduler.urls'
@@ -74,6 +76,7 @@ TEMPLATES = [
             BASE_DIR / 'templates' / 'forms',
             BASE_DIR / 'templates' / 'pages',
             BASE_DIR / 'templates' / 'pages' / 'claim',
+            BASE_DIR / 'templates' / 'pages' / 'claim' / 'partials',
             BASE_DIR / 'templates' / 'pages' / 'request',
             BASE_DIR / 'templates' / 'pages' / 'heads',
             BASE_DIR / 'request' / 'templatetags',

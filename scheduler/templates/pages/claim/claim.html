@@ -4,80 +4,21 @@
     <link rel="stylesheet" href="{% static 'formSubmission.css' %}">
     <link rel="stylesheet" href="{% static 'search.css' %}">
 {% endblock %}
+
 {% block title %}Claim{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="d-grid gap-3 container">
-    <div class="row">
-        <div class="col">
-            <div class="p-2">
-                <label for="id_term">Term:</label>
-                <select name="term" class="form-select" id="id_term">
-                    {% for term in terms %}
-                        {% if forloop.first %}
-                            <option value="{{ term.pk }}" selected>{{ term }}</option>
-                        {% else %}
-                            <option value="{{ term.pk }}">{{ term }}</option>
-                        {% endif %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="p-2">
-                <label for="id_department">Department:</label>
-                <select name="department" class="form-select" id="id_department">
-                    <option value="any" value selected>Any</option>
-                    {% for department in departments %}
-                        <option value="{{ department.pk }}">{{ department }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="p-2">
-                <label for="id_subject">Subject:</label>
-                <select name="subject" class="form-select" id="id_subject">
-                    <option value="any" value selected>Any</option>
-                    {% for subject in subjects %}
-                        <option value="{{ subject.pk }}" department="{{ subject.department.pk }}">{{ subject }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        <div class="col">    
-            <div class="p-2">
-                <label>Course:</label>
-                <div class="form-control" id="id_course-text" contentEditable="true">
-                </div>
-                <div class="live-search-options" id="search-container">
-                    <table class="table" id="course-options">
-
-                    </table>
-                </div>
-            </div>
-        </div>
+    <div id="course_search">
+        {% include 'course_search.html' %}
     </div>
     <div class="row">
         <div id="courseMultiSelect"></div>    
-        <div class="p-2" id="previousCourses">
-            <div>Previous courses:</div>
-            <div class="container">
-                {% for course in previous_courses %}
-                    {% if forloop.counter0|divisibleby:5 %}
-                        {% if not forloop.first %}</div><!-- close row div -->{% endif %} 
-                        <div class="row">
-                    {% endif %}
-                    <div class="col">
-                            <input type="checkbox" id="courseCheckbox{{ course.pk}}" value="{{ course.pk }}" subject="{{ course.subject.code }}" code="{{ course.code }}">
-                            <label for="courseCheckbox{{ course.pk}}">{{course.subject.code}}: {{ course.code }}</label>--{{course.title}}
-                    </div>
-                    {% if forloop.last and not forloop.counter0|divisibleby:5 %}</div><!-- close row div -->{% endif %}
-                {% endfor %}
-            </div>
-        </div>
     </div>
 </div> 
-<div class="p-2">
-    <input type="checkbox" id="fits" checked>
+<div class="p-2" id="professorControls">
+    <input type="checkbox" class="form-check-input" name="fits" id="fits" checked>
     <label for="fits">Fits in Schedule</label>
-    <input type="checkbox" id="available" checked>
+    <input type="checkbox" class="form-check-input" name="available" id="available" checked>
     <label for="available">Is available</label>
 </div>
 <div class="container p-2">
@@ -100,10 +41,16 @@
 
     </div>
 </div>
-<div class="p-2">
+<div class="p-2" 
+    hx-include="#courseMultiSelect, #term, #professorControls" 
+    hx-target="#sections"
+>
+            
     <div>
         <label>Sections:</label>
-        <button class="cursor-pointer search-icon-link" id="meetingSearch">
+        <button
+            hx-get="{% url 'section_search' %}"
+            class="cursor-pointer search-icon-link" id="meetingSearch">
             Search
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                 <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>

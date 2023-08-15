@@ -67,6 +67,10 @@ def modulo(num, val):
     return num % val
 
 @register.filter
+def subtract(num1: int, num2: int) -> int:
+    return num1 - num2
+
+@register.filter
 def time_display(t: time) -> str:
     try:
         return t.strftime('%I:%M %p')
