@@ -16,16 +16,19 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 import authentication.views as auth_views
-import request.views as request_views
+import request.page_views as request_page_views
+import request.partial_views as request_partial_views
 import claim.page_views as claim_page_views
 import claim.partial_views as claim_partial_views
-import heads.views as heads_views
+import heads.page_views as heads_page_views
+import heads.partial_views as heads_partial_views
 from django.views.generic import TemplateView
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', TemplateView.as_view(template_name='base.html'), name='index'),
+    path('test/', TemplateView.as_view(template_name='test.html'), name='test'),
 
     # Auth views:
     ## pages
@@ -37,6 +40,11 @@ urlpatterns = [
 
     # request views
     ## pages
+    ## partial
+    path('display_row', request_partial_views.DisplayRow.as_view(), name="display_row"),
+    path('input_row', request_partial_views.InputRow.as_view(), name="input_row"),
+    path('update_rooms', request_partial_views.update_rooms, name="update_rooms"),
+    path('update_meetings', request_partial_views.update_meetings, name="update_meetings"),
 
     # Claim views
     ## pages
@@ -61,8 +69,8 @@ urlpatterns = [
     
     # Head views
     ## pages
-    path('term_overview/', heads_views.term_overview, name="term_overview"),
-    ## json responses
-    path('dep_allo/', heads_views.dep_allo, name="dep_allo"),
-    path('dep_allo_sections/', heads_views.dep_allo_sections, name="dep_allo_sections"),
+    path('term_overview/', heads_page_views.term_overview, name="term_overview"),
+    ## partial responses
+    path('dep_allo/', heads_partial_views.dep_allo, name="dep_allo"),
+    path('dep_allo_sections/', heads_partial_views.dep_allo_sections, name="dep_allo_sections"),
 ]

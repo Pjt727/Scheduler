@@ -78,6 +78,7 @@ TEMPLATES = [
             BASE_DIR / 'templates' / 'pages' / 'claim',
             BASE_DIR / 'templates' / 'pages' / 'claim' / 'partials',
             BASE_DIR / 'templates' / 'pages' / 'request',
+            BASE_DIR / 'templates' / 'pages' / 'request' / 'partials',
             BASE_DIR / 'templates' / 'pages' / 'heads',
             BASE_DIR / 'request' / 'templatetags',
         ],

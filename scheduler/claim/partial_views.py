@@ -1,5 +1,6 @@
 from django.http import HttpRequest, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
+from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .models import *
 from request.models import *
@@ -104,8 +105,7 @@ def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
 
 @login_required
 @require_http_methods(["GET"])
-def get_meetings(request: HttpRequest) -> JsonResponse:
-    response_data = {}
+def get_meetings(request: HttpRequest) -> HttpResponse:
     
     term = request.GET.get('term')
     term = Term.objects.get(pk=term)
@@ -114,18 +114,14 @@ def get_meetings(request: HttpRequest) -> JsonResponse:
 
     data = {
         "professor": professor,
-        "term": term,
+        "title": term,
         "meetings": meetings,
         "unscheduled_sections": professor.sections.filter(meetings__isnull=True).all(),
     }
 
-    get_meetings_template = render(request, "get_meetings.html", data).content.decode()
+    return render(request, "get_meetings.html", context=data)
 
 
-    response_data['ok'] = True
-    response_data['get_meetings_template'] = get_meetings_template
-
-    return JsonResponse(response_data)
 
 
 @login_required
@@ -202,13 +198,13 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
     open_time_block_candidates =  TimeBlock.objects.filter(number__isnull=False).exclude(overlaps_meeting).filter().all()
 
     for candidate in open_time_block_candidates:
-        
         start_time: time = candidate.start_end_time.start
         start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute) + total_seconds
         end_time_to_exist = time(hour=start_time_d.seconds // 3600, minute=(start_time_d.seconds % 3600 ) // 60)
         tm = TimeBlock.objects.filter(number__isnull=False)
         
         tm = tm.filter(day=candidate.day, start_end_time__end=end_time_to_exist) 
+
 
         if not tm.exists():
             continue
@@ -223,6 +219,7 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
                 department=primary_section.course.subject.department,
                 term=primary_section.term
             )
+
 
         if room == 'any':
             open_rooms = building.get_available_rooms(
@@ -293,11 +290,9 @@ def get_rooms_edit_section(request: HttpRequest) -> JsonResponse:
     
 @login_required
 @require_http_methods(["GET"])
-def get_meeting_details(request: HttpRequest) -> JsonResponse:
-    response_data = {}
-    
+def get_meeting_details(request: HttpRequest) -> HttpResponse:
     meeting = request.GET.get('meeting')
-    in_edit_mode = request.GET.get('in_edit_mode') == 'true'
+    in_edit_mode = request.GET.get('inEditMode') == 'true'
     meeting: Meeting = Meeting.objects.get(pk=meeting)
 
     is_shared_section = meeting.section.meetings.exclude(professor=meeting.section.primary_professor).exists()
@@ -308,12 +303,8 @@ def get_meeting_details(request: HttpRequest) -> JsonResponse:
         'is_shared_section': is_shared_section,
         'in_edit_mode': in_edit_mode 
     }
-    meeting_details_template = render(request, 'meeting_details.html', context=data).content.decode()
+    return render(request, 'meeting_details.html', context=data)
 
-    response_data['ok'] = True
-    response_data['meeting_details_html'] = meeting_details_template
-
-    return JsonResponse(response_data)
 
     
 @login_required
@@ -337,6 +328,7 @@ def section_search(request: HttpRequest) -> HttpResponse:
     end_slice = int(request.GET.get('endSlice', Section.SEARCH_INTERVAL))
     original_length = 0 
     context = {
+        "refresh_url": reverse(request.resolver_match.view_name),
         "sections": [],
         "claim": True,
         "sort_column": sort_column,

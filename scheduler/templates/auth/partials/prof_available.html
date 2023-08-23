@@ -1,0 +1,17 @@
+{% include 'partials/interactive_inputs.html' %}
+
+<div class="toast-container position-fixed top-0 start-50 p-1 translate-middle-x">
+    <div id="newUserProf" class="toast bg-success" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+      <div class="toast-header">
+        <strong class="me-auto" id="toast-title">Hello {{ professor }}</strong>
+        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+      <div class="toast-body">
+        Autofilling your information!
+        {% if professor.meetings.exists %}
+        We have your meetings for 
+        {{ professor.meetings.first.section.course.subject.department }}.
+        {% endif %}
+      </div>
+    </div>
+</div>

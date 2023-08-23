@@ -12,8 +12,8 @@ def get_list(dictionary, key):
 def get_item(dictionary: dict, key):
     return dictionary.get(key)
 
-@register.filter
-def get_time_block_col(time_block: TimeBlock) -> int:
+@register.simple_tag
+def grid_area(start_time: time, end_time: time, day: str) -> str:
     codes_to_col = {
         Day.MONDAY: 3,
         Day.TUESDAY: 4,
@@ -23,11 +23,6 @@ def get_time_block_col(time_block: TimeBlock) -> int:
         Day.SATURDAY: 8,
         Day.SUNDAY: 9,
     }
-
-    return codes_to_col[time_block.day]
-
-@register.filter
-def get_time_block_row(time_block: TimeBlock) -> int:
     times_to_col = {
         timedelta(hours=8): 2,
         timedelta(hours=9): 3,
@@ -49,18 +44,18 @@ def get_time_block_row(time_block: TimeBlock) -> int:
         timedelta(hours=21): 11,
         timedelta(hours=22): 12
     }
-    meeting_seconds = time_block.start_end_time.start.hour * 3600 + time_block.start_end_time.start.minute * 60
+
+    grid_col_start = codes_to_col[day]
+
+    meeting_seconds = start_time.hour * 3600 + start_time.minute * 60
     closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
-    return times_to_col[closest_time_delta]
+    grid_row_start = times_to_col[closest_time_delta]
 
-@register.filter
-def get_time_block_span(time_block: TimeBlock) -> int:
-    start_end_time= time_block.start_end_time
-    start_seconds = start_end_time.start.hour * 3600 + start_end_time.start.minute * 60
-    end_seconds = start_end_time.end.hour * 3600 + start_end_time.end.minute * 60
+    meeting_seconds = end_time.hour * 3600 + end_time.minute * 60
+    closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
+    grid_row_end = times_to_col[closest_time_delta]
 
-    spanning_time_blocks = round((end_seconds - start_seconds) / 4500) # 4500 seconds is 1:15
-    return spanning_time_blocks
+    return f"{grid_row_start} / {grid_col_start} / {grid_row_end} / {grid_col_start}"
 
 @register.filter
 def modulo(num, val):

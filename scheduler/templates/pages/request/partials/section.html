@@ -1,0 +1,20 @@
+<!-- Going to change for when it needs to render possible request -->
+<section name="section">
+  <input name="sectionGrouper" value="{{ section.pk }}" hidden>
+  <div class="row fw-bold justify-content-center">
+    <div class="col">{{ section }}</div>
+  </div>
+  {% for meeting in section.meetings.all %}
+    <div
+      hx-get="{% url 'display_row' %}"
+      hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}", "outerSection": "{{ section.pk }}"'
+      hx-trigger="load"
+      name="meeting"
+
+      sectionClick="{{ section.pk }}"
+      counterClick="{{ forloop.counter }}"
+      class="row"
+    >
+    </div>
+  {% endfor %}
+</section>

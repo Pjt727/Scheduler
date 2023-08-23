@@ -2,6 +2,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from .models import Professor
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth import login as login_user
 from django.contrib.auth import logout as logout_user
 from django.contrib import messages
@@ -81,25 +82,30 @@ def logout(request: HttpRequest) -> HttpResponse:
     logout_user(request)
     return render(request, 'login.html')
 
-
-def get_professor(request: HttpRequest) -> JsonResponse:
-    response_data = {}
-    
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
-    
+@require_http_methods(["GET"])
+def get_professor(request: HttpRequest) -> HttpResponse:
     email = request.GET.get('email')
+    last_name = request.GET.get('last_name')
+    first_name = request.GET.get('first_name')
+    context = {
+        'email': email,
+        'first_name': first_name,
+        'last_name': last_name
+    }
+
     try:
-        prof = Professor.objects.get(email=email)
+        prof = Professor.objects.get(email__iexact=email)
+        context['email'] = prof.email
+        context['last_name'] = last_name if (last_name is not None) and (last_name != '') else prof.last_name
+        context['first_name'] = first_name if (first_name is not None) and (first_name != '') else prof.first_name
+        context['professor'] = prof
+        print(last_name)
+        print(context['last_name'], context['first_name'])
     except Professor.DoesNotExist:
-        response_data['ok'] = False
-        return JsonResponse(response_data)
+        return render(request, 'partials/no_prof.html', context=context)
     
-    response_data['first_name'] = prof.first_name
-    response_data['last_name'] = prof.last_name
-    response_data['ok'] = True
-    
-    return JsonResponse(response_data)
+    if prof.user is None:
+        return render(request, 'partials/prof_available.html', context=context)
+    return render(request, 'partials/prof_unavailable.html', context=context)
+        
+

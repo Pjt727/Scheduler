@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+{% endblock %}
+{% block title %}Edit Section{% endblock %} {% block content %}
+{% csrf_token %}
+<div class="position-fixed bottom-0 end-0 w-100" style="z-index: 1000;">
+  <div aria-live="polite" aria-atomic="true" class="position-relative">
+    <div id="problems" class="toast-container bottom-0 end-0 mb-3 me-3">
+    </div>
+  </div>
+</div>
+<div class="container text-center">
+  <section id="sections" class="pt-2"> 
+    {% include 'section.html' with section=section %}
+  </section>
+  <br>
+  <div class="row">
+    <div class="col text-start">
+      <input 
+        onchange="htmx.trigger('body', 'updateMeetings')"
+        type="checkbox" 
+        id="enforceDepartmentConstraints" 
+        name="enforceDepartmentConstraints" 
+        class="form-check-input" 
+        checked
+      >
+      <label for="enforceDepartmentConstraints">Enforce Department Constraints</label> 
+    </div>
+    <div class="col text-end">
+      <button type="button" id="submitAll" class="btn btn-primary">Submit</button>
+    </div>
+  </div>
+</div>
+<br>
+<!-- TODO change this first trigger -->
+<div 
+  hx-put="{% url 'update_meetings' %}"
+  hx-trigger="load delay:500ms, updateMeetings from:body"
+  hx-include="#sections, #enforceDepartmentConstraints"
+  id="meetingsContainer"
+>
+</div>
+<!-- Button trigger modal -->
+<div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <table class="table">
+            <tbody id="warningsBody">
+            </tbody>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button id="hardSubmitAll" type="button" class="btn btn-primary">Submit Anyways</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} 
+{% block scripts %}
+  <script src={% static 'message.js' %}></script> 
+  <script>
+    htmx.onLoad(()=>{
+      const toastElList = document.querySelectorAll('.toast')
+      const toastList = [...toastElList].map(toastEl => {
+        const toast =  new bootstrap.Toast(toastEl)
+        if(!toast.isShown()){
+          toast.show()
+        }
+        toastEl.addEventListener('hidden.bs.toast', () => {
+          toastEl.remove()
+        })
+      })
+    })
+  </script>
+{% endblock %}

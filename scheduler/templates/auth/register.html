@@ -14,56 +14,28 @@
 <br/><br/>
 <form action="{% url 'register' %}" method="POST">
     {% csrf_token %}
-    <label class="form-label">Email:</label>
-    <input type="text" class="form-control"  aria-describedby="emailHelp" name="email" id="email">
-    <label class="form-label">First name:</label>
-    <input type="text" class="form-control" name="first_name" id="first_name">
-    <label class="form-label">Last name:</label>
-    <input type="text" class="form-control" name="last_name" id="last_name">
-    <label class="form-label">Password:</label>
-    <input type="password" class="form-control" name="password1">
-    <label class="form-label">Password confrimation:</label>
-    <input type="password" class="form-control" name="password2">
+    <div id="interactiveInputs">
+      {% include 'partials/interactive_inputs.html' %}
+    </div>
+    <div class="form-floating mb-3">
+      <input type="password" class="form-control" id="password1" name="password1" placeholder="Password">
+      <label for="password1">Password</label>
+    </div>
+    <div class="form-floating">
+      <input type="password" class="form-control" id="password2" name="password2" placeholder="Password Confirmation">
+      <label for="password2">Password Confirmation</label>
+    </div>
     <br/><br/>
     <input type="submit"
     value="Submit" class="btn btn-secondary">
 </form>
 
-<div class="toast-container position-fixed top-0 end-0 p-1">
-    <div id="newUserProf" class="toast bg-success" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-      <div class="toast-header">
-        <strong class="me-auto" id="toast-title"></strong>
-        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-      <div class="toast-body">
-        You're found as a previous professor for Marist. Correct your name if applicable.
-      </div>
-    </div>
-</div>
-<div class="toast-container position-fixed top-0 end-0 p-1">
-    <div id="alreadyRegistered" class="toast" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-        <div class="toast-header">
-        <strong class="me-auto"></strong>
-        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-          You are already registered please log in! Conact support if this is a mistake.
-        </div>
-    </div>
-</div>
-<div class="toast-container position-fixed top-0 end-0 p-1">
-    <div id="noProf" class="toast text-bg-danger border-0" role="alert " aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
-        <div class="toast-header">
-            <strong class="me-auto">Attention</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">
-            There is no previous data for that email. If you're new teacher this is fine.
-            If you have taught in previous terms please recheck your email or contact support.
-        </div>
-    </div>
-  </div>
 {% endblock %}
 {% block scripts %}
-    <script src={% static 'register.js' %}></script>
+<script>
+  htmx.onLoad(()=>{
+    const toastElList = document.querySelectorAll('.toast')
+    const toastList = [...toastElList].map(toastEl => new bootstrap.Toast(toastEl).show())
+  })
+</script>
 {% endblock %}

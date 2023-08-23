@@ -197,6 +197,7 @@
   .hoverCalendar {
     border-style: dashed;
     opacity: 0.5;
+    pointer-events: none;
   }
 
   .selectedCalendar {

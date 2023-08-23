@@ -1,6 +1,6 @@
 {% load formhelpers %}
-<div class="meeting-container">
-  <div class="title">{{ term }}</div>
+<div class="meeting-container" hx-disinherit="*">
+  <div class="title">{{ title }}</div>
   <div class="days">
     <div class="filler"></div>
     <div class="filler"></div>
@@ -47,38 +47,97 @@
     {% for section in sections %}
       {% for meeting in section.list %}
       
-      <div startTime="{{ meeting.time_block.start_end_time.start_input }}"
-        endTime="{{ meeting.time_block.start_end_time.end_input }}"
-        day="{{ meeting.time_block.day }}"
-        room="{{ meeting.room.pk }}"
+      <div 
         class="event calendar{{ forloop.parentloop.counter|modulo:16 }} position-relative"
-        name="addedMeetings"
-        meeting="{{ meeting.section }}"
-        style="grid-column: {{ meeting.time_block|get_time_block_col }}; grid-row: {{ meeting.time_block|get_time_block_row }}/span {{ meeting.time_block|get_time_block_span }};">
+        style="grid-area: {% grid_area meeting.time_block.start_end_time.start meeting.time_block.start_end_time.end meeting.time_block.day %};"
+      >
         {{ meeting.section }}
-        <svg class="position-absolute top-0 end-0 bi bi-info-circle" name="meetingDetail" value="{{ meeting.pk }}" data-bs-toggle="collapse" href="#meetingDetails" aria-expanded="false" aria-controls="meetingsDetails" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+        <svg 
+          hx-get="{% url 'get_meeting_details' %}"
+          hx-target="#meetingDetailsContainer"
+          hx-vals='{"inEditMode": "{{ in_edit_mode }}", "meeting": "{{ meeting.pk }}"}'
+          onclick='new bootstrap.Collapse("#meetingDetails", {toggle: false}).show()'
+
+          class="position-absolute top-0 end-0 bi bi-info-circle pt-1 pe-1"
+          style="cursor: pointer;"
+          name="meetingDetail" 
+          value="{{ meeting.pk }}" 
+          xmlns="http://www.w3.org/2000/svg" 
+          width="25" 
+          height="25" 
+          fill="currentColor" 
+          viewBox="0 0 16 16"
+        >
           <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
           <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
         </svg>
       </div>
       {% endfor %}
     {% endfor %}
-    {% for time_slot in open_time_blocks %}
-    <div class="openSlots event justify-content-center" startTime="{{ time_slot.start }}" endTime="{{ time_slot.end }}"
+    {% regroup edit_meetings by section as edit_sections %}
+    {% for section in edit_sections %}
+      {% for meeting in section.list %}
+        {% if meeting == edit_meeting %}
+        <div
+          id="selectedMeeting"
+          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
+          style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %}; transform: scale(1.2);"
+        >
+        {{ section.grouper }} (Editing)
+        </div>
+        <div
+          id="hoverMeeting"
+          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative hoverCalendar" 
+          style="display: none; transform: scale(1.2);"
+        >
+        </div>
+
+        {% else %}
+        <div
+          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
+          style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %};"
+        >
+        {{ section.grouper }}
+        </div>
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+    {% for time_slot in open_slots %}
+    <div class="openSlots event justify-content-center" 
+      startTime="{{ time_slot.start|time_input }}" 
+      endTime="{{ time_slot.end|time_input }}"
       day="{{ time_slot.day }}"
-      style="grid-column: {{ time_slot.time_block|get_time_block_col }}; grid-row: {{ time_slot.time_block|get_time_block_row }}/span {{ time_slot.time_block|get_time_block_span }}">
-      Open Time Slot
+      onclick='timeSlotClick(this);
+        const meeting = document.getElementById("selectedMeeting");
+        meeting.style.gridArea = this.style.gridArea;
+        const inputRow = document.querySelector(`[sectionClick="{{ edit_meeting.section.pk}}"][counterClick="{{ edit_meeting.counter }}"]`);
+        inputRow.querySelector(`[name="startTime"]`).value = this.getAttribute("startTime");
+        inputRow.querySelector(`[name="endTime"]`).value = this.getAttribute("endTime");
+        inputRow.querySelector(`[name="day"]`).value = this.getAttribute("day");
+      '
+      onmouseover="
+        const meeting = document.getElementById('hoverMeeting');
+        meeting.style.gridArea = this.style.gridArea;
+        meeting.style.display = 'grid';
+      "
+      onmouseout ="document.getElementById('hoverMeeting').style.display = 'none'"
+      
+      day="{{ time_slot.day }}"
+      style="grid-area: {% grid_area time_slot.start time_slot.end time_slot.day %}; cursor: pointer;"
+    >
+      Open Time Slot ({{ time_slot.allocation}} / {{time_slot.allocation_max}})
     </div>
+    {% endfor %}
+    {% for number_icon in number_icons %}
     <div class="position-relative"
-      style="grid-column: {{ time_slot.time_block|get_time_block_col }};
-        grid-row: {{ time_slot.time_block|get_time_block_row }}/span {{ time_slot.time_block|get_time_block_span }};
-        pointer-events: none;">
-        <div class="position-absolute top-0 end-0 badge rounded-pill text-bg-primary"
-          style="z-index: 10;">
-          {{ time_slot.number }}
+      style=" grid-area: {% grid_area number_icon.start number_icon.end number_icon.day %};
+        pointer-events: none;"
+    >
+        <div class="position-absolute top-0 end-0 badge rounded-pill text-bg-primary opacity-75"
+          style="z-index: 10; margin-top: -0.25rem; margin-right: -0.25rem;">
+          {{ number_icon.numbers }}
         </div>
     </div>
-
     {% endfor %}
   </div>
   <div class="collapse collapse-horizontal position-absolute top-0 end-0" id="meetingDetails" style="z-index: 11;">
@@ -86,4 +145,11 @@
     </div>
     <button data-bs-toggle="collapse" href="#meetingDetails" type="button" role="button" class="btn-close position-absolute top-0 end-0" aria-controls="meetingsDetails" aria-expanded="true" aria-label="Close">
     </button>
-  </div>
+</div>
+<script>
+  function timeSlotClick(timeSlot, ){
+
+  }
+  
+
+</script>

@@ -6,7 +6,12 @@
 {% block title %}My Meetings{% endblock %}
 {% block content %}
 <label for="id_term">Term:</label>
-<select name="term" class="form-select" id="id_term">
+<select 
+    hx-get="{% url 'get_meetings' %}"
+    hx-trigger="change, load"
+    hx-target="#meetings"
+    name="term" class="form-select" id="term"
+>
     {% for term in terms %}
         {% if forloop.first %}
             <option value="{{ term.pk }}" selected>{{ term }}</option>
@@ -24,6 +29,4 @@
 {% endblock %}
 {% block scripts %}
     <script src={% static 'message.js' %}></script> 
-    <script src={% static 'meeting_table.js' %}></script> 
-    <script src={% static 'my_meetings.js' %}></script>
 {% endblock %}

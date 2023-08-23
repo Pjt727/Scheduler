@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}<link rel="stylesheet" href="{% static 'formSubmission.css' %}">{% endblock %}
+{% block title %}Test{% endblock %} {% block content %}
+<div id="bar">
+  <input value="1" type="number" name="mynum">
+</div>
+<div name="foo">
+   <button
+    hx-get="{% url 'test' %}"
+    hx-include='closest [name="foo"] #bar'
+  >
+    Press Me!
+  </button>
+  <input value="2" type="number" name="mysecondnum">
+</div>
+{% endblock %}

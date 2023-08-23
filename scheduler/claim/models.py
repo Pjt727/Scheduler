@@ -6,7 +6,7 @@ from django.db.models.functions import Coalesce
 from django.db.models.query import QuerySet
 from authentication.models import Professor
 from datetime import time, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 if TYPE_CHECKING:
     from request.models import EditMeetingRequest
 
@@ -73,13 +73,13 @@ class Building(models.Model):
             meetings__time_block__start_end_time__start__lte=end_time,
             meetings__time_block__start_end_time__end__gte=start_time,
         )
+        # I am not sure why an exclude does not work
         if section is None:
-            open_rooms: QuerySet[Room] = self.rooms.exclude(in_time_frame)
+            taken_rooms = self.rooms.filter(in_time_frame)
+            open_rooms = self.rooms.exclude(pk__in=taken_rooms)
         else:
-            open_rooms: QuerySet[Room] = self.rooms.exclude(
-                ~Q(meetings__section=section) & in_time_frame
-            )
-
+            taken_rooms = self.rooms.filter((~Q(meetings__section=section)) & in_time_frame)
+            open_rooms = self.rooms.exclude(pk__in=taken_rooms)
 
         if include_general:
             return open_rooms
@@ -87,7 +87,7 @@ class Building(models.Model):
         return open_rooms.exclude(is_general_purpose=True)
     
     def get_available_rooms_in_number(self, number: int, term: 'Term', include_general: bool, both_open: bool = True):
-        is_open_room = Q()
+        in_time_blocks = Q()
         
         for time_block in TimeBlock.objects.filter(number=number).all():
             in_time_block = Q(
@@ -97,11 +97,12 @@ class Building(models.Model):
                 meetings__time_block__start_end_time__end__gte=time_block.start_end_time.start,
             )
             if both_open:
-                is_open_room |= in_time_block
+                in_time_blocks |= in_time_block
             else:
-                is_open_room &= in_time_block
+                in_time_blocks &= in_time_block
         
-        open_rooms = self.rooms.exclude(is_open_room)
+        taken_rooms = self.rooms.filter(in_time_block)
+        open_rooms = self.rooms.exclude(pk__in=taken_rooms)
 
         if not include_general:
             return open_rooms.distinct()
@@ -134,6 +135,7 @@ class Room(models.Model):
     is_general_purpose = models.BooleanField(null=True, blank=True, default=False)
     
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
+    meetings: QuerySet['Meeting']
 
 
     class Meta:
@@ -163,7 +165,7 @@ class StartEndTime(models.Model):
         return self.end.strftime('%H:%M')
 
     def start_display(self) -> str:
-        return self.start.strftime('%H:%M %p')
+        return self.start.strftime('%I:%M %p')
 
     def end_display(self) -> str:
         return self.end.strftime('%I:%M %p')
@@ -228,6 +230,11 @@ class DepartmentAllocation(models.Model):
     def exceeds_allocation(self, term: 'Term', amount_adding=1):
         return self.count_rooms(term) + amount_adding > self.number_of_classrooms
     
+class NumberIcon(TypedDict):
+    start: time
+    end: time
+    day: str
+    numbers: str
 
 class TimeBlock(models.Model):
     verbose_name = "Time Block"
@@ -265,7 +272,6 @@ class TimeBlock(models.Model):
 
         for tm in tms:
             self.allocation_groups.add(tm.allocation_groups.first())
-    
 
     def get_official_time_blocks(start: time | timedelta, end: time | timedelta, day: str) -> QuerySet['TimeBlock']:
         time_blocks = TimeBlock.objects.filter(
@@ -277,6 +283,33 @@ class TimeBlock(models.Model):
             )
         return time_blocks
     
+    def get_number_icons() -> list[NumberIcon]:
+        number_icons: list[NumberIcon] = []
+        time_blocks = TimeBlock.objects \
+            .filter(number__isnull=False) \
+            .exclude(number__in = TimeBlock.LONG_NIGHT_NUMBERS) \
+            .exclude(number__in = TimeBlock.SHORT_NIGHT_NUMBERS)
+        for time_block in time_blocks.all():
+            number_icons.append({
+                'day': time_block.day,
+                'start': time_block.start_end_time.start,
+                'end': time_block.start_end_time.end,
+                'numbers': str(time_block.number)
+            })
+        other_time_blocks = TimeBlock.objects \
+            .filter(number__isnull=False) \
+            .filter(number__in = TimeBlock.SHORT_NIGHT_NUMBERS)
+        for time_block in other_time_blocks.all():
+            bigger_time_block = TimeBlock.objects.get(number__in=TimeBlock.LONG_NIGHT_NUMBERS, day=time_block.day)
+            number_icons.append({
+                'day': time_block.day,
+                'start': time_block.start_end_time.start,
+                'end': time_block.start_end_time.end,
+                'numbers': f"{time_block.number}/{bigger_time_block.number}"
+            })
+
+        return number_icons
+                
 
 
 class Subject(models.Model):
@@ -455,6 +488,7 @@ class Section(models.Model):
             models.When(time_block__day=Day.SATURDAY, then=6),
             models.When(time_block__day=Day.SUNDAY, then=7),
         ))
+
 
          
 

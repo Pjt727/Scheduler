@@ -1,14 +1,17 @@
 {% load formhelpers %}
-<div class="container position-relative" id="sectionsTableContainer">
+<div 
+    {%if allocation_group %}hx-vals='{"allocationGroup":"{{ allocation_group }}"}' {%endif %}
+    class="container position-relative" id="sectionsTableContainer"
+>
 <table class="table align-middle" id="sectionsTable">
     <thead>
         <tr class="sectionRow">
-            <th class="col-4" scope="col">
+            <th class="col-3" scope="col">
                 Title
                 <span class="sort" id="sortTitle">
                     {% if sort_column == "sortTitle" and sort_type == "ascending" %}
                     <svg sort="ascending"  xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-down text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortTitle",
                             "sortType": "descending"
@@ -19,14 +22,14 @@
                     </svg>
                     {% elif sort_column == "sortTitle" and sort_type == "descending" %}
                     <svg sort="descending" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-up text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                     >
                         <path fill-rule="evenodd" d="M10.082 5.629 9.664 7H8.598l1.789-5.332h1.234L13.402 7h-1.12l-.419-1.371h-1.781zm1.57-.785L11 2.687h-.047l-.652 2.157h1.351z"/>
                         <path d="M12.96 14H9.028v-.691l2.579-3.72v-.054H9.098v-.867h3.785v.691l-2.567 3.72v.054h2.645V14zm-8.46-.5a.5.5 0 0 1-1 0V3.707L2.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L4.5 3.707V13.5z"/>
                     </svg>
                     {% else %}
                     <svg sort="noSort" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-down" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortTitle",
                             "sortType": "ascending"
@@ -43,7 +46,7 @@
                 <span class="sort" id="sortSubject">
                     {% if sort_column == "sortSubject" and sort_type == "ascending" %}
                     <svg sort="ascending"  xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-down text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortSubject",
                             "sortType": "descending"
@@ -54,14 +57,14 @@
                     </svg>
                     {% elif sort_column == "sortSubject" and sort_type == "descending" %}
                     <svg sort="descending" mlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-up text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                     >
                         <path fill-rule="evenodd" d="M10.082 5.629 9.664 7H8.598l1.789-5.332h1.234L13.402 7h-1.12l-.419-1.371h-1.781zm1.57-.785L11 2.687h-.047l-.652 2.157h1.351z"/>
                         <path d="M12.96 14H9.028v-.691l2.579-3.72v-.054H9.098v-.867h3.785v.691l-2.567 3.72v.054h2.645V14zm-8.46-.5a.5.5 0 0 1-1 0V3.707L2.354 4.854a.5.5 0 1 1-.708-.708l2-1.999.007-.007a.498.498 0 0 1 .7.006l2 2a.5.5 0 1 1-.707.708L4.5 3.707V13.5z"/>
                     </svg>
                     {% else %}
                     <svg sort="noSort" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-alpha-down" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortSubject",
                             "sortType": "ascending"
@@ -78,7 +81,7 @@
                 <span class="sort" id="sortCode">
                     {% if sort_column == "sortCode" and sort_type == "ascending" %}
                     <svg sort="ascending" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-numeric- text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortCode",
                             "sortType": "descending"
@@ -90,7 +93,7 @@
                     </svg>
                     {% elif sort_column == "sortCode" and sort_type == "descending" %}
                     <svg sort="descending" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-numeric-down text-primary" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                     >
                         <path d="M12.438 1.668V7H11.39V2.684h-.051l-1.211.859v-.969l1.262-.906h1.046z"/>
                         <path fill-rule="evenodd" d="M11.36 14.098c-1.137 0-1.708-.657-1.762-1.278h1.004c.058.223.343.45.773.45.824 0 1.164-.829 1.133-1.856h-.059c-.148.39-.57.742-1.261.742-.91 0-1.72-.613-1.72-1.758 0-1.148.848-1.835 1.973-1.835 1.09 0 2.063.636 2.063 2.687 0 1.867-.723 2.848-2.145 2.848zm.062-2.735c.504 0 .933-.336.933-.972 0-.633-.398-1.008-.94-1.008-.52 0-.927.375-.927 1 0 .64.418.98.934.98z"/> 
@@ -98,7 +101,7 @@
                     </svg>
                     {% else %}
                     <svg sort="noSort" xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-sort-numeric-down" viewBox="0 0 16 16"
-                        hx-get="{% url 'section_search' %}"
+                        hx-get="{{ refresh_url }}"
                         hx-vals='{
                             "sortColumn": "sortCode",
                             "sortType": "ascending"
@@ -111,7 +114,7 @@
                     {% endif %}
                 </span>
             </th>
-            <th class="col-1" scope="col">
+            <th class="col-3" scope="col">
                  Meetings
             </th>
             <th class="col-2" scope="col">
@@ -127,28 +130,19 @@
             <td>{{ section.course.subject.code }}</td>
             <td>{{ section.course.code }}</td>
             <td>
-                {% with section.meetings.all as meetings %}
-                {% if meetings %}
-                <a tabindex="0" class="btn" role="button" data-bs-toggle="popover" data-bs-trigger="focus"
-                data-bs-title="Meetings"
-                data-bs-content="
-                    <table id='meetingsFor{{ section.pk }}'>
-                        {% for meeting in meetings %}
-                            <tr value='{{ meeting.pk }}'>
-                                <td>{{ meeting.time_block.day }},</td>
-                                <td>{{ meeting.time_block.start_end_time }}</td>
-                                <td>{{ meeting.room }}</td>
-                            </tr>
-                        {% endfor %}
-                    </table>
-                    "
-                    data-bs-html="true"
-                > 
-                    +
+                {% with section.meetings_sorted.all as meetings %}
+                <table>
+                {% for meeting in meetings %}
+                    <tr value='{{ meeting.pk }}'>
+                        <td>{{ meeting.time_block.day }},</td>
+                        <td>{{ meeting.time_block.start_end_time }},</td>
+                        <td>{{ meeting.room }}</td>
+                    </tr>
                 </a>
-                {% else %}
+                {% empty %}
                 None
-                {% endif %}
+                {% endfor %}
+                </table>
                 {% endwith %}
 
             </td>
@@ -187,7 +181,7 @@
                 {% if start_slice == 0 %}
                 disabled
                 {% else %}
-                hx-get="{% url 'section_search' %}"
+                hx-get="{{ refresh_url }}"
                 hx-vals='{
                     "sortColumn": "{{ sort_column }}",
                     "sortType": "{{ sort_type }}",
@@ -209,7 +203,7 @@
                 {% if end_slice >= original_length %}
                 disabled
                 {% else %}
-                hx-get="{% url 'section_search' %}"
+                hx-get="{{ refresh_url }}"
                 hx-vals='{ 
                     "sortColumn": "{{ sort_column }}",
                     "sortType": "{{ sort_type }}", 
