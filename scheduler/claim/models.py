@@ -111,10 +111,10 @@ class Building(models.Model):
     
     def recommend(course: 'Course', term: 'Term') -> 'Building':
         building_counts = Building.objects.annotate(
-                count=Count('rooms__meetings__section',
-                    filter=Q(
-                        rooms__meetings__section__course=course,
-                        rooms__meetings__section=term)))
+            count=Count('rooms__meetings__section',
+                filter=Q(
+                    rooms__meetings__section__course=course,
+                    rooms__meetings__section=term)))
         return building_counts.order_by('-count')[0]
 
 
@@ -170,7 +170,7 @@ class StartEndTime(models.Model):
     def end_display(self) -> str:
         return self.end.strftime('%I:%M %p')
     
-    def start_delta(self) -> timedelta:
+    def start_d(self) -> timedelta:
         return timedelta(hours=self.start.hour, minutes=self.start.minute)
 
     def end_delta(self) -> timedelta:

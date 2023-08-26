@@ -188,7 +188,7 @@ def get_meetings_edit_section(request: HttpRequest) -> JsonResponse:
 
     overlaps_meeting = Q()
     for meeting in meetings.all():
-        start_time_d = meeting.time_block.start_end_time.start_delta() - total_seconds_added
+        start_time_d = meeting.time_block.start_end_time.start_d() - total_seconds_added
         start_time = time(hour=start_time_d.seconds // 3600, minute=(start_time_d.seconds % 3600) // 60)
 
         overlaps_meeting |= Q(day=meeting.time_block.day,

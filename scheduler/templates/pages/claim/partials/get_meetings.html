@@ -14,7 +14,7 @@
   </div>
   <div class="content" id="meetingsGrid">
     <div class="time" style="grid-row:1"><div>08:00</div></div>
-    <div class="time-double" style="grid-row:2"><div>09:00&nbsp&nbsp</div><div>09:15&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:2"><div>09:15&nbsp&nbsp</div><div>09:15&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:3"><div>10:45&nbsp&nbsp</div><div>11:00&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:4"><div>12:15&nbsp&nbsp</div><div>12:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:5"><div>01:45&nbsp&nbsp</div><div>02:00&nbsp&nbsp</div></div>
@@ -107,7 +107,7 @@
       startTime="{{ time_slot.start|time_input }}" 
       endTime="{{ time_slot.end|time_input }}"
       day="{{ time_slot.day }}"
-      onclick='timeSlotClick(this);
+      onclick='
         const meeting = document.getElementById("selectedMeeting");
         meeting.style.gridArea = this.style.gridArea;
         const inputRow = document.querySelector(`[sectionClick="{{ edit_meeting.section.pk}}"][counterClick="{{ edit_meeting.counter }}"]`);
@@ -146,10 +146,3 @@
     <button data-bs-toggle="collapse" href="#meetingDetails" type="button" role="button" class="btn-close position-absolute top-0 end-0" aria-controls="meetingsDetails" aria-expanded="true" aria-label="Close">
     </button>
 </div>
-<script>
-  function timeSlotClick(timeSlot, ){
-
-  }
-  
-
-</script>

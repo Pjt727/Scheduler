@@ -235,6 +235,18 @@ def update_rooms(request: HttpRequest) -> HttpResponse:
     return HttpResponse(room_options)
 
 @login_required
+@require_http_methods(["GET"])
+def add_rows(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.GET)
+    edit_meetings = EditMeeting.create_all(data)
+    section_pk = data.get('selectedSection')
+
+
+    rows = ""
+
+    return
+
+@login_required
 @require_http_methods(["POST"])
 def group_warnings(request: HttpRequest) -> HttpResponse:
 
