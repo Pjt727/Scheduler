@@ -125,7 +125,7 @@
       day="{{ time_slot.day }}"
       style="grid-area: {% grid_area time_slot.start time_slot.end time_slot.day %}; cursor: pointer;"
     >
-      Open Time Slot ({{ time_slot.allocation}} / {{time_slot.allocation_max}})
+      <div>Open Time Slot</div> <div>({{ time_slot.allocation}} / {{time_slot.allocation_max}})</div>
     </div>
     {% endfor %}
     {% for number_icon in number_icons %}

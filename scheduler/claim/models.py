@@ -114,7 +114,7 @@ class Building(models.Model):
             count=Count('rooms__meetings__section',
                 filter=Q(
                     rooms__meetings__section__course=course,
-                    rooms__meetings__section=term)))
+                    rooms__meetings__section__term=term)))
         return building_counts.order_by('-count')[0]
 
 

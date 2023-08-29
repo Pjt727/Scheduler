@@ -237,17 +237,28 @@ def update_rooms(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET"])
 def add_rows(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.GET)
+    data = request.GET
     edit_meetings = EditMeeting.create_all(data)
+    edit_meetings = list(filter(lambda m: not m.is_deleted, edit_meetings))
     section_pk = data.get('selectedSection')
+    section = Section.objects.get(pk=section_pk)
+    # TODO better professor guessing
+    recommended = EditMeeting.recommend_meetings(edit_meetings, section.primary_professor, section)
+    print("\n\n\n",recommended, "\n\n\n")
 
+    context = {
+        'edit_meetings': recommended
+    }
 
-    rows = ""
+    return render(request, 'display_rows.html', context=context)
 
-    return
 
 @login_required
 @require_http_methods(["POST"])
 def group_warnings(request: HttpRequest) -> HttpResponse:
 
     return
+
+#{% for m in edit_meetings %}
+#  {% include m with meeting_pk=m.get_meeting_pk section_pk=m.section.pk building=m.building room=m.room day=m.day professor=m.professor counter=m.counter start_time=m.start_time end_time=m.end_time %}
+#{% endfor %}

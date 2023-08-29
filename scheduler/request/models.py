@@ -50,7 +50,7 @@ class EditMeeting:
         edit_meetings: list[EditMeeting] = []
         for i in range(len(are_deleted)):
             section = Section.objects.get(pk=sections[i])
-            counter = counters[i]
+            counter = int(counters[i])
 
             start_time = start_times[i]
             end_time = end_times[i]
@@ -337,14 +337,14 @@ class EditMeeting:
             
         return open_slots
 
-    def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section_pk: str) -> list['EditMeeting']:
+    def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section: Section) -> list['EditMeeting']:
         total_duration = timedelta()
         section_to_exclude = set()
         number_room_complement: list[tuple[int, Room]] = []
         last_counter = 1
         for edit_meeting in edit_meetings:
             section_to_exclude.add(edit_meeting.section)
-            if edit_meeting.section.pk != section_pk: continue
+            if edit_meeting.section != section: continue
             last_counter = max(last_counter, edit_meeting.counter)
             tms = TimeBlock.get_official_time_blocks(edit_meeting.start_time, edit_meeting.end_time, edit_meeting.day)
             for tm in tms.all():
@@ -357,7 +357,6 @@ class EditMeeting:
                 number_room_complement.append((tm.number, edit_meeting.room))
 
             total_duration += edit_meeting.end_time_d() - edit_meeting.start_time_d()
-        section = Section.objects.get(pk=section_pk)
         no_recommendation = EditMeeting(
             start_time=time(0),
             end_time=time(hour=1, minute=15),
@@ -373,7 +372,7 @@ class EditMeeting:
         valid_added_times = list(map(lambda t: t-total_duration, valid_times))
         base_meetings = Meeting.objects.none()
         if professor:
-            meetings |= professor.meetings.filter(section__term=section.term)
+            base_meetings |= professor.meetings.filter(section__term=section.term)
         
         # purposefully slow to ensure that the same logic as open_slots is used
         # I also hate this code
@@ -383,20 +382,22 @@ class EditMeeting:
             for num, room in number_room_complement:
                 if room:
                     meetings =  base_meetings | Meeting.objects.filter(room=room, section__term=section.term)
-                open_slots_num: list[TimeSlot] = EditMeeting.open_slots(
+                open_slots: list[TimeSlot] = EditMeeting.open_slots(
                     room=room,
                     professor=professor,
+                    building=None,
                     duration=TimeBlock.ONE_BLOCK,
+                    section=section,
                     edit_meetings=edit_meetings,
                     meetings=meetings,
                     enforce_allocation=False)
-                for open_slot in open_slots_num:
-                    if num not in open_slot.numbers: continue
+                for open_slot in open_slots:
+                    if num not in open_slot['numbers']: continue
                     building = None if room is None else room.building
                     return [EditMeeting(
-                        start_time=open_slot.start,
-                        end_time=open_slot.end,
-                        day=open_slot.day,
+                        start_time=open_slot['start'],
+                        end_time=open_slot['end'],
+                        day=open_slot['day'],
                         building=building,
                         room=room,
                         meeting=None,
@@ -404,19 +405,22 @@ class EditMeeting:
                         counter=last_counter + 1,
                         professor=professor,
                     )]
+            building = Building.recommend(section.course, term=section.term)
             open_slots: list[TimeSlot] = EditMeeting.open_slots(
                 room=None,
                 professor=professor,
+                building=building,
                 duration=TimeBlock.ONE_BLOCK,
                 edit_meetings=edit_meetings,
+                section=section,
                 meetings=meetings,
                 enforce_allocation=False)
-            open_slots.sort(key=lambda s: s.allocation / s.allocation_max)
+            open_slots.sort(key=lambda s: s['allocation'] / s['allocation_max'])
             best_open_slot = open_slots[0]
             return [EditMeeting(
-                start_time=best_open_slot.start,
-                end_time=best_open_slot.end,
-                day=best_open_slot.day,
+                start_time=best_open_slot['start'],
+                end_time=best_open_slot['end'],
+                day=best_open_slot['day'],
                 building=building,
                 room=None,
                 meeting=None,
@@ -432,6 +436,9 @@ class EditMeeting:
 
         return [no_recommendation]
 
+
+    def get_meeting_pk(self) -> None | str:
+        return None if self.meeting is None else self.meeting.pk
 
     def start_time_d(self):
         return timedelta(hours=self.start_time.hour, minutes=self.start_time.minute)

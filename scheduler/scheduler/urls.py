@@ -43,6 +43,7 @@ urlpatterns = [
     ## partial
     path('display_row', request_partial_views.DisplayRow.as_view(), name="display_row"),
     path('input_row', request_partial_views.InputRow.as_view(), name="input_row"),
+    path('add_rows', request_partial_views.add_rows, name="add_rows"),
     path('update_rooms', request_partial_views.update_rooms, name="update_rooms"),
     path('update_meetings', request_partial_views.update_meetings, name="update_meetings"),
 
@@ -63,7 +64,6 @@ urlpatterns = [
     path('get_edit_section/', claim_partial_views.get_edit_section, name='get_edit_section'),
     path('get_rooms_edit_section', claim_partial_views.get_rooms_edit_section, name='get_room_edit_section'),
     path('get_meeting_details/', claim_partial_views.get_meeting_details, name='get_meeting_details'),
-    path('add_rows/', claim_partial_views.add_rows, name='add_rows'),
     path('get_warnings/', claim_partial_views.get_warnings, name='get_warnings'),
     path('submit_section_changes/', claim_partial_views.submit_section_changes, name='submit_section_changes'),
     
