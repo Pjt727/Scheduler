@@ -253,13 +253,17 @@ class EditMeeting:
         elif total_time == TimeBlock.TRIPLE_NIGHT:
             return meetings, []
     
-    def open_slots(*args, room: Room is None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool) -> list[TimeSlot]:
+    # There are still a lot problems with this and probably with forever have a lot of problems but at this points
+    # it does not need to be perfect
+    def open_slots(*args, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool) -> list[TimeSlot]:
         if building is None:
             building = Building.recommend(section.course, term=section.term)
         in_edit_meetings = Q()
         # duration is always greater than or equal to TimeBlock.ONE_BLOCK
         duration_after_time_block = duration - TimeBlock.ONE_BLOCK
+        sections_to_exclude: set[Section] = set()
         for edit_meeting in edit_meetings:
+            sections_to_exclude.add(edit_meeting.section)
             same_professor = (professor == edit_meeting.professor) \
                 and (professor is not None)
             same_room = (room == edit_meeting.room) \
@@ -303,6 +307,7 @@ class EditMeeting:
             )
 
             allocation_max = department_allocation.number_of_classrooms
+            # STILL COUNTS WITHOUT CHANGES WHEN EDITING
             allocation = department_allocation.count_rooms(section.term)
             slot: TimeSlot = {
                 'start': time_block.start_end_time.start,
@@ -313,12 +318,14 @@ class EditMeeting:
                 'numbers': [time_block.number]
             }
             if room is None:
+                # DOES NOT INCLUDE ONES FROM EDIT MEETINGS
                 available_rooms = building.get_available_rooms(
                     start_time=slot['start'],
                     end_time=slot['end'],
                     day=slot['day'],
                     term=section.term,
                     include_general= (slot['allocation_max'] > slot['allocation']) or (not enforce_allocation),
+                    sections_to_exclude=sections_to_exclude
                 )
                 if not available_rooms.exists(): continue
                 open_slots.append(slot)
@@ -337,15 +344,20 @@ class EditMeeting:
             
         return open_slots
 
+    # Recommending meeting is painfully complex and pretty slow doing it this way.
+    # To remove some of the complexity open_slots is used which probably is not the best way
+    # There should be A LOT better of way to recommend bulk subjects without requesting 
+
     def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section: Section) -> list['EditMeeting']:
         total_duration = timedelta()
-        section_to_exclude = set()
+        sections_to_exclude = set()
         number_room_complement: list[tuple[int, Room]] = []
         last_counter = 1
         for edit_meeting in edit_meetings:
-            section_to_exclude.add(edit_meeting.section)
+            sections_to_exclude.add(edit_meeting.section)
             if edit_meeting.section != section: continue
             last_counter = max(last_counter, edit_meeting.counter)
+            if edit_meeting.is_deleted: continue
             tms = TimeBlock.get_official_time_blocks(edit_meeting.start_time, edit_meeting.end_time, edit_meeting.day)
             for tm in tms.all():
                 in_complements_flag = False
@@ -355,8 +367,8 @@ class EditMeeting:
                     in_complements_flag = True
                 if in_complements_flag: continue
                 number_room_complement.append((tm.number, edit_meeting.room))
-
             total_duration += edit_meeting.end_time_d() - edit_meeting.start_time_d()
+        edit_meetings = list(filter(lambda m: not m.is_deleted, edit_meetings))
         no_recommendation = EditMeeting(
             start_time=time(0),
             end_time=time(hour=1, minute=15),
@@ -372,71 +384,158 @@ class EditMeeting:
         valid_added_times = list(map(lambda t: t-total_duration, valid_times))
         base_meetings = Meeting.objects.none()
         if professor:
-            base_meetings |= professor.meetings.filter(section__term=section.term)
+            base_meetings |= professor.meetings \
+                .filter(section__term=section.term) \
+                .exclude(section__in=sections_to_exclude)
         
         # purposefully slow to ensure that the same logic as open_slots is used
         # I also hate this code
-        if any(map(lambda t: t==TimeBlock(0), valid_added_times)):
+        if timedelta(0) in valid_added_times:
             return [no_recommendation]
-        elif any(map(lambda t: t==TimeBlock.ONE_BLOCK, valid_added_times)):
-            for num, room in number_room_complement:
-                if room:
-                    meetings =  base_meetings | Meeting.objects.filter(room=room, section__term=section.term)
-                open_slots: list[TimeSlot] = EditMeeting.open_slots(
-                    room=room,
-                    professor=professor,
-                    building=None,
-                    duration=TimeBlock.ONE_BLOCK,
-                    section=section,
-                    edit_meetings=edit_meetings,
-                    meetings=meetings,
-                    enforce_allocation=False)
-                for open_slot in open_slots:
-                    if num not in open_slot['numbers']: continue
-                    building = None if room is None else room.building
-                    return [EditMeeting(
-                        start_time=open_slot['start'],
-                        end_time=open_slot['end'],
-                        day=open_slot['day'],
-                        building=building,
-                        room=room,
-                        meeting=None,
-                        section=section,
-                        counter=last_counter + 1,
-                        professor=professor,
-                    )]
-            building = Building.recommend(section.course, term=section.term)
-            open_slots: list[TimeSlot] = EditMeeting.open_slots(
-                room=None,
-                professor=professor,
-                building=building,
-                duration=TimeBlock.ONE_BLOCK,
-                edit_meetings=edit_meetings,
-                section=section,
-                meetings=meetings,
-                enforce_allocation=False)
-            open_slots.sort(key=lambda s: s['allocation'] / s['allocation_max'])
-            best_open_slot = open_slots[0]
-            return [EditMeeting(
-                start_time=best_open_slot['start'],
-                end_time=best_open_slot['end'],
-                day=best_open_slot['day'],
-                building=building,
-                room=None,
-                meeting=None,
-                section=section,
-                counter=last_counter + 1,
-                professor=professor,
-            )]
-        elif any(map(lambda t: t==TimeBlock.DOUBLE_BLOCK * 2, valid_added_times)):
-            
-            return 
+        elif TimeBlock.ONE_BLOCK in valid_added_times:
+            return EditMeeting.recommend_one_block(edit_meetings=edit_meetings, professor=professor,
+                base_meetings=base_meetings, section=section, number_room_complements=number_room_complement,
+                sections_to_exclude=sections_to_exclude, last_counter=last_counter)
+        elif (TimeBlock.ONE_BLOCK * 2) in valid_added_times:
+            return EditMeeting.recommend_two_block(edit_meetings=edit_meetings, professor=professor,
+                base_meetings=base_meetings, section=section, number_room_complements=number_room_complement,
+                sections_to_exclude=sections_to_exclude, last_counter=last_counter)
         elif any(map(lambda t: t==TimeBlock.ONE_BLOCK * 3, valid_added_times)):
-            return 
+            recommended_edit_meetings = EditMeeting.recommend_two_block(
+                edit_meetings=edit_meetings, professor=professor, base_meetings=base_meetings,
+                section=section, number_room_complements=number_room_complement,
+                sections_to_exclude=sections_to_exclude, last_counter=last_counter)
+            edit_meetings.extend(recommended_edit_meetings)
+            recommended_edit_meetings.extend(EditMeeting.recommend_one_block(
+                edit_meetings=edit_meetings, professor=professor,
+                base_meetings=base_meetings, section=section, number_room_complements=number_room_complement,
+                sections_to_exclude=sections_to_exclude, last_counter=last_counter + len(recommended_edit_meetings)
+            ))
+            return recommended_edit_meetings
 
         return [no_recommendation]
 
+    def no_recommendation(section: Section, counter: int, building: Building = None):
+        return EditMeeting(
+            start_time=time(0), end_time=time(hour=1, minute=15), day="MO",
+            building=building, room=None, meeting=None,
+            section=section, counter=counter,
+        )
 
+    def recommend_one_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
+        number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
+
+        for num, room in number_room_complements:
+            if room:
+                meetings = base_meetings | Meeting.objects \
+                    .filter(room=room, section__term=section.term) \
+                    .exclude(section__in=sections_to_exclude)
+            else:
+                meetings = base_meetings
+            open_slots: list[TimeSlot] = EditMeeting.open_slots( room=room, professor=professor,
+                building=None, duration=TimeBlock.ONE_BLOCK, section=section,
+                edit_meetings=edit_meetings, meetings=meetings, enforce_allocation=False)
+            for open_slot in open_slots:
+                if num not in open_slot['numbers']: continue
+                building = None if room is None else room.building
+                return [EditMeeting(
+                    start_time=open_slot['start'], end_time=open_slot['end'], day=open_slot['day'],
+                    building=building, room=room, meeting=None,
+                    section=section, counter=last_counter + 1, professor=professor,
+                )]
+        building = Building.recommend(section.course, term=section.term)
+        open_slots: list[TimeSlot] = EditMeeting.open_slots(
+            room=None, professor=professor, building=building,
+            duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings, section=section,
+            meetings=base_meetings, enforce_allocation=False)
+        open_slots.sort(key=lambda s: s['allocation'] / s['allocation_max'])
+        best_open_slot = open_slots[0]
+        return [EditMeeting(
+            start_time=best_open_slot['start'], end_time=best_open_slot['end'], day=best_open_slot['day'],
+            building=building, room=None, meeting=None,
+            section=section, counter=last_counter + 1, professor=professor,
+        )]
+    
+    def recommend_two_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
+        number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
+        recommended = []
+        building = Building.recommend(section.course, term=section.term)
+        # There should at most only be one complement 
+        if number_room_complements:
+            num, room = number_room_complements[0]
+            if room:
+                meetings = base_meetings | Meeting.objects \
+                    .filter(room=room, section__term=section.term) \
+                    .exclude(section__in=sections_to_exclude)
+            else:
+                meetings = base_meetings
+                
+            building = building if room is None else room.building
+            open_slots: list[TimeSlot] = EditMeeting.open_slots(room=room, professor=professor,
+                building=building, duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings,
+                meetings=meetings, enforce_allocation=False, section=section)
+            for open_slot in open_slots:
+                if num not in open_slot['numbers']: continue
+                building = building if room is None else room.building
+                last_counter += 1
+                recommended.append(EditMeeting(
+                    start_time=open_slot['start'], end_time=open_slot['end'], day=open_slot['day'],
+                    building=building, room=room, meeting=None,
+                    section=section, counter=last_counter, professor=professor,
+                ))
+                recommended.extend(EditMeeting.recommend_one_block(
+                    edit_meetings=edit_meetings, professor=professor, base_meetings=base_meetings,
+                    section=section, number_room_complements=[], sections_to_exclude=sections_to_exclude, 
+                    last_counter=last_counter
+                ))
+                return recommended
+        open_slots = EditMeeting.open_slots(room=None, professor=professor,
+            building=building, duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings,
+            meetings=base_meetings, enforce_allocation=False, section=section)
+        
+        # yeah... i know
+        seen_numbers: list[str] = []
+        for i, slot1 in enumerate(open_slots):
+            if any(number in seen_numbers for number in slot1['numbers']):
+                continue
+            available_rooms_slot1 = building.get_available_rooms(
+                start_time=slot1['start'],
+                end_time=slot1['end'],
+                day=slot1['day'],
+                term=section.term,
+                include_general= False,
+                sections_to_exclude=sections_to_exclude
+            )
+            slot2 = None
+            if i + 1 == len(open_slots): continue
+            for s in open_slots[i+1:]:
+                if s['numbers'] == slot1['numbers']:
+                    slot2=s
+            if slot2 is None: continue
+            available_rooms_slot2 = building.get_available_rooms(
+                start_time=slot2['start'],
+                end_time=slot2['end'],
+                day=slot2['day'],
+                term=section.term,
+                include_general= False,
+                sections_to_exclude=sections_to_exclude
+            )
+            intersecting_rooms = available_rooms_slot1 & available_rooms_slot2
+            if not intersecting_rooms.exists(): continue
+
+            room = intersecting_rooms.first()
+            m1 = EditMeeting(start_time=slot1['start'], end_time=slot2['end'],
+                day=slot1['day'], building=room.building, room=room,
+                meeting=None, section=section, counter=last_counter+1,
+                professor=professor)
+            m2 = EditMeeting(start_time=slot2['start'], end_time=slot2['end'],
+                day=slot2['day'], building=room.building, room=room,
+                meeting=None, section=section, counter=last_counter+2,
+                professor=professor)
+            return [m1, m2]
+
+        return [EditMeeting.no_recommendation(section=section, counter=last_counter+1, building=building)]
+    
     def get_meeting_pk(self) -> None | str:
         return None if self.meeting is None else self.meeting.pk
 

@@ -6,14 +6,15 @@
         placeholder="First.Last@marist.edu"
         type="text" class="form-control mb-3"  aria-describedby="emailHelp" name="email" id="email" value="{{ email }}"
         hx-on="click: new bootstrap.Toast(document.querySelector('.toast')).show()"
+        required
     >
     <label for="email">Marist Email</label>
 </div>
 <div class="form-floating mb-3">
-    <input type="text" class="form-control mb-3" name="first_name" placeholder="First Name" id="first_name" value="{{ first_name }}">
+    <input type="text" class="form-control mb-3" name="first_name" placeholder="First Name" id="first_name" value="{{ first_name }}" required>
     <label for="email">First Name</label>
 </div>
 <div class="form-floating mb-3">
-    <input type="text" class="form-control mb-3" name="last_name" placeholder="Last Name" id="last_name" value="{{ last_name }}">
+    <input type="text" class="form-control mb-3" name="last_name" placeholder="Last Name" id="last_name" value="{{ last_name }}" required>
     <label for="email">Last Name</label>
 </div>

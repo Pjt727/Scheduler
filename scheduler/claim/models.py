@@ -66,7 +66,7 @@ class Building(models.Model):
     def __repr__(self) -> str:
         return f"name={self.name}, code={self.code}"    
     
-    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term', include_general: bool, section: 'Section' = None) -> QuerySet['Room']:
+    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term', include_general: bool, sections_to_exclude: list['Section'] = None) -> QuerySet['Room']:
         in_time_frame = Q(
             meetings__section__term=term,
             meetings__time_block__day=day,
@@ -74,11 +74,11 @@ class Building(models.Model):
             meetings__time_block__start_end_time__end__gte=start_time,
         )
         # I am not sure why an exclude does not work
-        if section is None:
+        if sections_to_exclude is None:
             taken_rooms = self.rooms.filter(in_time_frame)
             open_rooms = self.rooms.exclude(pk__in=taken_rooms)
         else:
-            taken_rooms = self.rooms.filter((~Q(meetings__section=section)) & in_time_frame)
+            taken_rooms = self.rooms.filter((~Q(meetings__section__in=sections_to_exclude)) & in_time_frame)
             open_rooms = self.rooms.exclude(pk__in=taken_rooms)
 
         if include_general:

@@ -10,12 +10,22 @@ from django.contrib.auth.models import User
 from authentication.models import Professor
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from .forms import Register
 
 GET_ERR_MESSAGE = "Only get requests are allowed!"
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         # Check if can make valid user
+        # I know that this is not really how you should use django forms but since it's only for the register
+        #   part I think it is fine
+
+        form = Register(request.POST)
+        if form.is_valid():
+            messages.error(request, form.errors.as_ul())
+            return render(request, 'register.html')
+
+
         password1 = request.POST['password1']
         password2 = request.POST['password2']
         if not (password1 == password2):

@@ -42,11 +42,14 @@
     '
     name="room"
   >
-    <option value="any">Any Room</option>
+    <option value="any">Any</option>
+    <option value="anyLab">Any Lab</option>
+    <option value="anyGeneralPurpose">Any General Purpose</option>
+    <option value="anyNongeneralPurpose">Any Nongeneral Purpose</option>
     <optgroup>
       {% for r in building.rooms.all %}
       <option value="{{ r.pk }}" {% if r == room %}selected{% endif %}>
-        {{ r.number }}
+        {{ r.number }} {{ r.classification }} {{ r.is_general_purpose }}
       </option>
       {% endfor %}
     </optgroup>
@@ -54,10 +57,14 @@
 </div>
 <div class="col-sm-1">
   <svg 
+    {% if meeting_pk %}
     hx-delete="{% url 'display_row' %}"
     hx-trigger="click"
     hx-include='closest [name="meeting"]'
     hx-target='closest [name="meeting"]'
+    {% else %}
+    onclick='this.closest(`[name="meeting"]`).remove()'
+    {% endif %}
 
     xmlns="http://www.w3.org/2000/svg" 
     width="16" 

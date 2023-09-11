@@ -1,5 +1,4 @@
 from django.http import HttpRequest, HttpResponse, QueryDict
-import math
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -99,6 +98,7 @@ class InputRow(View):
     @method_decorator(login_required)
     def get(self, request: HttpRequest) -> HttpResponse:
         GET = request.GET
+        print(GET)
         changed_section = GET.get('outerSection')
         changed_counter = GET.get('outerCounter')
         enforce_department_constraints = GET.get('enforceDepartmentConstraints') is not None
@@ -116,7 +116,7 @@ class InputRow(View):
         
         # I really want a composition of these types but i guess this works?
         context: InputRowContext | UpdateMeetingsContext = {
-            "meeting_pk": edit_meeting.meeting.pk,
+            "meeting_pk": edit_meeting.get_meeting_pk(),
             "section_pk": edit_meeting.section.pk,
             "start_time": edit_meeting.start_time,
             "end_time": edit_meeting.end_time,
@@ -128,7 +128,7 @@ class InputRow(View):
             "days": Day.DAY_CHOICES,
             "buildings": Building.objects.all(),
             "meetings": other_meetings,
-            "edit_meetings": edit_meetings,
+            "edit_meetings": list(filter(lambda e: not e.is_deleted,edit_meetings)),
             "edit_meeting": edit_meeting,
             "open_slots": open_slots,
             "title": f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}.",
@@ -142,7 +142,6 @@ class InputRow(View):
     @method_decorator(login_required)
     def put(self, request: HttpRequest) -> HttpResponse:
         data = QueryDict(request.body)
-        print(data)
 
         changed_section = data.get('outerSection')
         changed_counter = data.get('outerCounter')
@@ -163,7 +162,7 @@ class InputRow(View):
         print(edit_meeting.room)
 
         context: RowContext = {
-            "meeting_pk": edit_meeting.meeting.pk,
+            "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
             "section_pk": edit_meeting.section.pk,
             "building": edit_meeting.building,
             "room": edit_meeting.room,
@@ -186,16 +185,21 @@ class InputRow(View):
         context["is_deleted"] = False
         context["start_time"] = edit_meeting.start_time
         context["end_time"] = edit_meeting.end_time
-        context["edit_meetings"] = edit_meetings
+        context["edit_meetings"] = list(filter(lambda e: not e.is_deleted,edit_meetings))
         context["title"] = "Editing Meetings"
 
         return render(request, 'display_row.html', context=context)
+
+    @method_decorator(login_required)
+    def post(self, request: HttpRequest) -> HttpResponse:
+        
+        pass
+
 
 @login_required
 @require_http_methods(["PUT"])
 def update_meetings(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
-    print(data)
     sections_to_exclude = data.getlist('sectionGrouper')
     changed_counter = data.get('outerCounter')
     changed_section = data.get('outerSection')
@@ -206,7 +210,7 @@ def update_meetings(request: HttpRequest) -> HttpResponse:
         if (changed_section == section_pk) and (counter == changed_counter):
             edit_meeting = edit_meetings[i]
     context = {
-        'edit_meetings': edit_meetings,
+        'edit_meetings': list(filter(lambda e: not e.is_deleted,edit_meetings)),
         'title': "Editing Meetings",
         'number_icons': TimeBlock.get_number_icons()
     }
@@ -239,15 +243,18 @@ def update_rooms(request: HttpRequest) -> HttpResponse:
 def add_rows(request: HttpRequest) -> HttpResponse:
     data = request.GET
     edit_meetings = EditMeeting.create_all(data)
-    edit_meetings = list(filter(lambda m: not m.is_deleted, edit_meetings))
     section_pk = data.get('selectedSection')
     section = Section.objects.get(pk=section_pk)
     # TODO better professor guessing
     recommended = EditMeeting.recommend_meetings(edit_meetings, section.primary_professor, section)
-    print("\n\n\n",recommended, "\n\n\n")
+    edit_meeting_to_display = list(filter(lambda e: not e.is_deleted,edit_meetings))
+    edit_meeting_to_display.extend(recommended)
 
-    context = {
-        'edit_meetings': recommended
+    context: UpdateMeetingsContext = {
+        'recommended': recommended,
+        'edit_meetings': edit_meeting_to_display,
+        'title': "Editing Meetings",
+        'number_icons': TimeBlock.get_number_icons(),
     }
 
     return render(request, 'display_rows.html', context=context)
@@ -258,7 +265,3 @@ def add_rows(request: HttpRequest) -> HttpResponse:
 def group_warnings(request: HttpRequest) -> HttpResponse:
 
     return
-
-#{% for m in edit_meetings %}
-#  {% include m with meeting_pk=m.get_meeting_pk section_pk=m.section.pk building=m.building room=m.room day=m.day professor=m.professor counter=m.counter start_time=m.start_time end_time=m.end_time %}
-#{% endfor %}
