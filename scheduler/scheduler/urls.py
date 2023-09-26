@@ -35,37 +35,38 @@ urlpatterns = [
     path('login/',auth_views.login, name='login'),
     path('register/', auth_views.register, name='register'),
     path('logout/', auth_views.logout, name='logout'),
-    ## json responses
+    ## partial responses
     path('get_professor/', auth_views.get_professor, name='get_professor'),
 
     # request views
     ## pages
+    path('message_hub', request_page_views.message_hub, name="message_hub"),
+    path('edit_section/<int:section>', request_page_views.edit_section, name='edit_section'),
     ## partial
     path('display_row', request_partial_views.DisplayRow.as_view(), name="display_row"),
     path('input_row', request_partial_views.InputRow.as_view(), name="input_row"),
     path('add_rows', request_partial_views.add_rows, name="add_rows"),
+    path('toggle_visibility', request_partial_views.toggle_visibility, name="toggle_visibility"),
+    path('add_section', request_partial_views.add_section, name="add_section"),
     path('update_rooms', request_partial_views.update_rooms, name="update_rooms"),
     path('update_meetings', request_partial_views.update_meetings, name="update_meetings"),
+    path('soft_submit', request_partial_views.soft_submit, name='soft_submit'),
+    path('hard_submit', request_partial_views.hard_submit, name='hard_submit'),
+    path('soft_approve', request_partial_views.soft_approve, name='soft_approve'),
+    path('hard_approve', request_partial_views.hard_approve, name='hard_approve'),
+    path('read_bundle', request_partial_views.read_bundle, name='read_bundle'),
 
     # Claim views
     ## pages
     path('claim/', claim_page_views.claim, name='claim'),
     path('my_meetings/', claim_page_views.my_meetings, name='my_meetings'),
-    path('edit_section/<int:section>', claim_page_views.edit_section, name='edit_section'),
-    path('message_hub/', claim_page_views.message_hub, name='message_hub'),
     ## partial responses
     path('get_course_search/', claim_partial_views.get_course_search, name="get_course_search"),
     path('get_course_options/<int:offset>', claim_partial_views.get_course_options, name='get_course_options'),
     path('add_course_pill/<int:course>', claim_partial_views.add_course_pill, name='add_course_pill'),
     path('section_search/', claim_partial_views.section_search, name='section_search'),
-    path('submit_claim/', claim_partial_views.submit_claim, name="submit_claim"),
     path('get_meetings/', claim_partial_views.get_meetings, name='get_meetings'),
-    path('get_meetings_edit_section/', claim_partial_views.get_meetings_edit_section, name='get_meetings_edit_section'),
-    path('get_edit_section/', claim_partial_views.get_edit_section, name='get_edit_section'),
-    path('get_rooms_edit_section', claim_partial_views.get_rooms_edit_section, name='get_room_edit_section'),
     path('get_meeting_details/', claim_partial_views.get_meeting_details, name='get_meeting_details'),
-    path('get_warnings/', claim_partial_views.get_warnings, name='get_warnings'),
-    path('submit_section_changes/', claim_partial_views.submit_section_changes, name='submit_section_changes'),
     
     # Head views
     ## pages

@@ -24,12 +24,20 @@
         id="enforceDepartmentConstraints" 
         name="enforceDepartmentConstraints" 
         class="form-check-input" 
-        checked
-      >
+        checked>
       <label for="enforceDepartmentConstraints">Enforce Department Constraints</label> 
     </div>
     <div class="col text-end">
-      <button type="button" id="submitAll" class="btn btn-primary">Submit</button>
+      <button 
+        hx-post="{% url 'soft_submit' %}"
+        hx-include="#sections"
+        hx-swap="none"
+        type="button" 
+        class="btn btn-primary"
+        data-bs-toggle="modal" 
+        data-bs-target="#warnings">
+        Submit
+      </button>
     </div>
   </div>
 </div>
@@ -42,7 +50,7 @@
   id="meetingsContainer"
 >
 </div>
-<!-- Button trigger modal -->
+
 <div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -50,15 +58,26 @@
         <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" id="problemsBody">
         <table class="table">
-            <tbody id="warningsBody">
-            </tbody>
         </table>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button id="hardSubmitAll" type="button" class="btn btn-primary">Submit Anyways</button>
+        <button 
+          
+          type="button" 
+          class="btn btn-secondary" 
+          data-bs-dismiss="modal">
+          Cancel
+        </button>
+        <button 
+          hx-include="#sections"
+          hx-post="{% url 'hard_submit' %}"
+          id="hardSubmitAll" 
+          type="button" 
+          class="btn btn-primary">
+            Submit
+          </button>
       </div>
     </div>
   </div>

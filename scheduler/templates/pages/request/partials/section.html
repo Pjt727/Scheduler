@@ -1,15 +1,24 @@
 <!-- Going to change for when it needs to render possible request -->
-<section name="section">
-  <input name="sectionGrouper" value="{{ section.pk }}" hidden>
+<section name="section" class="pb-4" hx-vals='"outerSection": "{{ section.pk }}"'>
+  <input class="sectionGrouper" name="sectionGrouper" value="{{ section.pk }}" hidden>
   <div class="row fw-bold justify-content-center">
     <div class="col-lg-10">{{ section }}</div>
-    <div class="col-lg-1"></div>
-    <div class="col-lg-1"></div>
+    {% comment %} Toggle visibility column {% endcomment %}
+    {% include 'toggle_visibility.html' with is_visible=True %}
+    <div class="col-lg-1">
+      {% if is_added %}
+        <button 
+          type="button" 
+          class="btn-close" 
+          aria-label="Close" 
+          onclick='this.closest(`section[name="section"]`).remove()'>
+      {% endif %}
+    </div>
   </div>
   {% for meeting in section.meetings.all %}
     <div
       hx-get="{% url 'display_row' %}"
-      hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}", "outerSection": "{{ section.pk }}"'
+      hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"'
       hx-trigger="load"
       name="meeting"
 

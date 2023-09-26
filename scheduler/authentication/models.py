@@ -21,6 +21,8 @@ class Professor(models.Model):
     meetings: models.QuerySet['Meeting']
     edit_requests_involving: models.QuerySet['EditMeetingRequest']
     edit_request_bundles_sent: models.QuerySet['EditRequestBundle']
+    sent_bundles: models.QuerySet['EditMeetingMessageBundle']
+    receive_bundles: models.QuerySet['EditMeetingMessageBundle']
 
     def __str__(self) -> str:
         return f"{self.title} {self.last_name}"
@@ -35,6 +37,13 @@ class Professor(models.Model):
                 meetings__time_block__start_end_time__end__gte=meeting.time_block.start_end_time.start
             )
         return exclusion_filter
+    
+    def count_unread_messages(self) -> int:
+        unread_messages = self.sent_bundles.filter(is_read=False) | \
+            self.receive_bundles.filter(is_read=False)
+        print(unread_messages.count())
+
+        return unread_messages.count()
 
 
     

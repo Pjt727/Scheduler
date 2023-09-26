@@ -37,27 +37,3 @@ def my_meetings(request: HttpRequest) -> HttpResponse:
     }
     return render(request, 'my_meetings.html', context=data)
 
-@login_required
-def edit_section(request: HttpRequest, section: int) -> HttpResponse:
-    section = Section.objects.get(pk=section)
-
-    data = {
-        "professor": Professor.objects.get(user=request.user),
-        "section": section,
-        "days": Day.CODE_TO_VERBOSE.items(), 
-        "buildings": Building.objects.all()
-    }
-
-    return render(request, 'edit_section.html', context=data)
-
-@login_required
-def message_hub(request: HttpRequest) -> HttpResponse:
-    message_bundles = EditMeetingMessageBundle.objects.filter(
-        Q(sender=request.user.professor) | Q(recipient=request.user.professor)
-    )
-
-    context = {
-        'message_bundles': message_bundles
-    }
-
-    return render(request, 'messages.html', context=context)

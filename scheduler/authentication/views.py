@@ -9,26 +9,26 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from authentication.models import Professor
 from django.core.validators import EmailValidator
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .forms import Register
 
 GET_ERR_MESSAGE = "Only get requests are allowed!"
 
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         # Check if can make valid user
-        # I know that this is not really how you should use django forms but since it's only for the register
-        #   part I think it is fine
-
-        form = Register(request.POST)
-        if form.is_valid():
-            messages.error(request, form.errors.as_ul())
-            return render(request, 'register.html')
 
 
         password1 = request.POST['password1']
         password2 = request.POST['password2']
+        try:
+            validate_password(password1)
+        except ValidationError as err:
+            messages.error(request, err.message)
+            return render(request, 'register.html')
+
         if not (password1 == password2):
+            print('err1')
             messages.error(request, ("Passwords do not match. Please try again."))
             return render(request, 'register.html')
         email = request.POST['email']
@@ -64,6 +64,7 @@ def register(request: HttpRequest) -> HttpResponse:
         if professor is not None and professor.is_authenticated:
             login_user(request=request, user=professor)
 
+        print("where is my messages")
         messages.success(request, (f"Registration Successful.{extra_message}"))
         return redirect('index')
 
@@ -109,8 +110,6 @@ def get_professor(request: HttpRequest) -> HttpResponse:
         context['last_name'] = last_name if (last_name is not None) and (last_name != '') else prof.last_name
         context['first_name'] = first_name if (first_name is not None) and (first_name != '') else prof.first_name
         context['professor'] = prof
-        print(last_name)
-        print(context['last_name'], context['first_name'])
     except Professor.DoesNotExist:
         return render(request, 'partials/no_prof.html', context=context)
     

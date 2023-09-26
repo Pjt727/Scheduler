@@ -45,7 +45,9 @@ def grid_area(start_time: time, end_time: time, day: str) -> str:
         timedelta(hours=22): 12
     }
 
-    grid_col_start = codes_to_col[day]
+    grid_col_start = codes_to_col.get(day)
+    if grid_col_start is None:
+        grid_col_start = 3
 
     meeting_seconds = start_time.hour * 3600 + start_time.minute * 60
     closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))

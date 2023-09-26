@@ -475,10 +475,7 @@ class Section(models.Model):
     def __str__(self) -> str:
         return f"{self.course.subject} {self.course.code}-{self.number}"     
 
-    def __repr__(self) -> str:
-        return f"number={self.number}, campus={self.campus}, course={self.course}, soft cap={self.soft_cap}"
-        
-    def meetings_sorted(self): 
+    def meetings_sorted(self) -> QuerySet['Meeting']: 
         return self.meetings.order_by(models.Case(
             models.When(time_block__day=Day.MONDAY, then=1),
             models.When(time_block__day=Day.TUESDAY, then=2),
@@ -486,8 +483,9 @@ class Section(models.Model):
             models.When(time_block__day=Day.THURSDAY, then=4),
             models.When(time_block__day=Day.FRIDAY, then=5),
             models.When(time_block__day=Day.SATURDAY, then=6),
-            models.When(time_block__day=Day.SUNDAY, then=7),
-        ))
+            models.When(time_block__day=Day.SUNDAY, then=7),),
+            'time_block__start_end_time__start'
+        )
 
 
          

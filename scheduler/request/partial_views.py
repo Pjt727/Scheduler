@@ -1,9 +1,13 @@
-from django.http import HttpRequest, HttpResponse, QueryDict
+from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseForbidden
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.db.transaction import atomic
+from django.contrib import messages
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods
 from django.views import View
+from django.urls import reverse 
+from django_htmx.http import HttpResponseClientRedirect
 from claim.models import *
 from .models import *
 from datetime import time
@@ -28,6 +32,7 @@ class UpdateMeetingsContext(TypedDict):
     edit_meeting: EditMeeting
     open_slots: list[TimeSlot]
     number_icons: list[NumberIcon]
+    in_edit_mode: bool
 
 class InputRowContext(RowContext):
     days: list
@@ -98,7 +103,6 @@ class InputRow(View):
     @method_decorator(login_required)
     def get(self, request: HttpRequest) -> HttpResponse:
         GET = request.GET
-        print(GET)
         changed_section = GET.get('outerSection')
         changed_counter = GET.get('outerCounter')
         enforce_department_constraints = GET.get('enforceDepartmentConstraints') is not None
@@ -112,6 +116,15 @@ class InputRow(View):
         assert edit_meeting is not None
 
         sections_to_exclude = GET.getlist('sectionGrouper')
+
+        visible_sections: list[str] = []
+        for section, visibility in zip(GET.getlist('sectionGrouper'), GET.getlist('isVisible')):
+            visibility = visibility == 'true'
+            if visibility: visible_sections.append(section)
+        edit_meetings = list(filter(
+            lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
+            edit_meetings))
+
         other_meetings, open_slots = edit_meeting.get_open_slots(edit_meetings, sections_to_exclude, enforce_department_constraints)
         
         # I really want a composition of these types but i guess this works?
@@ -128,11 +141,12 @@ class InputRow(View):
             "days": Day.DAY_CHOICES,
             "buildings": Building.objects.all(),
             "meetings": other_meetings,
-            "edit_meetings": list(filter(lambda e: not e.is_deleted,edit_meetings)),
+            "edit_meetings": edit_meetings,
             "edit_meeting": edit_meeting,
             "open_slots": open_slots,
             "title": f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}.",
-            "number_icons":  TimeBlock.get_number_icons()
+            "number_icons":  TimeBlock.get_number_icons(),
+            "in_edit_mode": True
         }
 
 
@@ -159,7 +173,6 @@ class InputRow(View):
 
         problems = edit_meeting.room_problems(sections_to_exclude)
         problems.extend(edit_meeting.professor_problems(sections_to_exclude))
-        print(edit_meeting.room)
 
         context: RowContext = {
             "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
@@ -185,8 +198,16 @@ class InputRow(View):
         context["is_deleted"] = False
         context["start_time"] = edit_meeting.start_time
         context["end_time"] = edit_meeting.end_time
-        context["edit_meetings"] = list(filter(lambda e: not e.is_deleted,edit_meetings))
+        visible_sections: list[str] = []
+        for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
+            visibility = visibility == 'true'
+            if visibility: visible_sections.append(section)
+        edit_meetings = list(filter(
+            lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
+            edit_meetings))
+        context["edit_meetings"] = edit_meetings
         context["title"] = "Editing Meetings"
+        context["in_edit_mode"] = True
 
         return render(request, 'display_row.html', context=context)
 
@@ -201,18 +222,29 @@ class InputRow(View):
 def update_meetings(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
     sections_to_exclude = data.getlist('sectionGrouper')
+    print(sections_to_exclude)
     changed_counter = data.get('outerCounter')
     changed_section = data.get('outerSection')
     enforce_department_constraints = data.get('enforceDepartmentConstraints') is not None
     edit_meetings = EditMeeting.create_all(data)
     edit_meeting = None
+
+    visible_sections: list[str] = []
+    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
+        visibility = visibility == 'true'
+        if visibility: visible_sections.append(section)
     for i, (section_pk, counter) in enumerate(zip(data.getlist('section'), data.getlist('counter'))):
         if (changed_section == section_pk) and (counter == changed_counter):
             edit_meeting = edit_meetings[i]
-    context = {
-        'edit_meetings': list(filter(lambda e: not e.is_deleted,edit_meetings)),
+    edit_meetings = list(filter(
+        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
+        edit_meetings))
+
+    context: UpdateMeetingsContext = {
+        'edit_meetings': edit_meetings,
         'title': "Editing Meetings",
-        'number_icons': TimeBlock.get_number_icons()
+        'number_icons': TimeBlock.get_number_icons(),
+        'in_edit_mode': True
     }
     # edit_meeting should be none when the user is currently not editing a row
     if edit_meeting is None:
@@ -255,13 +287,201 @@ def add_rows(request: HttpRequest) -> HttpResponse:
         'edit_meetings': edit_meeting_to_display,
         'title': "Editing Meetings",
         'number_icons': TimeBlock.get_number_icons(),
+        'in_edit_mode': True,
     }
 
     return render(request, 'display_rows.html', context=context)
 
+@login_required
+@require_http_methods(["GET"])
+def add_section(request: HttpRequest) -> HttpResponse:
+    data = request.GET
+    section_pk = data.get('section')
+    sections = data.getlist('sectionGrouper')
+    if section_pk in sections:
+        return HttpResponse(request)
+    section = Section.objects.get(pk=section_pk)
+    context = { 
+        'section': section,
+        'is_added': True,
+    }
+    return render(request, 'section.html', context=context)
+
+
+@login_required
+@require_http_methods(["PUT"])
+def toggle_visibility(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body)
+    changed_section = data.get('outerSection')
+    visible_sections: list[str] = []
+    print(data)
+
+    toggled_visibility = None
+    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
+        visibility = visibility == 'true'
+        if section == changed_section:
+            toggled_visibility = not visibility
+            if toggled_visibility:
+                visible_sections.append(section)
+            continue
+        if visibility: visible_sections.append(section)
+    assert toggled_visibility is not None
+
+    edit_meetings = EditMeeting.create_all(data)
+    edit_meetings = filter(
+        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
+        edit_meetings)
+
+
+    context: UpdateMeetingsContext = {
+        'server_trigger': True,
+        'is_visible': toggled_visibility,
+        'edit_meetings': list(edit_meetings),
+        'title': "Edit Meetings",
+        'number_icons': TimeBlock.get_number_icons(),
+        'in_edit_mode': True,
+
+    }
+    return render(request, 'toggle_visibility.html', context=context)
+
 
 @login_required
 @require_http_methods(["POST"])
-def group_warnings(request: HttpRequest) -> HttpResponse:
+def soft_submit(request: HttpRequest) -> HttpResponse:
+    data = request.POST
+    edit_meetings = EditMeeting.create_all(data)
+    edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
+    group_problems = EditMeeting.get_group_problems(edit_meetings)
+    section_problems: list[tuple[Section, list[Problem]]] = []
+    section_edit_meetings: dict[Section, list[EditMeeting]] = {}
+    for meeting in edit_meetings:
+        if section_edit_meetings.get(meeting.section) is not None:
+            section_edit_meetings[meeting.section].append(meeting)
+            continue
+        section_edit_meetings[meeting.section] = [meeting]
+        
+    sections_to_exclude = section_edit_meetings.keys()
+    for section, meetings in section_edit_meetings.items():
+        section_problems.append(
+            (section, EditMeeting.get_section_problems(meetings, sections_to_exclude=sections_to_exclude),))
+    
+    context = {
+        'group_problems': group_problems,
+        'section_problems': section_problems,
+        'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
+    }
 
-    return
+    return render(request, 'problems_group.html', context=context)
+
+
+@login_required
+@require_http_methods(["POST"])
+@atomic
+def hard_submit(request: HttpRequest) -> HttpResponse:
+    data = request.POST
+    e_meetings = EditMeeting.create_all(data)
+
+    bundle = EditRequestBundle(requester=request.user.professor)
+    bundle.save()
+
+    section_edit_meetings: dict[Section, list[EditMeeting]] = {}
+    for meeting in e_meetings:
+        if section_edit_meetings.get(meeting.section) is not None:
+            section_edit_meetings[meeting.section].append(meeting)
+            continue
+        section_edit_meetings[meeting.section] = [meeting]
+    
+    message_bundle = EditMeetingMessageBundle(
+        status=EditMeetingMessageBundle.REQUESTED,
+        sender = request.user.professor,
+        request=bundle,
+    )
+    message_bundle.save()
+    for section, edit_meetings in section_edit_meetings.items():
+        edit_section_request = EditSectionRequest(section=section,bundle=bundle)
+        edit_section_request.save()
+        for edit_meeting in edit_meetings:
+            meeting_request = edit_meeting.save_as_request(edit_section_request)
+            meeting_request.freeze(message_bundle)
+    
+    return HttpResponseClientRedirect(reverse('message_hub'))
+
+@login_required
+@require_http_methods(["POST"])
+@atomic
+def soft_approve(request: HttpRequest) -> HttpResponse:
+    data = request.POST
+    request_bundle_pk = data.get('requestBundle')
+    request_bundle = EditRequestBundle.objects.get(pk=request_bundle_pk)
+    professor: Professor = request.user.professor
+    # should never happen unless someone messes with the requests 
+    if not professor.is_department_head:
+        return HttpResponseForbidden("You must be a department head to approve a request!")
+
+    edit_meetings: list[EditMeeting] = []
+    section_edit_meetings: dict[Section, list[EditMeeting]] = {}
+    for edit_section in request_bundle.edit_sections.all():
+        section_edit_meetings[edit_section.section] = []
+        for i, edit_meeting_request in enumerate(edit_section.edit_meetings.all(), start=1):
+            edit_meeting = edit_meeting_request.reformat(i)
+            edit_meetings.append(edit_meeting)
+            section_edit_meetings[edit_section.section].append(edit_meeting)
+    
+    group_problems = EditMeeting.get_group_problems(edit_meetings)
+    sections_to_exclude = section_edit_meetings.keys()
+    
+    section_problems: list[tuple[Section, list[Problem]]] = []
+    for section, meetings in section_edit_meetings.items():
+        section_problems.append(
+            (section, EditMeeting.get_section_problems(meetings, sections_to_exclude=sections_to_exclude),))
+
+    context = {
+        'group_problems': group_problems,
+        'request_bundle_pk': request_bundle_pk,
+        'section_problems': section_problems,
+        'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
+    }
+
+    return render(request, 'problems_group.html', context=context)
+
+@login_required
+@require_http_methods(["POST"])
+@atomic
+def hard_approve(request: HttpRequest) -> HttpResponse:
+    data = request.POST
+    request_bundle_pk = data.get('requestBundle')
+    request_bundle = EditRequestBundle.objects.get(pk=request_bundle_pk)
+    professor: Professor = request.user.professor
+    # should never happen unless someone messes with the requests 
+    if not professor.is_department_head:
+        return HttpResponseForbidden("You must be a department head to approve a request!")
+    message_bundle = EditMeetingMessageBundle(
+        status=EditMeetingMessageBundle.ACCEPTED,
+        sender=professor,
+        recipient=request_bundle.requester
+    )
+    message_bundle.save()
+    for edit_section in request_bundle.edit_sections.all():
+        for edit_meeting in edit_section.edit_meetings.all():
+            message = edit_meeting.freeze(message_bundle)
+            message.save()
+
+    request_bundle.realize()
+    request_bundle.delete()
+    messages.success(request, ("Successfully approved the request"))
+    return HttpResponseClientRedirect(reverse('message_hub'))
+
+
+@login_required
+@require_http_methods(["PUT"])
+def read_bundle(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body)
+    request_bundle_pk = data.get('requestBundle')
+    request_bundle = EditMeetingMessageBundle.objects.get(pk=request_bundle_pk)
+    request_bundle.is_read = True
+    request_bundle.save()
+    return HttpResponse()
+
+
+
+
