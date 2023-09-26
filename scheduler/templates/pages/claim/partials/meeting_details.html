@@ -6,8 +6,15 @@
     </div>
     <div class="row justify-content-md-center">
         {% if in_edit_mode %}
-        <div class="col col-lg-5 fw-bold">
-            <button type="button" class="btn btn-outline-primary" onclick="addSection({{ section.pk }});">
+        <div class="col col-lg-5 fw-bold" hx-disinherit="*">
+            <button 
+              hx-get="{% url 'add_section' %}"
+              hx-include=".sectionGrouper"
+              hx-vals='"section": "{{ section.pk }}"'
+              hx-target="#sections"
+              hx-swap="beforeend"
+              type="button" 
+              class="btn btn-outline-primary">
                 Edit in Group
             </button>
         </div>

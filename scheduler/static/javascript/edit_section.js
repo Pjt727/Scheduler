@@ -6,57 +6,20 @@ function timeInputToSeconds(timeInput){
 
 function getMeetingPosition(startTime, endTime, day){
     const timeIntervals = [
-        28800,
-        32400,
-        33300,
-        38700,
-        39600,
-        44100,
-        45000,
-        49500,
-        50400,
-        54900,
-        55800,
-        60300,
-        61200,
-        65700,
-        66600,
-        71100,
-        72000,
-        75600,
-        79200,
+        28800, 32400, 33300, 38700, 39600, 44100, 45000, 49500,
+        50400, 54900, 55800, 60300, 61200, 65700, 66600, 71100,
+        72000, 75600, 79200,
     ];
 
     const timeIntervalsToRow = {
-        28800: 2,
-        32400: 3,
-        33300: 3,
-        38700: 4,
-        39600: 4,
-        44100: 5,
-        45000: 5,
-        49500: 6,
-        50400: 6,
-        54900: 7,
-        55800: 7,
-        60300: 8,
-        61200: 8,
-        65700: 9,
-        66600: 9,
-        71100: 10,
-        72000: 10,
-        75600: 11,
-        79200: 12
+        28800: 2, 32400: 3, 33300: 3, 38700: 4, 39600: 4, 44100: 5, 45000: 5,
+        49500: 6, 50400: 6, 54900: 7, 55800: 7, 60300: 8, 61200: 8, 65700: 9,
+        66600: 9, 71100: 10, 72000: 10, 75600: 11, 79200: 12
     };
 
     const dayCodesToCol = {
-        'MO': 3,
-        'TU': 4,
-        'WE': 5,
-        'TH': 6,
-        'FR': 7,
-        'SA': 8,
-        'SU': 9,
+        'MO': 3, 'TU': 4, 'WE': 5, 'TH': 6,
+        'FR': 7, 'SA': 8, 'SU': 9,
     };
 
     const seconds_start = timeInputToSeconds(startTime)
@@ -874,11 +837,11 @@ function hardSubmitAll(){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    const firstSectionGroup = document.querySelector('[name="section"]');
-    addEditSubmitListeners(firstSectionGroup);
-    updateMeetings();
-    const softSubmitButton = document.getElementById('submitAll');
-    softSubmitButton.addEventListener('click', softSubmitAll)
-    const hardSubmitButton = document.getElementById('hardSubmitAll');
-    hardSubmitButton.addEventListener('click', hardSubmitAll);
+    // const firstSectionGroup = document.querySelector('[name="section"]');
+    // addEditSubmitListeners(firstSectionGroup);
+    // updateMeetings();
+    // const softSubmitButton = document.getElementById('submitAll');
+    // softSubmitButton.addEventListener('click', softSubmitAll)
+    // const hardSubmitButton = document.getElementById('hardSubmitAll');
+    // hardSubmitButton.addEventListener('click', hardSubmitAll);
 });

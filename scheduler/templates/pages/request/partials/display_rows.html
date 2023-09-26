@@ -1,0 +1,14 @@
+{% comment "No, you cannot put include on different lines" %}{% endcomment %}
+{% for m in recommended %}
+  <div 
+    hx-vals='"outerCounter": "{{ m.counter }}", "meeting": "{{ m.get_meeting_pk }}", "outerSection": "{{ m.section.pk }}"'
+    class="row" 
+    name="meeting">
+  {% include 'display_row.html' with meeting_pk=m.get_meeting_pk section_pk=m.section.pk building=m.building room=m.room day=m.day professor=m.professor counter=m.counter start_time=m.start_time end_time=m.end_time %}
+  </div>
+  {% comment %} Why in the world do I need two end divs here {% endcomment %}
+  </div>
+{% endfor %}
+<div hx-swap-oob="innerHtml:#meetingsContainer">
+{% include 'get_meetings.html' %}
+</div>

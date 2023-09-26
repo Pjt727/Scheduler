@@ -1,0 +1,13 @@
+{% include 'partials/interactive_inputs.html' %}
+
+<div class="toast-container position-fixed top-0 start-50 p-1 translate-middle-x">
+    <div class="toast text-bg-danger border-0" role="alert " aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+        <div class="toast-header">
+            <strong class="me-auto">Attention</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            Email, {{ email }}, is not found. Please use your Marist email if you have taught before, else continue registering.
+        </div>
+    </div>
+</div>

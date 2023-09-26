@@ -1,0 +1,79 @@
+<div class="card text-center mb-5">
+  {% if not message_bundle.is_read %}
+  <div
+    hx-trigger="revealed"
+    hx-put="{% url 'read_bundle' %}"
+    hx-vals='"requestBundle": "{{ message_bundle.pk }}"'>
+  </div>
+  {% endif %}
+  <div class="card-header">
+    {{ message_bundle.status|title }} changes from {{ message_bundle.sender }}
+    {% if message_bundle.request %}
+    <svg 
+      hx-post="{% url 'soft_approve' %}"
+      hx-swap="none"
+      hx-vals='"requestBundle": "{{ message_bundle.request.pk }}"'
+      data-bs-toggle="modal" 
+      data-bs-target="#warnings"
+
+      class="float-end obi bi-check-circle"
+      style="cursor: pointer;" 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="40" 
+      height="40" 
+      fill="green" 
+      viewBox="0 0 16 16">
+      <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+      <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+    </svg>
+    {% endif %}
+  </div>
+  <div class="card-body">
+    <p class="card-text">
+      <div class="container">
+        {% regroup message_bundle.messages_sorted.all by section as messages_by_section %}
+        {% for messages in messages_by_section %}
+          <div class="row fw-bold">
+            <div class="col">
+              {{ messages.grouper }}
+            </div>
+          </div>
+          {% for message in messages.list %}
+            {% with is_changed=message.is_changed %}
+            <div class="row{% if is_changed %} fst-italic{% endif %}">
+              <div class="col-4">{{ message.get_new_start_time }} - {{ message.get_new_end_time }}</div>
+              <div class="col-1">{{ message.new_day }}</div>
+              <div class="col-3">{{ message.new_room }}</div>
+              <div class="col-3">{{ message.new_professor }}</div>
+              <div class="col-1">
+                <button 
+                  class="btn btn-sm btn-outline-secondary" 
+                  type="button" 
+                  data-bs-toggle="collapse" 
+                  data-bs-target="#oldToggle{{ message.pk }}" 
+                  aria-expanded="false" 
+                  aria-controls="collapseExample"
+                  {% if not is_changed %}disabled{% endif %}>
+              
+                  Old
+                </button>
+              </div>
+            </div>
+            {% if is_changed %}
+            <div class="row collapse" id="oldToggle{{ message.pk }}">
+              <div class="col-4">{{ message.get_old_start_time }} - {{ message.get_old_end_time }}</div>
+              <div class="col-1">{{ message.old_day }}</div>
+              <div class="col-3">{{ message.old_room }}</div>
+              <div class="col-3">{{ message.old_professor }}</div>
+            </div>
+            {% endif %}
+            {% endwith %}
+          {% endfor %}
+        {% endfor %}
+        </div>
+      </p>
+  </div>
+  <div class="card-footer text-body-secondary">
+    <small>{{ message_bundle.messages.first.section.term }} | {{ message_bundle.date_sent.date }} </small>
+  </div>
+</div>

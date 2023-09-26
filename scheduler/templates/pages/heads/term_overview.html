@@ -4,8 +4,13 @@
     <link rel="stylesheet" href="{% static 'search.css' %}">
 {% endblock %}
 {% block title %}Term Overview{% endblock %} {% block content %}
-<label for="id_term">Terms</label>
-<select id="id_term" class="form-control">
+<label for="term">Terms</label>
+<select 
+    hx-get="{% url 'dep_allo' %}"
+    hx-target="#dep_allo_container"
+    hx-include="#term, #department"
+    name="term" id="term" class="form-select"
+>
     {% for term in terms %}
     {% if forloop.first %}
     <option value="{{ term.pk }}" selected>{{ term }}</option>
@@ -14,8 +19,13 @@
     {% endif %}
     {% endfor %}
 </select>
-<label for="id_department">Department:</label>
-<select name="department" class="form-control" id="id_department">
+<label for="department">Department:</label>
+<select 
+    hx-get="{% url 'dep_allo' %}"
+    hx-target="#dep_allo_container"
+    hx-include="#term, #department"
+    name="department" class="form-select" id="department"
+>
     {% for department in departments %}
     {% if forloop.first %}
     <option value="{{ department.pk }}" selected>{{ department }}</option>
@@ -25,14 +35,23 @@
     {% endfor %}
 </select>
 
-<div id="dep_allo_container">
+<div 
+    hx-get="{% url 'dep_allo' %}"
+    hx-trigger="load"
+    hx-include="#term, #department"
+    id="dep_allo_container"
+>
 </div>
-<div id="sections_container">
+<div 
+    hx-get="{% url 'dep_allo_sections' %}"
+    hx-target="this"
+    hx-include="#term, #department"
+    hx-trigger="newOptions from:body"
+    id="sectionsContainer"
+>
 </div>
 
 {% endblock %}
 {% block scripts %}
 <script src={% static 'message.js' %}></script>
-<script src={% static 'sections.js' %}></script>
-<script src={% static 'term_overview.js' %}></script>
 {% endblock %}

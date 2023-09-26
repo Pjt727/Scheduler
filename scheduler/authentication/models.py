@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Q
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from claim.models import Meeting
@@ -20,6 +21,29 @@ class Professor(models.Model):
     meetings: models.QuerySet['Meeting']
     edit_requests_involving: models.QuerySet['EditMeetingRequest']
     edit_request_bundles_sent: models.QuerySet['EditRequestBundle']
+    sent_bundles: models.QuerySet['EditMeetingMessageBundle']
+    receive_bundles: models.QuerySet['EditMeetingMessageBundle']
+
     def __str__(self) -> str:
         return f"{self.title} {self.last_name}"
+    
+    #TODO make it also take into consideration if the start and end date
+    def section_in_meetings(self) -> Q():
+        exclusion_filter = Q()
+        for meeting in self.meetings.all():
+            exclusion_filter |= Q(
+                meetings__time_block__day=meeting.time_block.day,
+                meetings__time_block__start_end_time__start__lte=meeting.time_block.start_end_time.end,
+                meetings__time_block__start_end_time__end__gte=meeting.time_block.start_end_time.start
+            )
+        return exclusion_filter
+    
+    def count_unread_messages(self) -> int:
+        unread_messages = self.sent_bundles.filter(is_read=False) | \
+            self.receive_bundles.filter(is_read=False)
+        print(unread_messages.count())
+
+        return unread_messages.count()
+
+
     

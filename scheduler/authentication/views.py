@@ -2,12 +2,14 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from .models import Professor
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth import login as login_user
 from django.contrib.auth import logout as logout_user
 from django.contrib import messages
 from django.contrib.auth.models import User
 from authentication.models import Professor
 from django.core.validators import EmailValidator
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 GET_ERR_MESSAGE = "Only get requests are allowed!"
@@ -15,9 +17,18 @@ GET_ERR_MESSAGE = "Only get requests are allowed!"
 def register(request: HttpRequest) -> HttpResponse:
     if request.method == 'POST':
         # Check if can make valid user
+
+
         password1 = request.POST['password1']
         password2 = request.POST['password2']
+        try:
+            validate_password(password1)
+        except ValidationError as err:
+            messages.error(request, err.message)
+            return render(request, 'register.html')
+
         if not (password1 == password2):
+            print('err1')
             messages.error(request, ("Passwords do not match. Please try again."))
             return render(request, 'register.html')
         email = request.POST['email']
@@ -53,6 +64,7 @@ def register(request: HttpRequest) -> HttpResponse:
         if professor is not None and professor.is_authenticated:
             login_user(request=request, user=professor)
 
+        print("where is my messages")
         messages.success(request, (f"Registration Successful.{extra_message}"))
         return redirect('index')
 
@@ -81,25 +93,28 @@ def logout(request: HttpRequest) -> HttpResponse:
     logout_user(request)
     return render(request, 'login.html')
 
-
-def get_professor(request: HttpRequest) -> JsonResponse:
-    response_data = {}
-    
-    # not get check
-    if request.method != 'GET':
-        response_data['error'] = GET_ERR_MESSAGE
-        response_data['ok'] = False
-        return JsonResponse(response_data)
-    
+@require_http_methods(["GET"])
+def get_professor(request: HttpRequest) -> HttpResponse:
     email = request.GET.get('email')
+    last_name = request.GET.get('last_name')
+    first_name = request.GET.get('first_name')
+    context = {
+        'email': email,
+        'first_name': first_name,
+        'last_name': last_name
+    }
+
     try:
-        prof = Professor.objects.get(email=email)
+        prof = Professor.objects.get(email__iexact=email)
+        context['email'] = prof.email
+        context['last_name'] = last_name if (last_name is not None) and (last_name != '') else prof.last_name
+        context['first_name'] = first_name if (first_name is not None) and (first_name != '') else prof.first_name
+        context['professor'] = prof
     except Professor.DoesNotExist:
-        response_data['ok'] = False
-        return JsonResponse(response_data)
+        return render(request, 'partials/no_prof.html', context=context)
     
-    response_data['first_name'] = prof.first_name
-    response_data['last_name'] = prof.last_name
-    response_data['ok'] = True
-    
-    return JsonResponse(response_data)
+    if prof.user is None:
+        return render(request, 'partials/prof_available.html', context=context)
+    return render(request, 'partials/prof_unavailable.html', context=context)
+        
+

@@ -1,5 +1,7 @@
 {% load formhelpers %}
-<table class="table" id="department_allocations">
+<table
+    class="table" id="department_allocations"
+>
     <thead>
         <tr>
             <th>Time</th>
@@ -19,7 +21,18 @@
                 {% if start_time_blob %}
                 {% with start_time_blob|get_item:code as number %}
                 {% if number %}
-                <td class="time_block" value="{{ number.allocation_group }}">
+                <td 
+                    hx-get="{% url 'dep_allo_sections' %}"
+                    hx-trigger="click"
+                    hx-target="#sectionsContainer"
+                    onmouseenter="highlightGroup({{number.allocation_group}}, 'table-secondary')"
+                    onmouseleave="unHighlightGroup({{number.allocation_group}}, 'table-secondary')"
+                    onclick="clickGroup({{number.allocation_group}}, 'table-dark')"
+                    hx-vals='{
+                        "allocationGroup": "{{ number.allocation_group }}"
+                    }'
+                    name="allocationGroup" value="{{ number.allocation_group }}"
+                >
                     <div class="container">
                         <div class="row">
                             <div class="col-6 col-sm-3"></div>    
@@ -42,4 +55,36 @@
         {% endfor %}
     </tbody>
 </table>
+<script>
+    function highlightGroup(group, className){
+        const groupTimeBlocks = document.querySelectorAll(`[name="allocationGroup"][value="${group}"]`);
+        groupTimeBlocks.forEach((timeBlock) => { timeBlock.classList.add(className) })
+    }
+
+    function unHighlightGroup(group, className){
+        const groupTimeBlocks = document.querySelectorAll(`[name="allocationGroup"][value="${group}"]`);
+        groupTimeBlocks.forEach((timeBlock) => { timeBlock.classList.remove(className) })
+    }
+
+    function clickGroup(group, className){
+        const groupTimeBlocks = document.querySelectorAll(`[name="allocationGroup"][value="${group}"]`);
+        if(groupTimeBlocks[0].classList.contains(className)){
+            for(const t of groupTimeBlocks){
+                t.removeAttribute("hx-vals")
+                t.classList.remove(className)
+            }
+            return
+        }
+
+        const timeBlocks = document.querySelectorAll(`[name="allocationGroup"]`);
+        for(const t of timeBlocks){
+            t.classList.remove(className)
+            t.removeAttribute("hx-vals")
+        }
+        for(const t of groupTimeBlocks){
+            t.classList.add(className)
+            t.setAttribute("hx-vals", `{"allocationGroup": "${t.getAttribute('value')}"}`)
+        }
+    }
+</script>
 
