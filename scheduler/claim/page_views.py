@@ -15,7 +15,6 @@ def claim(request: HttpRequest) -> HttpResponse:
     # TODO implement if faster
     # courses = Course.sort_with_prof(courses, professor).all()[:Course.SEARCH_INTERVAL]
 
-
     data = {
         'departments': Department.objects.all(),
         'subjects': Subject.objects.all(),

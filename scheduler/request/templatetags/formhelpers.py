@@ -1,3 +1,4 @@
+import math
 from django import template
 from claim.models import Meeting, Day, TimeBlock
 from datetime import timedelta, time
@@ -80,3 +81,25 @@ def time_input(t: time) -> str:
         return t.strftime('%H:%M')
     except AttributeError:
         return ''
+
+@register.filter
+def time_start_end_display(s: timedelta, e: timedelta) -> str:
+    s_hours = math.floor(s.total_seconds() / 3600)
+    s_minutes = math.floor((s.total_seconds() % 3600) / 60)
+    start = time(hour=s_hours, minute=s_minutes)
+    e_hours = math.floor(e.total_seconds() / 3600)
+    e_minutes = math.floor((e.total_seconds() % 3600) / 60)
+    end = time(hour=e_hours, minute=e_minutes)
+
+    return f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')}"
+
+@register.filter
+def time_start_end_input(s: timedelta, e: timedelta) -> str:
+    s_hours = math.floor(s.total_seconds() / 3600)
+    s_minutes = math.floor((s.total_seconds() % 3600) / 60)
+    start = time(hour=s_hours, minute=s_minutes)
+    e_hours = math.floor(e.total_seconds() / 3600)
+    e_minutes = math.floor((e.total_seconds() % 3600) / 60)
+    end = time(hour=e_hours, minute=e_minutes)
+
+    return f"{start.strftime('%H:%M')},{end.strftime('%H:%M')}"

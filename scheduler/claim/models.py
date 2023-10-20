@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 from enum import Enum
 from django.db import models
@@ -173,8 +174,8 @@ class StartEndTime(models.Model):
     def start_d(self) -> timedelta:
         return timedelta(hours=self.start.hour, minutes=self.start.minute)
 
-    def end_delta(self) -> timedelta:
-        return timedelta(hours=self.end.hour, minutes=self.start.minute)
+    def end_d(self) -> timedelta:
+        return timedelta(hours=self.end.hour, minutes=self.end.minute)
     
 
 class Department(models.Model):
@@ -309,6 +310,79 @@ class TimeBlock(models.Model):
             })
 
         return number_icons
+
+    def get_time_intervals(block: timedelta, day_code: str ) -> list[tuple[time, time]]:
+        def unsafe_conversion(t: timedelta) -> time:
+            hours = math.floor(t.total_seconds() / 3600)
+            minutes = math.floor((t.total_seconds() % 3600) / 60)
+            return time(hour=hours, minute=minutes)
+
+        blocks = [
+            TimeBlock.ONE_BLOCK,
+            TimeBlock.DOUBLE_BLOCK, 
+            TimeBlock.DOUBLE_BLOCK_NIGHT, 
+            TimeBlock.TRIPLE_NIGHT
+        ]
+
+        days = [
+            Day.MONDAY,
+            Day.TUESDAY,
+            Day.WEDNESDAY,
+            Day.THURSDAY,
+            Day.FRIDAY,
+        ]
+
+        if day_code not in days:
+            day_code = Day.MONDAY
+
+        if block not in blocks:
+            block = TimeBlock.ONE_BLOCK
+        start_end_times: list[tuple[timedelta, timedelta]] = []
+        if block == TimeBlock.ONE_BLOCK:
+            time_blocks = TimeBlock.objects \
+                .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS)\
+                .filter(day=day_code) \
+                .filter(number__isnull=False)
+                
+            for time_block in time_blocks.all():
+                end_time = time_block.start_end_time.end_d()
+                print(end_time, time_block.start_end_time.end, time_block.start_end_time.end.minute)
+                start_time = end_time - block
+                start_end_times.append(
+                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+        elif block == TimeBlock.DOUBLE_BLOCK:
+            time_blocks = TimeBlock.objects \
+                .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
+                .filter(day=day_code) \
+                .filter(number__isnull=False) \
+                .exclude(start_end_time__start=time(hour=8))
+            for time_block in time_blocks.all():
+                end_time = time_block.start_end_time.end_d()
+                start_time = end_time - block
+                start_end_times.append(
+                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+                start_end_times.append( (start_time, end_time) )
+        elif block == TimeBlock.DOUBLE_BLOCK_NIGHT:
+            time_blocks = TimeBlock.objects \
+                .filter(day=day_code) \
+                .filter(number__in=TimeBlock.LONG_NIGHT_NUMBERS)
+            for time_block in time_blocks.all():
+                start_time = time_block.start_end_time.start_d()
+                end_time = start_time + block
+                start_end_times.append(
+                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+        elif block == TimeBlock.TRIPLE_NIGHT:
+            time_blocks = TimeBlock.objects \
+                .filter(day=day_code) \
+                .filter(number__in=TimeBlock.LONG_NIGHT_NUMBERS)
+            for time_block in time_blocks.all():
+                start_time = time_block.start_end_time.start_d()
+                end_time = start_time + block
+                start_end_times.append(
+                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+
+            
+        return start_end_times
                 
 
 

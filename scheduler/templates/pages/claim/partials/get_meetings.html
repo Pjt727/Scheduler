@@ -131,8 +131,7 @@
     {% for number_icon in number_icons %}
     <div class="position-relative"
       style=" grid-area: {% grid_area number_icon.start number_icon.end number_icon.day %};
-        pointer-events: none;"
-    >
+        pointer-events: none;" >
         <div class="position-absolute top-0 end-0 badge rounded-pill text-bg-primary opacity-75"
           style="z-index: 10; margin-top: -0.25rem; margin-right: -0.25rem;">
           {{ number_icon.numbers }}

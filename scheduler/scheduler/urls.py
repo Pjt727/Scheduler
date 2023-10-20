@@ -55,6 +55,7 @@ urlpatterns = [
     path('soft_approve', request_partial_views.soft_approve, name='soft_approve'),
     path('hard_approve', request_partial_views.hard_approve, name='hard_approve'),
     path('read_bundle', request_partial_views.read_bundle, name='read_bundle'),
+    path('cancel_request', request_partial_views.cancel_request, name="cancel_request"),
 
     # Claim views
     ## pages

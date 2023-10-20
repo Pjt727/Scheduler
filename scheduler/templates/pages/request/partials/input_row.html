@@ -8,9 +8,11 @@
   {{ counter }}
 </div>
 <div class="col-sm-5 text-start">
-  <input type="time" name="startTime" min="00:00" max="23:59" value="{{ start_time|time_input  }}">
-  &nbsp-&nbsp
-  <input type="time" name="endTime"  min="00:00" max="23:59" value="{{ end_time|time_input  }}">
+  <select name="startEndTime">
+    {% for start_time, end_time in time_intervals %}
+      <option value="{{ start_time|time_start_end_input:end_time }}">{{ start_time|time_start_end_display:end_time }}</option>
+    {% endfor %}
+  </select>
   <select name="day">
   {% for code, d in days %}
     <option value="{{ code }}" {% if day == code %}selected{% endif %}>

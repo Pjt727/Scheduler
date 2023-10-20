@@ -76,6 +76,8 @@
             alert-success
             {% elif message.tags == "error" %}
             alert-danger
+            {% else %}
+            alert-primary
             {% endif %}
             " role="alert">
             {{ message }}

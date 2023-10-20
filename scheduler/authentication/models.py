@@ -41,8 +41,6 @@ class Professor(models.Model):
     def count_unread_messages(self) -> int:
         unread_messages = self.sent_bundles.filter(is_read=False) | \
             self.receive_bundles.filter(is_read=False)
-        print(unread_messages.count())
-
         return unread_messages.count()
 
 

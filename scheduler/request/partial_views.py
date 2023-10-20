@@ -22,8 +22,6 @@ class RowContext(TypedDict):
     professor: None | str
     counter: str
     problems: list[Problem]
-    start_time: time
-    end_time: time
 
 class UpdateMeetingsContext(TypedDict):
     title: str
@@ -37,9 +35,12 @@ class UpdateMeetingsContext(TypedDict):
 class InputRowContext(RowContext):
     days: list
     buildings: list[Building]
+    time_intervals: list[tuple[timedelta, timedelta]]
 
 class DisplayRowContext(RowContext):
     is_deleted: bool
+    start_time: time
+    end_time: time
 
 
 
@@ -114,6 +115,8 @@ class InputRow(View):
             if (changed_section == section_pk) and (counter == changed_counter):
                 edit_meeting = edit_meetings[i]
         assert edit_meeting is not None
+        duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
+        time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
 
         sections_to_exclude = GET.getlist('sectionGrouper')
 
@@ -131,8 +134,7 @@ class InputRow(View):
         context: InputRowContext | UpdateMeetingsContext = {
             "meeting_pk": edit_meeting.get_meeting_pk(),
             "section_pk": edit_meeting.section.pk,
-            "start_time": edit_meeting.start_time,
-            "end_time": edit_meeting.end_time,
+            "time_intervals": time_intervals,
             "day": edit_meeting.day,
             "building": edit_meeting.building,
             "room": edit_meeting.room,
@@ -395,10 +397,14 @@ def hard_submit(request: HttpRequest) -> HttpResponse:
         status=EditMeetingMessageBundle.REQUESTED,
         sender = request.user.professor,
         request=bundle,
+        request_pk=bundle.pk
     )
     message_bundle.save()
     for section, edit_meetings in section_edit_meetings.items():
-        edit_section_request = EditSectionRequest(section=section,bundle=bundle)
+        try:
+            edit_section_request = EditSectionRequest(section=section,bundle=bundle)
+        except IntegrityError:
+            return HttpResponse()
         edit_section_request.save()
         for edit_meeting in edit_meetings:
             meeting_request = edit_meeting.save_as_request(edit_section_request)
@@ -458,7 +464,8 @@ def hard_approve(request: HttpRequest) -> HttpResponse:
     message_bundle = EditMeetingMessageBundle(
         status=EditMeetingMessageBundle.ACCEPTED,
         sender=professor,
-        recipient=request_bundle.requester
+        recipient=request_bundle.requester,
+        request_pk=request_bundle.pk
     )
     message_bundle.save()
     for edit_section in request_bundle.edit_sections.all():
@@ -468,7 +475,7 @@ def hard_approve(request: HttpRequest) -> HttpResponse:
 
     request_bundle.realize()
     request_bundle.delete()
-    messages.success(request, ("Successfully approved the request"))
+    messages.success(request, ("Successfully approved the request"), extra_tags="success")
     return HttpResponseClientRedirect(reverse('message_hub'))
 
 
@@ -476,12 +483,36 @@ def hard_approve(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["PUT"])
 def read_bundle(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
-    request_bundle_pk = data.get('requestBundle')
-    request_bundle = EditMeetingMessageBundle.objects.get(pk=request_bundle_pk)
-    request_bundle.is_read = True
-    request_bundle.save()
+    message_bundle_pk = data.get('messageBundle')
+    message_bundle = EditMeetingMessageBundle.objects.get(pk=message_bundle_pk)
+    message_bundle.is_read = True
+    message_bundle.save()
     return HttpResponse()
 
 
 
+@login_required
+@require_http_methods(["PUT"])
+def cancel_request(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body)
+    message_bundle_pk = data.get('messageBundle')
+    message_bundle = EditMeetingMessageBundle.objects.get(pk=message_bundle_pk)
+    professor: Professor = request.user.professor
+    request_bundle = message_bundle.request
 
+    if professor != request_bundle.requester:
+        return HttpResponseForbidden("You did make the request so you cannot cancel it!")
+
+    message_bundle = EditMeetingMessageBundle(
+        status=EditMeetingMessageBundle.CANCELED,
+        sender=professor,
+        request_pk=request_bundle.pk)
+    message_bundle.save()
+    for edit_section in request_bundle.edit_sections.all():
+        for edit_meeting in edit_section.edit_meetings.all():
+            message = edit_meeting.freeze(message_bundle)
+            message.save()
+    request_bundle.delete() 
+    messages.success(request, ("Successfully cancelled the request"), extra_tags="success")
+
+    return HttpResponseClientRedirect(reverse('message_hub'))

@@ -601,7 +601,7 @@ class EditRequestBundle(models.Model):
 class EditSectionRequest(models.Model):
     verbose_name = "Edit Section"
 
-    section = models.ForeignKey(Section, related_name="edit_sections", on_delete=models.CASCADE)
+    section = models.OneToOneField(Section, related_name="edit_section", on_delete=models.CASCADE)
     bundle = models.ForeignKey(EditRequestBundle, related_name="edit_sections", on_delete=models.CASCADE)
     edit_meetings: QuerySet['EditMeetingRequest']
     
@@ -733,13 +733,15 @@ class EditMeetingMessageBundle(models.Model):
     ACCEPTED = 'accepted'
     REVISED_ACCEPTED = 'revised_accepted'
     DENIED = 'denied'
-
+    CANCELED = 'canceled'
     choices = [
         (REQUESTED, 'Requested'),
         (ACCEPTED, 'Accepted'),
         (REVISED_ACCEPTED, 'Revised and Accepted'),
-        (DENIED, 'Denied')
+        (DENIED, 'Denied'),
+        (CANCELED, 'Canceled')
     ]
+    request_pk = models.IntegerField()
     date_sent = models.DateTimeField(auto_now_add=True, blank=True)
     is_read = models.BooleanField(default=False, blank=True)
     
@@ -756,9 +758,37 @@ class EditMeetingMessageBundle(models.Model):
 
     class Meta:
         ordering = ["-date_sent"]
-    
+
     def __str__(self) -> str:
         return f"{self.status.capitalize()} changes from {self.sender} on {self.date_sent.date()}"
+    
+    def get_background_class(self) -> str:
+        if self.status == EditMeetingMessageBundle.REQUESTED:
+            return 'bg-secondary-subtle'
+        elif self.status == EditMeetingMessageBundle.ACCEPTED:
+            return 'bg-success-subtle'
+        elif self.status == EditMeetingMessageBundle.REVISED_ACCEPTED:
+            return 'bg-warning-subtle'
+        elif self.status == EditMeetingMessageBundle.DENIED:
+            return 'bg-danger-subtle'
+        elif self.status == EditMeetingMessageBundle.CANCELED:
+            return 'bg-danger-subtle'
+        else:
+            return 'bg-secondary-subtle'
+    
+    def get_border_class(self) -> str:
+        if self.status == EditMeetingMessageBundle.REQUESTED:
+            return 'border-secondary-subtle'
+        elif self.status == EditMeetingMessageBundle.ACCEPTED:
+            return 'border-success-subtle'
+        elif self.status == EditMeetingMessageBundle.REVISED_ACCEPTED:
+            return 'border-warning-subtle'
+        elif self.status == EditMeetingMessageBundle.DENIED:
+            return 'border-danger-subtle'
+        elif self.status == EditMeetingMessageBundle.CANCELED:
+            return 'border-danger-subtle'
+        else:
+            return 'border-secondary-subtle'
     
     def messages_sorted(self) -> QuerySet['EditMeetingMessage']:
 

@@ -1,9 +1,11 @@
 {% extends "base.html" %} {% load static %} {% block head %}<link
   rel="stylesheet"
-  href="{% static 'formSubmission.css' %}"
-/>{% endblock %} {% block title %}Message Hub{% endblock %} {% block content %}
-{% for message_bundle in unread_bundles %}
-  {% include 'message_bundle.html' with message_bundle=message_bundle %}
+  href="{% static 'formSubmission.css' %}" />{% endblock %} 
+{% block title %}Message Hub{% endblock %} {% block content %}
+
+{% regroup unread_bundles by request_pk as unread_bundles_by_pk %}
+{% for message_group in unread_bundles_by_pk %}
+  {% include 'message_grouper.html' with message_group=message_group %}
 {% empty %}
 <div>
   No new messages
@@ -16,10 +18,10 @@
   </span>
 </div>
 {% endif %}
-{% for message_bundle in read_bundles %}
-  {% include 'message_bundle.html' with message_bundle=message_bundle %}
+{% regroup read_bundles by request_pk as read_bundles_by_pk %}
+{% for message_group in read_bundles_by_pk %}
+  {% include 'message_grouper.html' with message_group=message_group %}
 {% endfor %}
-
 <div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
