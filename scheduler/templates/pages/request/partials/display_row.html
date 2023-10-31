@@ -3,8 +3,7 @@
 <input name="isDeleted" type="text" value="{% if is_deleted %}true{% else %}false{% endif %}" hidden>
 <input name="original" type="text" value="{% if meeting_pk %}{{ meeting_pk }}{% else %}None{% endif %}" hidden>
 <input name="section" type="text" value="{{ section_pk }}" hidden>
-<input name="startTime" type="time" value="{{ start_time|time_input }}" hidden>
-<input name="endTime" type="time" value="{{ end_time|time_input }}" hidden>
+<input name="startEndTime" type="text" value="{{ start_time|time_input }},{{ end_time|time_input }}" hidden>
 <input name="day" type="text" value="{{ day }}" hidden>
 <input name="building" type="text" value="{% if building %}{{building.pk}}{% else %}any{% endif %}" hidden>
 <input name="room" type="text" value="{% if room %}{{room.pk}}{% else %}any{% endif %}" hidden>

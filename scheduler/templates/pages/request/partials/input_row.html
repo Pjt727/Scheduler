@@ -9,8 +9,14 @@
 </div>
 <div class="col-sm-5 text-start">
   <select name="startEndTime">
-    {% for start_time, end_time in time_intervals %}
-      <option value="{{ start_time|time_start_end_input:end_time }}">{{ start_time|time_start_end_display:end_time }}</option>
+    {% for s, e in time_intervals %}
+      <option 
+        value="{{ s|time_input }},{{ e|time_input }}"
+        {% if s == start_time and e == end_time %}
+        selected
+        {% endif %}>
+        {{ s|time_display }} - {{ e|time_display }}
+      </option>
     {% endfor %}
   </select>
   <select name="day">
@@ -99,6 +105,7 @@
   </svg>
 </div>
 
+
 {% if problems %}
   {% include 'problems.html' with problems=problems%}
 {% endif %}
@@ -107,3 +114,4 @@
 {% include 'get_meetings.html' %}
 </div>
 {% endif %}
+

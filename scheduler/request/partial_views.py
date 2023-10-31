@@ -22,6 +22,8 @@ class RowContext(TypedDict):
     professor: None | str
     counter: str
     problems: list[Problem]
+    start_time: time
+    end_time: time
 
 class UpdateMeetingsContext(TypedDict):
     title: str
@@ -39,8 +41,6 @@ class InputRowContext(RowContext):
 
 class DisplayRowContext(RowContext):
     is_deleted: bool
-    start_time: time
-    end_time: time
 
 
 
@@ -115,6 +115,7 @@ class InputRow(View):
             if (changed_section == section_pk) and (counter == changed_counter):
                 edit_meeting = edit_meetings[i]
         assert edit_meeting is not None
+
         duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
         time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
 
@@ -135,6 +136,8 @@ class InputRow(View):
             "meeting_pk": edit_meeting.get_meeting_pk(),
             "section_pk": edit_meeting.section.pk,
             "time_intervals": time_intervals,
+            "start_time": edit_meeting.start_time,
+            "end_time": edit_meeting.end_time,
             "day": edit_meeting.day,
             "building": edit_meeting.building,
             "room": edit_meeting.room,
@@ -188,9 +191,12 @@ class InputRow(View):
         }
 
         if any(map(lambda p: p.type == Problem.DANGER, problems)):
+            duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
+            time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
             context: InputRowContext
             context["start_time"] = edit_meeting.start_time
             context["end_time"] = edit_meeting.end_time
+            context["time_intervals"] = time_intervals
             context["days"] = Day.DAY_CHOICES
             context["buildings"] = Building.objects.all()
             context["number_icons"] =  TimeBlock.get_number_icons()
@@ -224,7 +230,6 @@ class InputRow(View):
 def update_meetings(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
     sections_to_exclude = data.getlist('sectionGrouper')
-    print(sections_to_exclude)
     changed_counter = data.get('outerCounter')
     changed_section = data.get('outerSection')
     enforce_department_constraints = data.get('enforceDepartmentConstraints') is not None

@@ -37,8 +37,7 @@ class EditMeeting:
     def create_all(data: QueryDict) -> list['EditMeeting']:
         are_deleted = data.getlist('isDeleted')
         sections = data.getlist('section')
-        start_times = data.getlist('startTime')
-        end_times = data.getlist('endTime')
+        start_end_times = data.getlist('startEndTime')
         days = data.getlist('day')
         buildings = data.getlist('building')
         rooms = data.getlist('room')
@@ -52,8 +51,7 @@ class EditMeeting:
             section = Section.objects.get(pk=sections[i])
             counter = int(counters[i])
 
-            start_time = start_times[i]
-            end_time = end_times[i]
+            start_time, end_time = start_end_times[i].split(',')
             start_time = time.fromisoformat(start_time)
             end_time = time.fromisoformat(end_time)
             day = days[i]
