@@ -559,8 +559,6 @@ class Section(models.Model):
             models.When(time_block__day=Day.SUNDAY, then=7),),
             'time_block__start_end_time__start'
         )
-
-
          
 
     def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:

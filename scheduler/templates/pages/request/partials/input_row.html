@@ -1,10 +1,10 @@
 {% load formhelpers %}
 <div class="col-sm-1 fw-bold">
   <input name="isDeleted" type="text" value="false" hidden>
-  <input type="number" name="counter" value="{{ counter }}" hidden>
-  <input type="text" name="original" value="{{ meeting_pk }}" hidden>
-  <input type="text" name="section" value="{{ section_pk }}" hidden>
-  <input type="text" name="professor" value="{% if professor %}{{ professor.pk }}{% else %}None{% endif %}" hidden>
+  <input type="number" name="counter" value="{{ edit_meeting.counter }}" hidden>
+  <input type="text" name="original" value="{{ edit_meeting.meeting.pk }}" hidden>
+  <input type="text" name="section" value="{{ edit_meeting.section.pk }}" hidden>
+  <input type="text" name="professor" value="{% if edit_meeting.professor %}{{ edit_meeting.professor.pk }}{% else %}None{% endif %}" hidden>
   {{ counter }}
 </div>
 <div class="col-sm-5 text-start">
@@ -12,10 +12,10 @@
     onchange='updateMeetings()'
     >
 
-    {% for s, e in time_intervals %}
+    {% for s, e in edit_meeting.get_time_intervals %}
       <option 
         value="{{ s|time_input }},{{ e|time_input }}"
-        {% if s == start_time and e == end_time %}
+        {% if s == edit_meeting.start_time and e == edit_meeting.end_time %}
         selected
         {% endif %}>
         {{ s|time_display }} - {{ e|time_display }}
@@ -42,11 +42,11 @@
     name="building"
   >
     {% for b in buildings %}
-    <option value="{{ b.pk }}" {% if b == building %}selected{% endif %}>
+    <option value="{{ b.pk }}" {% if b == edit_meeting.building %}selected{% endif %}>
         {{ b }}
     </option>
     {% endfor %}
-    {% if not building %}
+    {% if not edit_meeting.building %}
     <option value="any" hidden selected></option>
     {% endif %}
   </select>
@@ -59,8 +59,8 @@
     <option value="anyGeneralPurpose">Any General Purpose</option>
     <option value="anyNongeneralPurpose">Any Nongeneral Purpose</option>
     <optgroup>
-      {% for r in building.rooms.all %}
-      <option value="{{ r.pk }}" {% if r == room %}selected{% endif %}>
+      {% for r in edit_meeting.building.rooms.all %}
+      <option value="{{ r.pk }}" {% if r == edit_meeting.room %}selected{% endif %}>
         {{ r.number }} {{ r.classification }} {{ r.is_general_purpose }}
       </option>
       {% endfor %}

@@ -15,16 +15,16 @@
       {% endif %}
     </div>
   </div>
-  {% for meeting in section.meetings.all %}
+  {% for edit_meeting in edit_meetings %}
     <div
-      hx-get="{% url 'display_row' %}"
       hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"'
-      hx-trigger="load"
       name="meeting"
 
+      {% comment %} Do we really need this ?? {% endcomment %}
       sectionClick="{{ section.pk }}"
       counterClick="{{ forloop.counter }}"
       class="row">
+      {% include 'input_row.html' with edit_meeting=edit_meeting edit_meetings=None %}
     </div>
   {% endfor %}
   <div class="row fw-bold justify-content-center">

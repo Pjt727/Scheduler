@@ -19,6 +19,7 @@
   <div class="row">
     <div class="col text-start">
       <input 
+        {% comment %} THIS IS SICK AF REMBMEBER YOU CAN DO THIS THIS EASILY {% endcomment %}
         onchange="htmx.trigger('body', 'updateMeetings')"
         type="checkbox" 
         id="enforceDepartmentConstraints" 
@@ -45,10 +46,10 @@
 <!-- TODO change this first trigger -->
 <div 
   hx-put="{% url 'update_meetings' %}"
-  hx-trigger="load delay:500ms, updateMeetings from:body"
+  hx-trigger="updateMeetings from:body"
   hx-include="#sections, #enforceDepartmentConstraints"
-  id="meetingsContainer"
->
+  id="meetingsContainer" >
+{% include 'get_meetings.html' with edit_meetings=edit_meetings %}
 </div>
 
 <div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">

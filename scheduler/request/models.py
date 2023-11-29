@@ -34,7 +34,34 @@ class EditMeeting:
     professor: Professor = None
     is_deleted: bool = False
 
-    def create_all(data: QueryDict) -> list['EditMeeting']:
+    # This logic may be in Section model why then we would have to worry about circular imports
+    def from_meeting(meeting: Meeting, counter: int) -> 'EditMeeting':
+        edit_meeting = EditMeeting(
+            start_time=meeting.time_block.start_end_time.start,
+            end_time=meeting.time_block.start_end_time.end,
+            day=meeting.time_block.day,
+            building=meeting.room.building,
+            room=meeting.room,
+            meeting=meeting,
+            section=meeting.section,
+            counter=counter,
+            professor=meeting.professor,
+            is_deleted=False,
+        )
+        return edit_meeting
+
+    def from_section(section: Section) -> list['EditMeeting']:
+        edit_meetings = []
+        
+        # make sure this is sorted
+        for i, meeting in enumerate(section.meetings.all()):
+            edit_meeting = EditMeeting.from_meeting(meeting, i)
+            edit_meetings.append(edit_meeting)
+
+        return edit_meetings
+
+    # I cant type hint 'EditMeeting' | None  sadly :(
+    def create_all(data: QueryDict) -> tuple[list['EditMeeting'], 'EditMeeting']:
         are_deleted = data.getlist('isDeleted')
         sections = data.getlist('section')
         start_end_times = data.getlist('startEndTime')
@@ -46,10 +73,18 @@ class EditMeeting:
 
         originals = data.getlist('original')
 
+        selected_edit_meeting = None
+        
+        changed_section = data.get('outerSection')
+        changed_counter = data.get('outerCounter')
+
         edit_meetings: list[EditMeeting] = []
         for i in range(len(are_deleted)):
-            section = Section.objects.get(pk=sections[i])
+            section_pk = sections[i]
+            section = Section.objects.get(pk=section_pk)
             counter = int(counters[i])
+
+            
 
             start_time, end_time = start_end_times[i].split(',')
             start_time = time.fromisoformat(start_time)
@@ -82,7 +117,7 @@ class EditMeeting:
                 professor = Professor.objects.get(pk=professor)
         
             is_deleted = are_deleted[i] == "true"
-            edit_meetings.append(EditMeeting(
+            edit_meeting = EditMeeting(
                 start_time=start_time,
                 counter=counter,
                 end_time=end_time,
@@ -93,9 +128,23 @@ class EditMeeting:
                 meeting=meeting,
                 professor=professor,
                 is_deleted=is_deleted
-            ))
-        return edit_meetings
+            )
+            edit_meetings.append(edit_meeting)
+
+            if changed_section == section_pk and changed_counter == counters[i]:
+                selected_edit_meeting = edit_meeting
+        
+        return edit_meetings, selected_edit_meeting
     
+    def get_time_intervals(self) -> list[tuple[time, time]]:
+        start_time = self.start_time
+        end_time = self.end_time
+        duration = timedelta(hours=start_time.hour, minutes=start_time.minute) - \
+            timedelta(hours=end_time.hour, minutes=end_time.minute)
+        time_intervals = TimeBlock.get_time_intervals(duration, self.day)
+
+        return time_intervals
+
     def room_problems(self, sections_to_exclude: list[Section] = None, check_allocation=True) -> list[Problem]:
         if sections_to_exclude is None:
             sections_to_exclude = [self.section]
@@ -573,6 +622,7 @@ class EditMeeting:
         )
         request.save()
         return request
+    
     def get_meeting_pk(self) -> None | str:
         return None if self.meeting is None else self.meeting.pk
 
