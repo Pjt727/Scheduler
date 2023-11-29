@@ -43,6 +43,43 @@ class DisplayRowContext(RowContext):
     is_deleted: bool
 
 
+# this is kinda bad design but whatever
+def get_update_meeting_context(data: QueryDict, edit_meetings: list[EditMeeting]=None,edit_meeting: EditMeeting=None, use_edit_meeting: bool=True) -> UpdateMeetingsContext:
+    sections_to_exclude = data.getlist('sectionGrouper')
+    changed_counter = data.get('outerCounter')
+    changed_section = data.get('outerSection')
+    enforce_department_constraints = data.get('enforceDepartmentConstraints') is not None
+    visible_sections: list[str] = []
+    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
+        visibility = visibility == 'true'
+        if visibility: visible_sections.append(section)
+    if edit_meetings is None:
+        edit_meetings = EditMeeting.create_all(data)
+    for i, (section_pk, counter) in enumerate(zip(data.getlist('section'), data.getlist('counter'))):
+        if (changed_section == section_pk) and (counter == changed_counter):
+            edit_meeting = edit_meetings[i]
+    edit_meetings = list(filter(
+        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
+        edit_meetings))
+
+    context: UpdateMeetingsContext = {
+        'edit_meetings': edit_meetings,
+        'title': "Editing Meetings",
+        'number_icons': TimeBlock.get_number_icons(),
+        'in_edit_mode': True
+    }
+    # edit_meeting should be none when the user is currently not editing a row
+    if edit_meeting is None or not use_edit_meeting:
+        return context
+    
+    other_meetings, open_slots = edit_meeting.get_open_slots(edit_meetings, sections_to_exclude, enforce_department_constraints)
+    context['meetings'] = other_meetings
+    context['edit_meeting'] = edit_meeting
+    context['open_slots'] = open_slots
+    context['title'] = f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}."
+
+    return context
+
 
 
 # TODO look at this code for possibility of editing rows that do not have building
@@ -71,31 +108,36 @@ class DisplayRow(View):
 
     def delete(self, request: HttpRequest) -> HttpResponse:
         DELETE = QueryDict(request.body)
+        changed_section = DELETE.get('outerSection')
+        changed_counter = DELETE.get('outerCounter')
 
-        start_time = DELETE.get("startTime")
-        start_time = time.fromisoformat(start_time)
+        edit_meetings = EditMeeting.create_all(DELETE)
+        edit_meeting = None
+        for i, (section_pk, counter) in enumerate(zip(DELETE.getlist('section'), DELETE.getlist('counter'))):
+            if (changed_section == section_pk) and (counter == changed_counter):
+                edit_meeting = edit_meetings[i]
 
-        end_time = DELETE.get("endTime")
-        end_time = time.fromisoformat(end_time)
-
-        room = DELETE.get("room")
-        building = DELETE.get("building")
-        original = DELETE.get("original")
-        professor = DELETE.get("professor")
         context: DisplayRowContext = {
+            "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
+            "section_pk": edit_meeting.section.pk,
+            "building": edit_meeting.building,
+            "room": edit_meeting.room,
+            "day": edit_meeting.day,
+            "professor": edit_meeting.professor,
+            "counter": edit_meeting.counter,
             "is_deleted": True,
-            "meeting_pk": None if original == 'None' else original,
-            "section_pk": DELETE.get("section"),
-            "start_time": start_time,
-            "end_time": end_time,
-            "day": DELETE.get("day"),
-            "building": None if building == "any" else Building.objects.get(pk=building),
-            "room": None if room is None else Room.objects.get(pk=room),
-            "counter": DELETE.get("counter"),
-            "professor": None if professor == 'None' else Professor.objects.get(pk=professor)
+            "start_time": edit_meeting.start_time,
+            "end_time": edit_meeting.end_time,
         }
 
-        return render(request, 'display_row.html', context=context)
+        update_meeting_context = get_update_meeting_context(
+            data=DELETE,
+            edit_meetings=edit_meetings,
+            edit_meeting=edit_meeting,
+            use_edit_meeting=False
+        )
+
+        return render(request, 'display_row.html', context=context | update_meeting_context)
 
     def post(self, request: HttpRequest) -> HttpResponse:
         pass
@@ -106,7 +148,6 @@ class InputRow(View):
         GET = request.GET
         changed_section = GET.get('outerSection')
         changed_counter = GET.get('outerCounter')
-        enforce_department_constraints = GET.get('enforceDepartmentConstraints') is not None
 
         edit_meetings = EditMeeting.create_all(GET)
 
@@ -119,20 +160,12 @@ class InputRow(View):
         duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
         time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
 
-        sections_to_exclude = GET.getlist('sectionGrouper')
+        update_meeting_context = get_update_meeting_context(
+            data=GET,
+            edit_meeting=edit_meeting,
+            edit_meetings=edit_meetings)
 
-        visible_sections: list[str] = []
-        for section, visibility in zip(GET.getlist('sectionGrouper'), GET.getlist('isVisible')):
-            visibility = visibility == 'true'
-            if visibility: visible_sections.append(section)
-        edit_meetings = list(filter(
-            lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
-            edit_meetings))
-
-        other_meetings, open_slots = edit_meeting.get_open_slots(edit_meetings, sections_to_exclude, enforce_department_constraints)
-        
-        # I really want a composition of these types but i guess this works?
-        context: InputRowContext | UpdateMeetingsContext = {
+        context: InputRowContext = {
             "meeting_pk": edit_meeting.get_meeting_pk(),
             "section_pk": edit_meeting.section.pk,
             "time_intervals": time_intervals,
@@ -145,17 +178,9 @@ class InputRow(View):
             "professor": edit_meeting.professor,
             "days": Day.DAY_CHOICES,
             "buildings": Building.objects.all(),
-            "meetings": other_meetings,
-            "edit_meetings": edit_meetings,
-            "edit_meeting": edit_meeting,
-            "open_slots": open_slots,
-            "title": f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}.",
-            "number_icons":  TimeBlock.get_number_icons(),
-            "in_edit_mode": True
         }
 
-
-        return render(request, 'input_row.html', context=context)
+        return render(request, 'input_row.html', context = context | update_meeting_context)
 
     # Very important that each input always have a value or the ordering could throw off everything
     @method_decorator(login_required)
@@ -202,22 +227,19 @@ class InputRow(View):
             context["number_icons"] =  TimeBlock.get_number_icons()
             return render(request, 'input_row.html', context=context)
 
-        context: DisplayRowContext | UpdateMeetingsContext
+        context: DisplayRowContext
         context["is_deleted"] = False
         context["start_time"] = edit_meeting.start_time
         context["end_time"] = edit_meeting.end_time
-        visible_sections: list[str] = []
-        for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
-            visibility = visibility == 'true'
-            if visibility: visible_sections.append(section)
-        edit_meetings = list(filter(
-            lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
-            edit_meetings))
-        context["edit_meetings"] = edit_meetings
-        context["title"] = "Editing Meetings"
-        context["in_edit_mode"] = True
 
-        return render(request, 'display_row.html', context=context)
+
+        update_meeting_context = get_update_meeting_context(
+            data=data,
+            edit_meeting=None,
+            edit_meetings=edit_meetings,
+            use_edit_meeting=False)
+
+        return render(request, 'display_row.html', context=context | update_meeting_context)
 
     @method_decorator(login_required)
     def post(self, request: HttpRequest) -> HttpResponse:
@@ -226,44 +248,32 @@ class InputRow(View):
 
 
 @login_required
+@require_http_methods(["GET"])
+def update_time_intervals(request: HttpRequest) -> HttpResponse:
+    data = request.GET
+    day = data.get('day')
+    start_end_time = data.get('startEndTime')
+    start_time, end_time = start_end_time.split(',')
+    start_time = time.fromisoformat(start_time)
+    end_time = time.fromisoformat(end_time)
+
+    duration = timedelta(hours=start_time.hour, minutes=start_time.minute) - \
+        timedelta(hours=end_time.hour, minutes=end_time.minute)
+    time_intervals = TimeBlock.get_time_intervals(duration, day)
+
+    context = {
+        "time_intervals": time_intervals,
+        "start_time": start_time,
+        "end_time": end_time,
+    }
+
+    return render(request, 'time_intervals.html', context=context)
+
+@login_required
 @require_http_methods(["PUT"])
 def update_meetings(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
-    sections_to_exclude = data.getlist('sectionGrouper')
-    changed_counter = data.get('outerCounter')
-    changed_section = data.get('outerSection')
-    enforce_department_constraints = data.get('enforceDepartmentConstraints') is not None
-    edit_meetings = EditMeeting.create_all(data)
-    edit_meeting = None
-
-    visible_sections: list[str] = []
-    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
-        visibility = visibility == 'true'
-        if visibility: visible_sections.append(section)
-    for i, (section_pk, counter) in enumerate(zip(data.getlist('section'), data.getlist('counter'))):
-        if (changed_section == section_pk) and (counter == changed_counter):
-            edit_meeting = edit_meetings[i]
-    edit_meetings = list(filter(
-        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
-        edit_meetings))
-
-    context: UpdateMeetingsContext = {
-        'edit_meetings': edit_meetings,
-        'title': "Editing Meetings",
-        'number_icons': TimeBlock.get_number_icons(),
-        'in_edit_mode': True
-    }
-    # edit_meeting should be none when the user is currently not editing a row
-    if edit_meeting is None:
-        return render(request, 'get_meetings.html', context=context)
-    
-    other_meetings, open_slots = edit_meeting.get_open_slots(edit_meetings, sections_to_exclude, enforce_department_constraints)
-    context['meetings'] = other_meetings
-    context['edit_meeting'] = edit_meeting
-    context['open_slots'] = open_slots
-    context['title'] = f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}."
-
-
+    context = get_update_meeting_context(data)
     return render(request, 'get_meetings.html', context=context)
 
 @login_required
@@ -321,7 +331,6 @@ def toggle_visibility(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
     changed_section = data.get('outerSection')
     visible_sections: list[str] = []
-    print(data)
 
     toggled_visibility = None
     for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):

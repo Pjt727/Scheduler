@@ -25,6 +25,9 @@ import heads.partial_views as heads_partial_views
 from django.views.generic import TemplateView
 
 
+# yeah you should probably put these all in module folder then import the modules here
+# but i'm currently the only maintainer and i'm too lazy to change this
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', TemplateView.as_view(template_name='base.html'), name='index'),
@@ -56,6 +59,7 @@ urlpatterns = [
     path('hard_approve', request_partial_views.hard_approve, name='hard_approve'),
     path('read_bundle', request_partial_views.read_bundle, name='read_bundle'),
     path('cancel_request', request_partial_views.cancel_request, name="cancel_request"),
+    path('update_time_intervals', request_partial_views.update_time_intervals, name="update_time_intervals"),
 
     # Claim views
     ## pages

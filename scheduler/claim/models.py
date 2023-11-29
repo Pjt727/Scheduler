@@ -346,7 +346,6 @@ class TimeBlock(models.Model):
                 
             for time_block in time_blocks.all():
                 end_time = time_block.start_end_time.end_d()
-                print(end_time, time_block.start_end_time.end, time_block.start_end_time.end.minute)
                 start_time = end_time - block
                 start_end_times.append(
                     (unsafe_conversion(start_time), unsafe_conversion(end_time)))

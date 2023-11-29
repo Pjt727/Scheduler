@@ -1,0 +1,10 @@
+{% load formhelpers %}
+{% for s, e in time_intervals %}
+  <option 
+    value="{{ s|time_input }},{{ e|time_input }}"
+    {% if s == start_time and e == end_time %}
+    selected
+    {% endif %}>
+    {{ s|time_display }} - {{ e|time_display }}
+  </option>
+{% endfor %}

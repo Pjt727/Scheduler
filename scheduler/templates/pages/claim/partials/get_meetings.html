@@ -14,7 +14,7 @@
   </div>
   <div class="content" id="meetingsGrid">
     <div class="time" style="grid-row:1"><div>08:00</div></div>
-    <div class="time-double" style="grid-row:2"><div>09:15&nbsp&nbsp</div><div>09:15&nbsp&nbsp</div></div>
+    <div class="time-double" style="grid-row:2"><div>09:15&nbsp&nbsp</div><div>09:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:3"><div>10:45&nbsp&nbsp</div><div>11:00&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:4"><div>12:15&nbsp&nbsp</div><div>12:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:5"><div>01:45&nbsp&nbsp</div><div>02:00&nbsp&nbsp</div></div>
@@ -77,6 +77,7 @@
     {% regroup edit_meetings by section as edit_sections %}
     {% for section in edit_sections %}
       {% for meeting in section.list %}
+        {% if not meeting.is_deleted %}
         {% if meeting == edit_meeting %}
         <div
           id="selectedMeeting"
@@ -100,19 +101,18 @@
         {{ section.grouper }}
         </div>
         {% endif %}
+        {% endif %}
       {% endfor %}
     {% endfor %}
     {% for time_slot in open_slots %}
     <div class="openSlots event justify-content-center" 
-      startTime="{{ time_slot.start|time_input }}" 
-      endTime="{{ time_slot.end|time_input }}"
+      value="{{ time_slot.start|time_input }},{{ time_slot.end|time_input }}" 
       day="{{ time_slot.day }}"
       onclick='
         const meeting = document.getElementById("selectedMeeting");
         meeting.style.gridArea = this.style.gridArea;
         const inputRow = document.querySelector(`[sectionClick="{{ edit_meeting.section.pk}}"][counterClick="{{ edit_meeting.counter }}"]`);
-        inputRow.querySelector(`[name="startTime"]`).value = this.getAttribute("startTime");
-        inputRow.querySelector(`[name="endTime"]`).value = this.getAttribute("endTime");
+        inputRow.querySelector(`[name="startEndTime"]`).value = this.getAttribute("value");
         inputRow.querySelector(`[name="day"]`).value = this.getAttribute("day");
       '
       onmouseover="
