@@ -137,10 +137,7 @@ class EditMeeting:
         return edit_meetings, selected_edit_meeting
     
     def get_time_intervals(self) -> list[tuple[time, time]]:
-        start_time = self.start_time
-        end_time = self.end_time
-        duration = timedelta(hours=start_time.hour, minutes=start_time.minute) - \
-            timedelta(hours=end_time.hour, minutes=end_time.minute)
+        duration = self.end_time_d() - self.start_time_d()
         time_intervals = TimeBlock.get_time_intervals(duration, self.day)
 
         return time_intervals
@@ -297,37 +294,82 @@ class EditMeeting:
 
         return False
 
-    def get_open_slots(self, edit_meetings: list['EditMeeting'], sections_to_exclude: list[Section], enforce_allocation: bool) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
-        edit_meetings = edit_meetings.copy()
-        edit_meetings.remove(self)
-
+    # This is now a completely different thing from open_slots
+    # just used to show the VISUALLY open slots
+    def get_open_slots(term: Term, building: Building, room: Room, professor: Professor, sections_to_exclude: list[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
         meetings = Meeting.objects.none()
-        if self.professor:
-            meetings |= self.professor.meetings.filter(section__term=self.section.term)
-        if self.room:
-            meetings |= Meeting.objects.filter(room=self.room, section__term=self.section.term)
+        if professor:
+            meetings |= professor.meetings.filter(section__term=term)
+        if room:
+            meetings |= Meeting.objects.filter(room=room, section__term=term)
         
         meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
 
-        total_time = self.end_time_d() - self.start_time_d()
-        if (total_time == TimeBlock.ONE_BLOCK) or (total_time == TimeBlock.DOUBLE_BLOCK):
-            return meetings, self.open_slots(
-                room=self.room,
-                professor=self.professor,
-                building=None,
-                section=self.section,
-                duration= total_time,
-                edit_meetings=edit_meetings,
-                meetings = meetings,
-                enforce_allocation=enforce_allocation)
-        elif total_time == TimeBlock.DOUBLE_BLOCK_NIGHT:
-            return meetings, []
-        elif total_time == TimeBlock.TRIPLE_NIGHT:
-            return meetings, []
+        meetings = Meeting.objects.none()
+        if professor:
+            meetings |= professor.meetings.filter(section__term=term)
+        if room:
+            meetings |= Meeting.objects.filter(room=room, section__term=term)
+        
+        meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
+
+
+        duration_after_time_block = duration - TimeBlock.ONE_BLOCK
+        in_meetings = Q()
+        for meeting in meetings.all():
+            new_start_d = meeting.time_block.start_end_time.start_d() - duration_after_time_block
+            new_start_t = time(hour=new_start_d.seconds // 3600, minute=(new_start_d.seconds % 3600) // 60)
+            in_meetings |= Q(
+                day= meeting.time_block.day,
+                start_end_time__start__lte=meeting.time_block.start_end_time.end,
+                start_end_time__end__gte=new_start_t
+            )
+        time_blocks = TimeBlock.objects \
+            .filter(number__isnull=False) \
+            .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
+            .exclude(in_meetings)
+        open_slots = []
+
+        for time_block in time_blocks:
+            new_end_d = time_block.start_end_time.start_d() + duration
+            new_end_t = time(hour=new_end_d.seconds // 3600, minute=(new_end_d.seconds % 3600) // 60)
+            department_allocation = time_block.allocation_groups.first().department_allocations.first()
+            allocation_max = department_allocation.number_of_classrooms
+            allocation = department_allocation.count_rooms(term)
+            slot: TimeSlot = {
+                'start': time_block.start_end_time.start,
+                'end': new_end_t,
+                'day': time_block.day,
+                'allocation_max': allocation_max,
+                'allocation': allocation,
+                'numbers': [time_block.number]
+            }
+
+            if room is None:
+                # have to check if there is any other room
+                available_rooms = building.get_available_rooms(
+                    start_time=slot['start'],
+                    end_time=slot['end'],
+                    day=slot['day'],
+                    term=term,
+                    include_general= (slot['allocation_max'] > slot['allocation']) or (not enforce_allocation),
+                    sections_to_exclude=sections_to_exclude
+                )
+                if not available_rooms.exists(): continue
+                open_slots.append(slot)
+            elif not enforce_allocation:
+                open_slots.append(slot)
+            elif slot['allocation_max'] > slot['allocation']:
+                open_slots.append(slot)
+            elif not room.is_general_purpose:
+                open_slots.append(slot)
+
+
+        return meetings, open_slots
     
     # There are still a lot problems with this and probably with forever have a lot of problems but at this points
     # it does not need to be perfect
-    def open_slots(*args, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool) -> list[TimeSlot]:
+    def open_slots(*args, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool = True) -> list[TimeSlot]:
         if building is None:
             building = Building.recommend(section.course, term=section.term)
         in_edit_meetings = Q()
@@ -413,7 +455,6 @@ class EditMeeting:
                 open_slots.append(slot)
                 continue
 
-            
         return open_slots
 
     # Recommending meeting is painfully complex and pretty slow doing it this way.

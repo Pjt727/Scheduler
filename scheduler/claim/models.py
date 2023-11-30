@@ -252,7 +252,7 @@ class TimeBlock(models.Model):
     # if this is None it means that it is an abnormal time slot
     number = models.IntegerField(null=True, blank=True, default=None)
 
-    allocation_groups = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None)
+    allocation_groups: QuerySet[AllocationGroup] = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None)
     start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
 
     meetings: QuerySet['Meeting']

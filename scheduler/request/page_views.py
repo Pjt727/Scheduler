@@ -22,10 +22,19 @@ def edit_section(request: HttpRequest, section: int) -> HttpResponse:
     }
 
     editing_room = first_edit_meeting.room
+    sections_to_exclude = [str(section.pk)]
 
+    duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
     # CHANGE THE VALUE TO TRUE ONCE DONE WITH CHANGES
-    other_meetings, open_slots = first_edit_meeting.get_open_slots(
-        edit_meetings, [str(section.pk)], False)
+    other_meetings, open_slots = EditMeeting.get_open_slots(
+        section.term,
+        first_edit_meeting.building,
+        first_edit_meeting.room,
+        first_edit_meeting.professor,
+        sections_to_exclude,
+        duration
+    )
+        
     calendar_meeting_context: UpdateMeetingsContext = {
         "edit_meetings": edit_meetings,
         "building": None, # building is always none if room is none in this case

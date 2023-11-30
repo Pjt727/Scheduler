@@ -78,29 +78,15 @@
     {% for section in edit_sections %}
       {% for meeting in section.list %}
         {% if not meeting.is_deleted %}
-        {% if meeting == edit_meeting %}
         <div
-          id="selectedMeeting"
-          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
-          style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %}; transform: scale(1.2);"
-        >
-        {{ section.grouper }} (Editing)
-        </div>
-        <div
-          id="hoverMeeting"
-          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative hoverCalendar" 
-          style="display: none; transform: scale(1.2);"
-        >
-        </div>
-
-        {% else %}
-        <div
-          class="event calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
+          id="{{ meeting.section.pk }},{{ meeting.counter }}"
+          draggable="true"
+          ondragstart="meetingDragstartHandler(event)"
+          class="event grabbable calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
           style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %};"
         >
         {{ section.grouper }}
         </div>
-        {% endif %}
         {% endif %}
       {% endfor %}
     {% endfor %}
@@ -108,21 +94,8 @@
     <div class="openSlots event justify-content-center" 
       value="{{ time_slot.start|time_input }},{{ time_slot.end|time_input }}" 
       day="{{ time_slot.day }}"
-      onclick='
-        const meeting = document.getElementById("selectedMeeting");
-        meeting.style.gridArea = this.style.gridArea;
-        const inputRow = document.querySelector(`[sectionClick="{{ edit_meeting.section.pk}}"][counterClick="{{ edit_meeting.counter }}"]`);
-        inputRow.querySelector(`[name="startEndTime"]`).value = this.getAttribute("value");
-        inputRow.querySelector(`[name="day"]`).value = this.getAttribute("day");
-      '
-      onmouseover="
-        const meeting = document.getElementById('hoverMeeting');
-        meeting.style.gridArea = this.style.gridArea;
-        meeting.style.display = 'grid';
-      "
-      onmouseout ="document.getElementById('hoverMeeting').style.display = 'none'"
-      
-      day="{{ time_slot.day }}"
+      ondrop="meetingDrop(event)"
+      ondragover="meetingOver(event)"
       style="grid-area: {% grid_area time_slot.start time_slot.end time_slot.day %}; cursor: pointer;"
     >
       <div>Open Time Slot</div> <div>({{ time_slot.allocation}} / {{time_slot.allocation_max}})</div>
@@ -145,3 +118,31 @@
     <button data-bs-toggle="collapse" href="#meetingDetails" type="button" role="button" class="btn-close position-absolute top-0 end-0" aria-controls="meetingsDetails" aria-expanded="true" aria-label="Close">
     </button>
 </div>
+<script>
+  function meetingDragstartHandler(ev) {
+    // Add the target element's id to the data transfer object
+    ev.dataTransfer.setData("text/plain", ev.target.id);
+    console.log(ev.dataTransfer.getData("text/plain"))
+  }
+
+  function meetingOver(ev) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+    // implemnt the copy of it to shade in and also switch
+  }
+
+  function meetingDrop(ev) {
+    ev.preventDefault();
+    // Get the id of the target and add the moved element to the target's DOM
+    const draggedMeetingId = ev.dataTransfer.getData("text/plain");
+    const draggedElement = document.getElementById(draggedMeetingId);
+    const dropTarget = ev.currentTarget;
+    console.log(dropTarget)
+    // moving the element
+    draggedElement.style.gridArea = dropTarget.style.gridArea;
+    const inputRow = document.querySelector(`[meetingId="${draggedMeetingId}"]`);
+    inputRow.querySelector(`[name="startEndTime"]`).value = dropTarget.getAttribute("value");
+    inputRow.querySelector(`[name="day"]`).value = dropTarget.getAttribute("day");
+    // implement swtich for two in editing meeting
+  }
+</script>

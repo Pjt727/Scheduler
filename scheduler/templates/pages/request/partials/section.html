@@ -21,8 +21,7 @@
       name="meeting"
 
       {% comment %} Do we really need this ?? {% endcomment %}
-      sectionClick="{{ section.pk }}"
-      counterClick="{{ forloop.counter }}"
+      meetingId="{{ section.pk }},{{ edit_meeting.counter }}"
       class="row">
       {% include 'input_row.html' with edit_meeting=edit_meeting edit_meetings=None %}
     </div>
