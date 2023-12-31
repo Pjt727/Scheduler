@@ -3,17 +3,21 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from .models import *
 from claim.models import *
-from .partial_views1 import InputRowContext, UpdateMeetingsContext
+from .partial_views import InputRowContext, get_update_meeting_context
 
 @login_required
 def edit_section(request: HttpRequest, section: int) -> HttpResponse:
     section: Section = Section.objects.get(pk=section)
     edit_meetings = EditMeeting.from_section(section)
-    first_edit_meeting = next(iter(edit_meetings), None)
+    first_edit_meeting: EditMeeting = next(iter(edit_meetings), None)
     
+    duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
     page_context = {
         "professor": Professor.objects.get(user=request.user),
         "section": section,
+        "duration": duration,
+        "building": first_edit_meeting.building.pk,
+        "room": first_edit_meeting.room.pk,
     }
 
     input_row_context: InputRowContext = {
@@ -21,11 +25,8 @@ def edit_section(request: HttpRequest, section: int) -> HttpResponse:
         "buildings": Building.objects.all(),
     }
 
-    editing_room = first_edit_meeting.room
     sections_to_exclude = [str(section.pk)]
 
-    duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
-    # CHANGE THE VALUE TO TRUE ONCE DONE WITH CHANGES
     other_meetings, open_slots = EditMeeting.get_open_slots(
         section.term,
         first_edit_meeting.building,
@@ -34,17 +35,16 @@ def edit_section(request: HttpRequest, section: int) -> HttpResponse:
         sections_to_exclude,
         duration
     )
-        
-    calendar_meeting_context: UpdateMeetingsContext = {
-        "edit_meetings": edit_meetings,
-        "building": None, # building is always none if room is none in this case
-        "edit_room": editing_room,
-        "number_icons": TimeBlock.get_number_icons,
-        "title": f"Conflicts for {editing_room}",
-        "in_edit_mode": True,
-        "meetings": other_meetings,
-        "open_slots": open_slots,
-    }
+
+    print(first_edit_meeting)
+    print(first_edit_meeting.get_time_intervals())
+    calendar_meeting_context = get_update_meeting_context(
+            edit_meetings=edit_meetings,
+            building=first_edit_meeting.building,
+            room=first_edit_meeting.room,
+            duration=duration,
+            other_meetings=other_meetings,
+            open_slots=open_slots)
 
     context = page_context | input_row_context | calendar_meeting_context
 

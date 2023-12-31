@@ -1,0 +1,12 @@
+{% load formhelpers %}
+{% for time_slot in open_slots %}
+<div class="openSlots event justify-content-center" 
+  value="{{ time_slot.start|time_input }},{{ time_slot.end|time_input }}" 
+  day="{{ time_slot.day }}"
+  ondrop="meetingDrop(event)"
+  ondragover="meetingOver(event)"
+  style="grid-area: {% grid_area time_slot.start time_slot.end time_slot.day %};"
+>
+  <div>Open Time Slot</div> <div>({{ time_slot.allocation}} / {{time_slot.allocation_max}})</div>
+</div>
+{% endfor %}

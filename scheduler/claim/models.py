@@ -337,7 +337,7 @@ class TimeBlock(models.Model):
 
         if block not in blocks:
             block = TimeBlock.ONE_BLOCK
-        start_end_times: list[tuple[timedelta, timedelta]] = []
+        start_end_times: list[tuple[time, time]] = []
         if block == TimeBlock.ONE_BLOCK:
             time_blocks = TimeBlock.objects \
                 .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS)\
@@ -347,8 +347,8 @@ class TimeBlock(models.Model):
             for time_block in time_blocks.all():
                 end_time = time_block.start_end_time.end_d()
                 start_time = end_time - block
-                start_end_times.append(
-                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+                time_tuple = (unsafe_conversion(start_time), unsafe_conversion(end_time))
+                start_end_times.append(time_tuple)
         elif block == TimeBlock.DOUBLE_BLOCK:
             time_blocks = TimeBlock.objects \
                 .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
@@ -360,7 +360,6 @@ class TimeBlock(models.Model):
                 start_time = end_time - block
                 start_end_times.append(
                     (unsafe_conversion(start_time), unsafe_conversion(end_time)))
-                start_end_times.append( (start_time, end_time) )
         elif block == TimeBlock.DOUBLE_BLOCK_NIGHT:
             time_blocks = TimeBlock.objects \
                 .filter(day=day_code) \

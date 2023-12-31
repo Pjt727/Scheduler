@@ -17,17 +17,6 @@
   </section>
   <br>
   <div class="row">
-    <div class="col text-start">
-      <input 
-        {% comment %} THIS IS SICK AF REMBMEBER YOU CAN DO THIS THIS EASILY {% endcomment %}
-        onchange="htmx.trigger('body', 'updateMeetings')"
-        type="checkbox" 
-        id="enforceDepartmentConstraints" 
-        name="enforceDepartmentConstraints" 
-        class="form-check-input" 
-        checked>
-      <label for="enforceDepartmentConstraints">Enforce Department Constraints</label> 
-    </div>
     <div class="col text-end">
       <button 
         hx-post="{% url 'soft_submit' %}"
@@ -47,6 +36,7 @@
 <div 
   hx-put="{% url 'update_meetings' %}"
   hx-trigger="updateMeetings from:body"
+  hx-swap="none"
   hx-include="#sections, #enforceDepartmentConstraints"
   id="meetingsContainer" >
 {% include 'get_meetings.html' with edit_meetings=edit_meetings %}

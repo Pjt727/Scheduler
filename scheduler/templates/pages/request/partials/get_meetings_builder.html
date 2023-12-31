@@ -1,0 +1,23 @@
+{% if title %}
+<div hx-swap-oob="innerHtml:#title">
+  <div class="title" id="title">{{ title }}</div>
+</div>
+{% endif %}
+
+{% if meetings %}
+<div hx-swap-oob="innerHtml:#otherMeetings">
+    {% include 'other_meetings.html' %}
+</div>
+{% endif %}
+
+{% if edit_meetings %}
+<div hx-swap-oob="innerHtml:#editingMeetings">
+    {% include 'edit_meetings.html' %}
+</div>
+{% endif %}
+
+{% if open_slots %}
+<div hx-swap-oob="innerHtml:#openSlots">
+    {% include 'open_slots.html' %}
+</div>
+{% endif %}

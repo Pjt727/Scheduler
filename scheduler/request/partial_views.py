@@ -11,7 +11,9 @@ from django_htmx.http import HttpResponseClientRedirect
 from claim.models import *
 from .models import *
 from datetime import time
-from typing import TypedDict, NotRequired
+from typing import TypedDict
+
+# TODO OPEN SLOTS CAN SIMPLY HAVE A VIEW INTO THE DIFFERENT SECTIONS THAT ARE CURRENTLY IN IT
 
 class RowContext(TypedDict):
     meeting_pk: None | str
@@ -43,43 +45,65 @@ class DisplayRowContext(RowContext):
     is_deleted: bool
 
 
-# this is kinda bad design but whatever
-def get_update_meeting_context(data: QueryDict, edit_meetings: list[EditMeeting]=None,edit_meeting: EditMeeting=None, use_edit_meeting: bool=True) -> UpdateMeetingsContext:
-    sections_to_exclude = data.getlist('sectionGrouper')
-    changed_counter = data.get('outerCounter')
-    changed_section = data.get('outerSection')
-    enforce_department_constraints = data.get('enforceDepartmentConstraints') is not None
-    visible_sections: list[str] = []
-    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
-        visibility = visibility == 'true'
-        if visibility: visible_sections.append(section)
-    if edit_meetings is None:
-        edit_meetings = EditMeeting.create_all(data)
-    for i, (section_pk, counter) in enumerate(zip(data.getlist('section'), data.getlist('counter'))):
-        if (changed_section == section_pk) and (counter == changed_counter):
-            edit_meeting = edit_meetings[i]
-    edit_meetings = list(filter(
-        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
-        edit_meetings))
-
+def get_update_meeting_context(edit_meetings: list[EditMeeting] | None,
+                               building: Building | None,
+                               room: Room | None, duration: timedelta | None,
+                               other_meetings: QuerySet[Meeting],
+                               open_slots: list[TimeSlot]) -> UpdateMeetingsContext:
     context: UpdateMeetingsContext = {
-        'edit_meetings': edit_meetings,
-        'title': "Editing Meetings",
-        'number_icons': TimeBlock.get_number_icons(),
-        'in_edit_mode': True
+        "edit_meetings": edit_meetings,
+        "building": building, # building is always none if room is none in this case
+        "edit_room": room.pk,
+        "number_icons": TimeBlock.get_number_icons,
+        "title": f"Conflicts for in {room} for {str(duration)[:-3]}",
+        "in_edit_mode": True,
+        "meetings": other_meetings,
+        "open_slots": open_slots,
     }
-    # edit_meeting should be none when the user is currently not editing a row
-    if edit_meeting is None or not use_edit_meeting:
-        return context
-    
-    other_meetings, open_slots = edit_meeting.get_open_slots(edit_meetings, sections_to_exclude, enforce_department_constraints)
-    context['meetings'] = other_meetings
-    context['edit_meeting'] = edit_meeting
-    context['open_slots'] = open_slots
-    context['title'] = f"Conflicts for #{edit_meeting.counter}, {edit_meeting.section}."
-
     return context
 
+
+def generate_update_meeting_context(data: QueryDict | dict, edit_meetings: list[EditMeeting]=None, edit_meeting: EditMeeting = None) -> UpdateMeetingsContext:
+    if edit_meetings is None:
+        edit_meetings, edit_meeting = EditMeeting.create_all(data)
+    sections: set[Section] = set()
+    term: Term = None
+    for e_m in edit_meetings:
+        term = e_m.section.term
+        sections.add(e_m.section)
+    start_end_time = str(data.get("thisStartEndTime"))
+
+    start_time, end_time = start_end_time.split(',')
+    start_time = time.fromisoformat(start_time)
+    end_time = time.fromisoformat(end_time)
+    start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute)
+    end_time_d = timedelta(hours=end_time.hour, minutes=end_time.minute)
+    duration = end_time_d - start_time_d
+
+    building = data.get("thisBuilding")
+    building = Building.objects.get(pk=building)
+    room = data.get("thisRoom")
+    room = Room.objects.get(pk=room)
+    professor = data.get("thisProfessor")
+    professor = Professor.objects.get(pk=professor)
+    other_meetings, open_slots = EditMeeting.get_open_slots(
+        term,
+        building,
+        room,
+        professor,
+        sections,
+        duration
+    )
+    edit_meetings_or_none = None
+    if data.get("thisRefreshEditMeetings") == "true":
+        edit_meetings_or_none = edit_meetings
+    return get_update_meeting_context(
+            edit_meetings=edit_meetings_or_none,
+            building=None,
+            room=room,
+            duration=duration,
+            other_meetings=other_meetings,
+            open_slots=open_slots)
 
 
 # TODO look at this code for possibility of editing rows that do not have building
@@ -112,10 +136,11 @@ class DisplayRow(View):
         changed_counter = DELETE.get('outerCounter')
 
         edit_meetings = EditMeeting.create_all(DELETE)
-        edit_meeting = None
+        edit_meeting: None | EditMeeting = None
         for i, (section_pk, counter) in enumerate(zip(DELETE.getlist('section'), DELETE.getlist('counter'))):
             if (changed_section == section_pk) and (counter == changed_counter):
                 edit_meeting = edit_meetings[i]
+        edit_meeting: EditMeeting
 
         context: DisplayRowContext = {
             "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
@@ -273,8 +298,8 @@ def update_time_intervals(request: HttpRequest) -> HttpResponse:
 @require_http_methods(["PUT"])
 def update_meetings(request: HttpRequest) -> HttpResponse:
     data = QueryDict(request.body)
-    context = get_update_meeting_context(data)
-    return render(request, 'get_meetings.html', context=context)
+    context = generate_update_meeting_context(data)
+    return render(request, 'get_meetings_builder.html', context=context)
 
 @login_required
 @require_http_methods(["GET"])

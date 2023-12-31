@@ -1,6 +1,6 @@
 {% load formhelpers %}
 <div class="meeting-container" hx-disinherit="*">
-  <div class="title">{{ title }}</div>
+  <div class="title" id="title">{{ title }}</div>
   <div class="days">
     <div class="filler"></div>
     <div class="filler"></div>
@@ -18,7 +18,7 @@
     <div class="time-double" style="grid-row:3"><div>10:45&nbsp&nbsp</div><div>11:00&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:4"><div>12:15&nbsp&nbsp</div><div>12:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:5"><div>01:45&nbsp&nbsp</div><div>02:00&nbsp&nbsp</div></div>
-    <div class="time-double" style="grid-row:6"><div>03:15&nbsp&nbsp</div><div>03:30&nbsp&nbsp</div></div>
+    <div class="time-double" style="gdemo@example.comrid-row:6"><div>03:15&nbsp&nbsp</div><div>03:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:7"><div>04:45&nbsp&nbsp</div><div>05:00&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:8"><div>06:15&nbsp&nbsp</div><div>06:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:9"><div>07:45&nbsp&nbsp</div><div>08:00&nbsp&nbsp</div></div>
@@ -43,64 +43,15 @@
     <div class="meeting-row" style="grid-row:9"></div>
     <div class="meeting-row" style="grid-row:10"></div>
     <div class="meeting-row" style="grid-row:11"></div>
-    {% regroup meetings by section as sections %}
-    {% for section in sections %}
-      {% for meeting in section.list %}
-      
-      <div 
-        class="event calendar{{ forloop.parentloop.counter|modulo:16 }} position-relative"
-        style="grid-area: {% grid_area meeting.time_block.start_end_time.start meeting.time_block.start_end_time.end meeting.time_block.day %};"
-      >
-        {{ meeting.section }}
-        <svg 
-          hx-get="{% url 'get_meeting_details' %}"
-          hx-target="#meetingDetailsContainer"
-          hx-vals='{"inEditMode": "{{ in_edit_mode }}", "meeting": "{{ meeting.pk }}"}'
-          onclick='new bootstrap.Collapse("#meetingDetails", {toggle: false}).show()'
-
-          class="position-absolute top-0 end-0 bi bi-info-circle pt-1 pe-1"
-          style="cursor: pointer;"
-          name="meetingDetail" 
-          value="{{ meeting.pk }}" 
-          xmlns="http://www.w3.org/2000/svg" 
-          width="25" 
-          height="25" 
-          fill="currentColor" 
-          viewBox="0 0 16 16"
-        >
-          <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-          <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/>
-        </svg>
-      </div>
-      {% endfor %}
-    {% endfor %}
-    {% regroup edit_meetings by section as edit_sections %}
-    {% for section in edit_sections %}
-      {% for meeting in section.list %}
-        {% if not meeting.is_deleted %}
-        <div
-          id="{{ meeting.section.pk }},{{ meeting.counter }}"
-          draggable="true"
-          ondragstart="meetingDragstartHandler(event)"
-          class="event grabbable calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
-          style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %};"
-        >
-        {{ section.grouper }}
-        </div>
-        {% endif %}
-      {% endfor %}
-    {% endfor %}
-    {% for time_slot in open_slots %}
-    <div class="openSlots event justify-content-center" 
-      value="{{ time_slot.start|time_input }},{{ time_slot.end|time_input }}" 
-      day="{{ time_slot.day }}"
-      ondrop="meetingDrop(event)"
-      ondragover="meetingOver(event)"
-      style="grid-area: {% grid_area time_slot.start time_slot.end time_slot.day %}; cursor: pointer;"
-    >
-      <div>Open Time Slot</div> <div>({{ time_slot.allocation}} / {{time_slot.allocation_max}})</div>
-    </div>
-    {% endfor %}
+    <section class="htmxGrouper" id="otherMeetings">
+        {% include 'other_meetings.html' %}
+    </section>
+    <section class="htmxGrouper" id="editingMeetings">
+        {% include 'edit_meetings.html' %}
+    </section>
+    <section class="htmxGrouper" id="openSlots">
+        {% include 'open_slots.html' %}
+    </section>
     {% for number_icon in number_icons %}
     <div class="position-relative"
       style=" grid-area: {% grid_area number_icon.start number_icon.end number_icon.day %};
@@ -121,8 +72,31 @@
 <script>
   function meetingDragstartHandler(ev) {
     // Add the target element's id to the data transfer object
-    ev.dataTransfer.setData("text/plain", ev.target.id);
-    console.log(ev.dataTransfer.getData("text/plain"))
+    const rowId = ev.target.getAttribute("rowId")
+    ev.dataTransfer.setData("text/plain", rowId);
+    // get the data of the transfer
+    const meetingsCounter = document.getElementById("meetingsContainer")
+    const thisRow = document.getElementById(rowId)
+
+    const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
+    const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
+
+    const buildingSelect = thisRow.querySelector('[name="building"]')
+    const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
+
+    const roomSelect = thisRow.querySelector('[name="room"]')
+    const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
+
+    const professor = thisRow.querySelector('[name="professor"]').value
+    // Maybe check the current hx-vals are the same as the new before
+
+    meetingsCounter.setAttribute("hx-vals", ` {
+        "thisStartEndTime": "${selectedTime}",
+        "thisBuilding": "${selectedBuilding}",
+        "thisRoom": "${selectedRoom}",
+        "thisProfessor": "${professor}"
+    }`)
+    htmx.trigger("body", "updateMeetings")
   }
 
   function meetingOver(ev) {
@@ -132,15 +106,18 @@
   }
 
   function meetingDrop(ev) {
+    if (document.getElementById("meetingsContainer").classList.contains('htmx-request')) {
+        // meetings are still loading so simply reject the drag
+        return
+    }
     ev.preventDefault();
     // Get the id of the target and add the moved element to the target's DOM
     const draggedMeetingId = ev.dataTransfer.getData("text/plain");
-    const draggedElement = document.getElementById(draggedMeetingId);
+    const draggedElement = document.querySelector(`[rowId="${draggedMeetingId}"]`);
     const dropTarget = ev.currentTarget;
-    console.log(dropTarget)
     // moving the element
     draggedElement.style.gridArea = dropTarget.style.gridArea;
-    const inputRow = document.querySelector(`[meetingId="${draggedMeetingId}"]`);
+    const inputRow = document.getElementById(draggedMeetingId);
     inputRow.querySelector(`[name="startEndTime"]`).value = dropTarget.getAttribute("value");
     inputRow.querySelector(`[name="day"]`).value = dropTarget.getAttribute("day");
     // implement swtich for two in editing meeting

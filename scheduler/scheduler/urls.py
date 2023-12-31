@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path
 import authentication.views as auth_views
 import request.page_views as request_page_views
-import request.partial_views1 as request_partial_views
+import request.partial_views as request_partial_views
 import claim.page_views as claim_page_views
 import claim.partial_views as claim_partial_views
 import heads.page_views as heads_page_views

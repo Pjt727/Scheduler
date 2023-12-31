@@ -35,6 +35,7 @@ class EditMeeting:
     is_deleted: bool = False
 
     # This logic may be in Section model why then we would have to worry about circular imports
+    @staticmethod
     def from_meeting(meeting: Meeting, counter: int) -> 'EditMeeting':
         edit_meeting = EditMeeting(
             start_time=meeting.time_block.start_end_time.start,
@@ -50,6 +51,7 @@ class EditMeeting:
         )
         return edit_meeting
 
+    @staticmethod
     def from_section(section: Section) -> list['EditMeeting']:
         edit_meetings = []
         
@@ -61,6 +63,7 @@ class EditMeeting:
         return edit_meetings
 
     # I cant type hint 'EditMeeting' | None  sadly :(
+    @staticmethod
     def create_all(data: QueryDict) -> tuple[list['EditMeeting'], 'EditMeeting']:
         are_deleted = data.getlist('isDeleted')
         sections = data.getlist('section')
@@ -83,8 +86,6 @@ class EditMeeting:
             section_pk = sections[i]
             section = Section.objects.get(pk=section_pk)
             counter = int(counters[i])
-
-            
 
             start_time, end_time = start_end_times[i].split(',')
             start_time = time.fromisoformat(start_time)
@@ -227,6 +228,7 @@ class EditMeeting:
                     problems.append(Problem(Problem.DANGER, message))
         return problems
 
+    @staticmethod
     def get_section_problems(edit_meetings: list['EditMeeting'], sections_to_exclude: list[Section]) -> list[Problem]:
         sections = set()
         for m in edit_meetings:
@@ -296,7 +298,8 @@ class EditMeeting:
 
     # This is now a completely different thing from open_slots
     # just used to show the VISUALLY open slots
-    def get_open_slots(term: Term, building: Building, room: Room, professor: Professor, sections_to_exclude: list[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
+    @staticmethod
+    def get_open_slots(term: Term, building: Building, room: Room, professor: Professor, sections_to_exclude: set[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
         meetings = Meeting.objects.none()
         if professor:
             meetings |= professor.meetings.filter(section__term=term)
@@ -369,6 +372,7 @@ class EditMeeting:
     
     # There are still a lot problems with this and probably with forever have a lot of problems but at this points
     # it does not need to be perfect
+    @staticmethod
     def open_slots(*args, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool = True) -> list[TimeSlot]:
         if building is None:
             building = Building.recommend(section.course, term=section.term)
@@ -461,6 +465,7 @@ class EditMeeting:
     # To remove some of the complexity open_slots is used which probably is not the best way
     # There should be A LOT better of way to recommend bulk subjects without requesting 
 
+    @staticmethod
     def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section: Section) -> list['EditMeeting']:
         total_duration = timedelta()
         sections_to_exclude = set()
@@ -528,6 +533,7 @@ class EditMeeting:
 
         return [no_recommendation]
 
+    @staticmethod
     def no_recommendation(section: Section, counter: int, building: Building = None):
         return EditMeeting(
             start_time=time(0), end_time=time(hour=1, minute=15), day="MO",
@@ -535,6 +541,7 @@ class EditMeeting:
             section=section, counter=counter,
         )
 
+    @staticmethod
     def recommend_one_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
         number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
 
@@ -569,6 +576,7 @@ class EditMeeting:
             section=section, counter=last_counter + 1, professor=professor,
         )]
     
+    @staticmethod
     def recommend_two_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
         number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
         recommended = []

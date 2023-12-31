@@ -19,9 +19,7 @@
     <div
       hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"'
       name="meeting"
-
-      {% comment %} Do we really need this ?? {% endcomment %}
-      meetingId="{{ section.pk }},{{ edit_meeting.counter }}"
+      id="{{ section.pk }},{{ edit_meeting.counter }}"
       class="row">
       {% include 'input_row.html' with edit_meeting=edit_meeting edit_meetings=None %}
     </div>
