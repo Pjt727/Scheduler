@@ -44,12 +44,11 @@ urlpatterns = [
     # request views
     ## pages
     path('message_hub', request_page_views.message_hub, name="message_hub"),
-    path('edit_section/<int:section>', request_page_views.edit_section, name='edit_section'),
+    path('edit_section/<int:section_pk>', request_page_views.edit_section, name='edit_section'),
     ## partial
     path('display_row', request_partial_views.DisplayRow.as_view(), name="display_row"),
     path('input_row', request_partial_views.InputRow.as_view(), name="input_row"),
     path('add_rows', request_partial_views.add_rows, name="add_rows"),
-    path('toggle_visibility', request_partial_views.toggle_visibility, name="toggle_visibility"),
     path('add_section', request_partial_views.add_section, name="add_section"),
     path('update_rooms', request_partial_views.update_rooms, name="update_rooms"),
     path('update_meetings', request_partial_views.update_meetings, name="update_meetings"),
@@ -59,6 +58,7 @@ urlpatterns = [
     path('hard_approve', request_partial_views.hard_approve, name='hard_approve'),
     path('read_bundle', request_partial_views.read_bundle, name='read_bundle'),
     path('cancel_request', request_partial_views.cancel_request, name="cancel_request"),
+    path('deny_request', request_partial_views.deny_request, name="deny_request"),
     path('update_time_intervals', request_partial_views.update_time_intervals, name="update_time_intervals"),
 
     # Claim views

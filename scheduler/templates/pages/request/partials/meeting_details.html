@@ -7,20 +7,16 @@
     <div class="row justify-content-md-center">
         {% if in_edit_mode %}
         <div class="col col-lg-5 fw-bold" hx-disinherit="*">
-            <button 
-              hx-get="{% url 'add_section' %}"
-              hx-include=".sectionGrouper"
-              hx-vals='"section": "{{ section.pk }}"'
-              hx-target="#sections"
-              hx-swap="beforeend"
-              type="button" 
-              class="btn btn-outline-primary">
+            <button hx-put="{% url 'add_section' %}" hx-include="#sections"
+                hx-vals='"addedSection": "{{ section.pk }}", "thisRefreshEditMeetings": "true"'
+                hx-target="#sections" hx-swap="beforeend"
+                type="button" class="btn btn-outline-primary">
                 Edit in Group
             </button>
         </div>
         {% else %}
         <div class="col col-lg-2 fw-bold">
-            <a href="{% url 'edit_section' section=section.pk %}">
+            <a href="{% url 'edit_section' section_pk=section.pk %}">
                 Edit
             </a>
         </div>
@@ -48,16 +44,16 @@
     <div class="row">
         <table class="table">
             <tbody>
-            {% for meeting_section in section.meetings_sorted.all %}
-                <tr {% if meeting_section == meeting %}class="fst-italic fw-bold"{% endif %}>
+                {% for meeting_section in section.meetings_sorted.all %}
+                <tr {% if meeting_section == meeting %}class="fst-italic fw-bold" {% endif %}>
                     <td>{{ meeting_section.time_block.day }}</td>
                     <td>{{ meeting_section.time_block.start_end_time }}</td>
                     <td>{{ meeting_section.room }}</td>
                     {% if is_shared_section %}
                     <td>{{ meeting_section.professor }}
-                    {% endif %}
+                        {% endif %}
                 </tr>
-            {% endfor %}
+                {% endfor %}
             </tbody>
         </table>
     </div>

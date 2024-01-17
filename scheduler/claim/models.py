@@ -1,15 +1,12 @@
 import math
-from dataclasses import dataclass
-from enum import Enum
 from django.db import models
-from django.db.models import Q, Case, When, Sum, IntegerField, Subquery, OuterRef, F, Count, Max, Func, Value
-from django.db.models.functions import Coalesce
+from django.db.models import Q, Case, When, IntegerField, Count, Value
 from django.db.models.query import QuerySet
 from authentication.models import Professor
 from datetime import time, timedelta
 from typing import TYPE_CHECKING, TypedDict
 if TYPE_CHECKING:
-    from request.models import EditMeetingRequest
+    from request.models import *
 
 
 class Day:
@@ -67,7 +64,8 @@ class Building(models.Model):
     def __repr__(self) -> str:
         return f"name={self.name}, code={self.code}"    
     
-    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term', include_general: bool, sections_to_exclude: list['Section'] = None) -> QuerySet['Room']:
+    def get_available_rooms(self, start_time: time | timedelta, end_time: time | timedelta, day: str, term: 'Term',
+                            include_general: bool, sections_to_exclude: set['Section'] | None = None) -> QuerySet['Room']:
         in_time_frame = Q(
             meetings__section__term=term,
             meetings__time_block__day=day,
@@ -102,7 +100,7 @@ class Building(models.Model):
             else:
                 in_time_blocks &= in_time_block
         
-        taken_rooms = self.rooms.filter(in_time_block)
+        taken_rooms = self.rooms.filter(in_time_blocks)
         open_rooms = self.rooms.exclude(pk__in=taken_rooms)
 
         if not include_general:
@@ -110,6 +108,7 @@ class Building(models.Model):
 
         return open_rooms.exclude(is_general_purpose=True).distinct()
     
+    @staticmethod
     def recommend(course: 'Course', term: 'Term') -> 'Building':
         building_counts = Building.objects.annotate(
             count=Count('rooms__meetings__section',
@@ -139,7 +138,7 @@ class Room(models.Model):
     meetings: QuerySet['Meeting']
 
 
-    class Meta:
+    class Meta: # pyright: ignore
         ordering = ['number']
 
     def __str__(self) -> str:
@@ -252,7 +251,7 @@ class TimeBlock(models.Model):
     # if this is None it means that it is an abnormal time slot
     number = models.IntegerField(null=True, blank=True, default=None)
 
-    allocation_groups: QuerySet[AllocationGroup] = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None)
+    allocation_groups: QuerySet[AllocationGroup] = models.ManyToManyField(AllocationGroup, related_name="time_blocks", blank=True, default=None) # pyright: ignore
     start_end_time = models.ForeignKey(StartEndTime, related_name="time_blocks", on_delete=models.CASCADE)
 
     meetings: QuerySet['Meeting']
@@ -272,8 +271,9 @@ class TimeBlock(models.Model):
         )
 
         for tm in tms:
-            self.allocation_groups.add(tm.allocation_groups.first())
+            self.allocation_groups.add(tm.allocation_groups.first()) # pyright: ignore
 
+    @staticmethod
     def get_official_time_blocks(start: time | timedelta, end: time | timedelta, day: str) -> QuerySet['TimeBlock']:
         time_blocks = TimeBlock.objects.filter(
                 number__isnull=False
@@ -284,6 +284,7 @@ class TimeBlock(models.Model):
             )
         return time_blocks
     
+    @staticmethod
     def get_number_icons() -> list[NumberIcon]:
         number_icons: list[NumberIcon] = []
         time_blocks = TimeBlock.objects \
@@ -311,6 +312,7 @@ class TimeBlock(models.Model):
 
         return number_icons
 
+    @staticmethod
     def get_time_intervals(block: timedelta, day_code: str ) -> list[tuple[time, time]]:
         def unsafe_conversion(t: timedelta) -> time:
             hours = math.floor(t.total_seconds() / 3600)
@@ -398,7 +400,7 @@ class Subject(models.Model):
         return self.code
     
     def __repr__(self) -> str:
-        return f"code={self.code}, department={self.department}, request={self.request}"
+        return f"code={self.code}, department={self.department}"
     
 
 class Course(models.Model):
@@ -434,9 +436,10 @@ class Course(models.Model):
         return f"code={self.code}, credits={self.credits}, title={self.title}, subject={self.subject}"    
     
     def get_approximate_times(self) -> set[timedelta]:
-        return self.CREDIT_HOUR_POSSIBILITIES.get(self.credits, timedelta(seconds=0))
+        return self.CREDIT_HOUR_POSSIBILITIES.get(self.credits, {timedelta(seconds=0)})
     
     # TODO make this faster and maybe implement it
+    @staticmethod
     def sort_with_prof(courses: QuerySet['Course'], professor: Professor) -> QuerySet['Course']:
         professor_courses = courses \
             .filter(sections__primary_professor=professor) \
@@ -453,6 +456,7 @@ class Course(models.Model):
         return all_courses.order_by('-count', 'title')
 
     
+    @staticmethod
     def live_search_filter(search_query: str) -> Q:
 
         course_filter = Q()
@@ -461,8 +465,8 @@ class Course(models.Model):
             course_filter &= Q(code__icontains=item) | Q(title__icontains=item)
         return course_filter
     
+    @staticmethod
     def search(query: str, term_pk: str, department_pk: str = "any", subject_pk: str = "any") -> tuple[QuerySet['Course'], bool]:
-
         courses = Course.objects.filter(sections__term=term_pk).distinct()
         courses_less_filtered = courses
         if subject_pk == "any":
@@ -472,19 +476,16 @@ class Course(models.Model):
         else:
             courses = courses.filter(subject=subject_pk)
         
+        query_filter = None
         if query:
             query_filter = Course.live_search_filter(query)
             courses = courses.filter(query_filter)
         if len(courses) > 0:
             return courses, True
         
-        if query:
+        if query_filter is not None:
             courses_less_filtered = courses_less_filtered.filter(query_filter)
         return courses_less_filtered, False
-
-            
-        
-
 
 
 class Term(models.Model):
@@ -505,7 +506,7 @@ class Term(models.Model):
 
     sections: QuerySet['Section']
 
-    class Meta:
+    class Meta: # pyright: ignore
         ordering = ('-year',
             Case(
                 When(season="fall", then=1),
@@ -537,11 +538,12 @@ class Section(models.Model):
     term = models.ForeignKey(Term, on_delete=models.CASCADE, related_name="sections", max_length=20)
     course = models.ForeignKey(Course, related_name="sections", on_delete=models.CASCADE)
     primary_professor = models.ForeignKey(Professor, related_name="sections", on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    
+
+    edit_sections: QuerySet['EditSectionRequest']
     meetings: QuerySet['Meeting']
     edit_requests: QuerySet['EditMeetingRequest']
 
-    class Meta:
+    class Meta: # pyright: ignore
         unique_together = ('course', 'term', 'number',)
 
     def __str__(self) -> str:
@@ -560,6 +562,7 @@ class Section(models.Model):
         )
          
 
+    @staticmethod
     def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:
         field_names = {
         'sortTitle': 'course__title',

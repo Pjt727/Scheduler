@@ -1,7 +1,8 @@
 import math
 from django import template
 from claim.models import Meeting, Day, TimeBlock
-from datetime import timedelta, time
+from django.utils import timezone, dateformat
+from datetime import timedelta, time, datetime
 
 register = template.Library()
 
@@ -81,3 +82,8 @@ def time_input(t: time) -> str:
         return t.strftime('%H:%M')
     except AttributeError:
         return ''
+
+@register.filter
+def format_date(d: datetime):
+    return timezone.localtime(d).strftime('%b. %d, %Y %I:%M %p')
+

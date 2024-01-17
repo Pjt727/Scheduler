@@ -1,117 +1,170 @@
-<div id="messageGroup{{ message_group.grouper }}" class="carousel slide">
-  <div class="carousel-indicators bg-secondary rounded opacity-50">
-    {% for message_bundle in message_group.list %}
-    <button type="button" data-bs-target="#messageGroup{{ message_group.grouper }}" data-bs-slide-to="{{ forloop.counter0 }}" class="active" aria-current="true" aria-label="Slide {{ forloop.counter }}"></button>
-    {% endfor %}
-  </div>
-  <div class="carousel-inner">
-    {% for message_bundle in message_group.list %}
-    <div class="carousel-item {% if forloop.first %}active{% endif%}">
-      <div class="card text-center mb-5 border-2 d-block w-100 {{ message_bundle.get_border_class }}">
-        {% if not message_bundle.is_read %}
-        <div
-          hx-trigger="revealed"
-          hx-put="{% url 'read_bundle' %}"
-          hx-vals='"messageBundle": "{{ message_bundle.pk }}"'>
-        </div>
+{% load formhelpers %}
+<div class="card text-center mb-5 border-2 d-block w-100">
+    {% if is_current and message_bundle.response %}
+    <div
+        hx-trigger="revealed"
+        hx-put="{% url 'read_bundle' %}"
+        hx-vals='"messageBundle": "{{ message_bundle.response.pk }}"'>
+    </div>
+    {% endif %}
+    <div class="card-header
+        {% if message_bundle.response.status == 'accepted' %}
+        bg-success
+        {% elif message_bundle.response.status == 'revised_accepted' %}
+        bg-warning
+        {% elif message_bundle.response.status == 'denied' %}
+        bg-danger
+        {% endif %}">
+        {% if not message_bundle.response %}
+        Requested changed
+        {% else %}
+        {{ message_bundle.response.status|title }} by {{ message_bundle.response.sender }}
         {% endif %}
-        <div class="card-header {{ message_bundle.get_background_class }}">
-          {% if not forloop.first %}<span class="fst-italic">(Previous)</span>{% endif %}
-          {{ message_bundle.status|title }} changes from {{ message_bundle.sender }}. ID # {{ message_bundle.request_pk }}
-          {% if message_bundle.request %}
-          <svg 
-            hx-post="{% url 'soft_approve' %}"
-            hx-swap="none"
-            hx-vals='"requestBundle": "{{ message_bundle.request.pk }}"'
-            data-bs-toggle="modal" 
-            data-bs-target="#warnings"
+        {% if not message_bundle.response %}
+        {# add check for if they should be accepting it #}
+        <a title="Approve Request">
+            <svg 
+                hx-post="{% url 'soft_approve' %}"
+                hx-swap="none"
+                hx-vals='"messageBundle": "{{ message_bundle.pk }}"'
+                data-bs-toggle="modal" 
+                data-bs-target="#warnings"
 
-            class="ms-2 float-end obi bi-check-circle"
-            style="cursor: pointer;" 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="30" 
-            height="30" 
-            fill="green" 
-            viewBox="0 0 16 16">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-            <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
-          </svg>
-          <svg 
-            hx-put="{% url 'cancel_request' %}"
-            hx-swap="none"
-            hx-confirm="Are you sure you want to cancel the request?"
-            hx-vals='"messageBundle": "{{ message_bundle.pk }}"'
-            style="cursor: pointer;" 
+                class="ms-2 float-end obi bi-check-circle"
+                style="cursor: pointer;" 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="30" 
+                height="30" 
+                fill="green" 
+                viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/>
+            </svg>
+        </a>
+        <a title="Edit Request" href="">
+            <svg 
+                xmlns="http://www.w3.org/2000/svg"
+                width="30"
+                height="30"
+                style="cursor: pointer;" 
+                fill="orange"
+                class="bi bi-pencil-square float-end ms-2"
+                viewBox="0 0 16 16">
+                <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
+                <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>
+            </svg>
+        </a>
+        <a title="Cancel Request">
+            <svg 
+                hx-put="{% url 'cancel_request' %}"
+                hx-swap="none"
+                hx-confirm="Are you sure you want to cancel the request?"
+                hx-vals='"messageBundle": "{{ message_bundle.pk }}"'
+                style="cursor: pointer;" 
 
-            xmlns="http://www.w3.org/2000/svg" 
-            width="30" 
-            height="30" 
-            fill="red" 
-            class="float-end bi bi-x-circle" 
-            viewBox="0 0 16 16">
-            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-            <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
-          </svg>
-          {% endif %}
-        </div>
-        <div class="card-body">
-          <p class="card-text">
-            <div class="container">
-              {% regroup message_bundle.messages_sorted.all by section as messages_by_section %}
-              {% for messages in messages_by_section %}
-                <div class="row fw-bold">
-                  <div class="col">
-                    {{ messages.grouper }}
-                  </div>
+                xmlns="http://www.w3.org/2000/svg" 
+                width="30" 
+                height="30" 
+                fill="red" 
+                class="float-end bi bi-x-circle" 
+                viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+        </a>
+        <a title="Deny Request">
+            <svg 
+                hx-put="{% url 'deny_request' %}"
+                hx-swap="none"
+                hx-confirm="Are you sure you want to deny the request?"
+                hx-vals='"messageBundle": "{{ message_bundle.pk }}"'
+                style="cursor: pointer;" 
+
+                xmlns="http://www.w3.org/2000/svg" 
+                width="30" 
+                height="30" 
+                fill="red" 
+                class="float-end bi bi-x-circle" 
+                viewBox="0 0 16 16">
+                <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
+            </svg>
+        </a>
+        {% endif %}
+    </div>
+    <div class="card-body
+        {% if message_bundle.response.status == 'accepted' %}
+        bg-success-subtle
+        {% elif message_bundle.response.status == 'revised_accepted' %}
+        bg-warning-subtle
+        {% elif message_bundle.response.status == 'denied' %}
+        bg-danger-subtle
+        {% endif %}
+        ">
+        <p class="card-text">
+        <div class="container">
+            {% for edit_section in message_bundle.request.edit_sections.all %}
+            <div class="row fw-bold">
+                <div class="col">
+                    {{ edit_section.section }}
                 </div>
-                {% for message in messages.list %}
-                  {% with is_changed=message.is_changed %}
-                  <div class="row{% if is_changed %} fst-italic{% endif %}">
-                    <div class="col-4">{{ message.get_new_start_time }} - {{ message.get_new_end_time }}</div>
-                    <div class="col-1">{{ message.new_day }}</div>
-                    <div class="col-3">{{ message.new_room }}</div>
-                    <div class="col-3">{{ message.new_professor }}</div>
-                    <div class="col-1">
-                      <button 
+            </div>
+            {% for edit_meeting in edit_section.edit_meetings.all %}
+            {% with is_changed=edit_meeting.is_changed %}
+            <div class="row{% if is_changed %} fst-italic{% endif %}">
+                <div class="col-4">{{ edit_meeting.start_time|time_display }} - {{ edit_meeting.end_time|time_display }}</div>
+                <div class="col-1">{{ edit_meeting.day }}</div>
+                <div class="col-3">{{ edit_meeting.room }}</div>
+                <div class="col-3">{{ edit_meeting.professor }}</div>
+                <div class="col-1">
+                    {% if is_changed %}
+                    <button 
                         class="btn btn-sm btn-outline-secondary" 
                         type="button" 
                         data-bs-toggle="collapse" 
-                        data-bs-target="#oldToggle{{ message.pk }}" 
+                        data-bs-target="#oldToggle{{ edit_meeting.pk }}" 
                         aria-expanded="false" 
                         aria-controls="collapseExample"
                         {% if not is_changed %}disabled{% endif %}>
-                    
-                        Old
-                      </button>
-                    </div>
-                  </div>
-                  {% if is_changed %}
-                  <div class="row collapse" id="oldToggle{{ message.pk }}">
-                    <div class="col-4">{{ message.get_old_start_time }} - {{ message.get_old_end_time }}</div>
-                    <div class="col-1">{{ message.old_day }}</div>
-                    <div class="col-3">{{ message.old_room }}</div>
-                    <div class="col-3">{{ message.old_professor }}</div>
-                  </div>
-                  {% endif %}
-                  {% endwith %}
-                {% endfor %}
-              {% endfor %}
-              </div>
-            </p>
+                        Current
+                    </button>
+                    {% else %}
+                    <small>Up to Date</small>
+                    {% endif %}
+                </div>
+            </div>
+            {% if edit_meeting.original and is_changed %}
+            <div class="row collapse" id="oldToggle{{ edit_meeting.pk }}">
+                <div class="col-4">
+                    {{ edit_meeting.original.time_block.start_end_time.start|time_display }}
+                    -
+                    {{ edit_meeting.original.time_block.start_end_time.end|time_display }}
+                </div>
+                <div class="col-1">{{ edit_meeting.original.day }}</div>
+                <div class="col-3">{{ edit_meeting.original.room }}</div>
+                <div class="col-3">{{ edit_meeting.original.professor }}</div>
+            </div>
+            {% endif %}
+            {% endwith %}
+            {% endfor %}
+            {% endfor %}
         </div>
-        <div class="card-footer text-body-secondary {{ message_bundle.get_background_class }}">
-          <small>{{ message_bundle.messages.first.section.term }} | {{ message_bundle.date_sent.date }} </small>
-        </div>
-      </div>
+        </p>
     </div>
-    {% endfor %}
-  </div>
-  <button class="position-absolute top-50 start-0 translate-middle carousel-control-prev h-25" type="button" data-bs-target="#messageGroup{{ message_group.grouper }}" data-bs-slide="prev">
-    <span class="carousel-control-prev-icon bg-secondary" aria-hidden="true"></span>
-    <span class="visually-hidden">Previous</span>
-  </button>
-  <button class="position-absolute top-50 start-100 translate-middle h-25 carousel-control-next" type="button" data-bs-target="#messageGroup{{ message_group.grouper }}" data-bs-slide="next">
-    <span class="carousel-control-next-icon bg-secondary" aria-hidden="true"></span>
-    <span class="visually-hidden">Next</span>
-  </button>
+    <div class="card-footer text-body-secondary 
+        {% if message_bundle.response.status == 'accepted' %}
+        bg-success
+        {% elif message_bundle.response.status == 'revised_accepted' %}
+        bg-warning
+        {% elif message_bundle.response.status == 'denied' %}
+        bg-danger
+        {% endif %}">
+        <small>{{ message_bundle.request.edit_sections.first.section.term }} | 
+            {% if message_bundle.response %}
+            {{ message_bundle.response.date_sent|format_date }}
+            {% else %}
+            {{ message_bundle.date_sent }} 
+            {% endif %}
+        </small>
+    </div>
 </div>

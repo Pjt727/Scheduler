@@ -125,7 +125,7 @@ def get_meetings(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET"])
 def get_meeting_details(request: HttpRequest) -> HttpResponse:
-    meeting = request.GET.get('meeting')
+    meeting = request.GET.get('meeting') # pyright: ignore
     in_edit_mode = request.GET.get('inEditMode') == 'True'
     meeting: Meeting = Meeting.objects.get(pk=meeting)
 

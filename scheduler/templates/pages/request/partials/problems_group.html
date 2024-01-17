@@ -3,9 +3,7 @@
     <tbody>
       {% if not exclude_group_problems %}
       <tr class="text-center">
-        <th>
-          Group
-        </th>
+        <th> Group </th>
       </tr>
       {% for problem in group_problems %}
       <tr>
@@ -76,6 +74,6 @@
 </div>
 {% if request_bundle_pk %}
   <form id="requestForm" hx-swap-oob="true" hidden>
-    <input type="text" name="requestBundle" value="{{ request_bundle_pk }}">
+    <input type="text" name="messageBundle" value="{{ request_bundle_pk }}">
   </form>
 {% endif %}

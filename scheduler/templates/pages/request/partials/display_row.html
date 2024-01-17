@@ -1,30 +1,32 @@
 {% load formhelpers %}
 
-<input name="isDeleted" type="text" value="{% if is_deleted %}true{% else %}false{% endif %}" hidden>
-<input name="original" type="text" value="{% if meeting_pk %}{{ meeting_pk }}{% else %}None{% endif %}" hidden>
-<input name="section" type="text" value="{{ section_pk }}" hidden>
-<input name="startEndTime" type="text" value="{{ start_time|time_input }},{{ end_time|time_input }}" hidden>
-<input name="day" type="text" value="{{ day }}" hidden>
-<input name="building" type="text" value="{% if building %}{{building.pk}}{% else %}any{% endif %}" hidden>
-<input name="room" type="text" value="{% if room %}{{room.pk}}{% else %}any{% endif %}" hidden>
-<input name="professor" type="text" value="{% if professor %}{{ professor.pk }}{% else %}None{% endif %}" hidden>
-<input name="counter" type="number" value="{{ counter }}" hidden>
+<input name="isDeleted" type="text" value="{% if edit_meeting.is_deleted %}true{% else %}false{% endif %}" hidden>
+<input name="original" type="text" value="{% if edit_meeting.meeting %}{{ edit_meeting.meeting.pk }}{% else %}None{% endif %}" hidden>
+<input name="section" type="text" value="{{ edit_meeting.section.pk }}" hidden>
+<input name="startEndTime" type="text" value="{{ edit_meeting.start_time|time_input }},{{ edit_meeting.end_time|time_input }}" hidden>
+<input name="day" type="text" value="{{ edit_meeting.day }}" hidden>
+<input name="building" type="text" value="{% if edit_meeting.building %}{{edit_meeting.building.pk}}{% else %}any{% endif %}" hidden>
+<input name="room" type="text" value="{% if edit_meeting.room %}{{edit_meeting.room.pk}}{% else %}any{% endif %}" hidden>
+<input name="professor" type="text" value="{% if edit_meeting.professor %}{{ edit_meeting.professor.pk }}{% else %}None{% endif %}" hidden>
+<input name="counter" type="number" value="{{ edit_meeting.counter }}" hidden>
 
 <div class="col-sm-1 fw-bold">
-  {{ counter }}
+  {{ edit_meeting.counter }}
 </div>
-<div class="col-sm-5 text-start {% if is_deleted %}text-decoration-line-through{% endif %}">
-  {{ start_time|time_display }} - {{ end_time|time_display }} &nbsp {{ day }}
+<div class="col-sm-5 text-start {% if edit_meeting.is_deleted %}text-decoration-line-through{% endif %}">
+  {{ edit_meeting.start_time|time_display }} - {{ edit_meeting.end_time|time_display }} &nbsp {{ edit_meeting.day }}
 </div>
-<div class="col-sm-4 text-start {% if is_deleted %}text-decoration-line-through{% endif %}">
-  {% if building %} {{ building }} {% else %} Any Building {% endif %}
-  {% if room %} {{ room.number }} {% else %} Any Room {% endif %}
+<div class="col-sm-4 text-start {% if edit_meeting.is_deleted %}text-decoration-line-through{% endif %}">
+  {% if edit_meeting.building %} {{ edit_meeting.building }} {% else %} Any Building {% endif %}
+  {% if edit_meeting.room %} {{ edit_meeting.room.number }} {% else %} Any Room {% endif %}
 </div>
-<div class="col-sm-1">
-  {% if is_deleted %}
+<div class="col-sm-1" class>
+  {% if edit_meeting.is_deleted %}
   <svg 
-      hx-get="{% url 'display_row' %}"
-      hx-target='closest [name="meeting"]'
+    hx-put="{% url 'display_row' %}"
+    hx-trigger="click" hx-include='#sections'
+    hx-target='closest [name="meeting"]' 
+    hx-vals='{"thisRefreshEditMeetings": "true"}'
 
     xmlns="http://www.w3.org/2000/svg" 
     width="16" 
@@ -37,60 +39,16 @@
     <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466z"/>
     <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2v1z"/>
   </svg>
-  {% else %}
-  <svg 
-    {% if meeting_pk %}
-    hx-delete="{% url 'display_row' %}"
-    hx-trigger="click"
-    hx-include='closest [name="meeting"]'
-    hx-target='closest [name="meeting"]'
-    {% else %}
-    onclick='this.closest(`[name="meeting"]`).remove()'
-    {% endif %}
-
-    xmlns="http://www.w3.org/2000/svg" 
-    width="16" 
-    height="16" 
-    fill="currentColor" 
-    role="button"
-    class="bi bi-x-square" 
-    viewBox="0 0 16 16"
-  >
-    <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
-    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z"/>
-  </svg>
-  {% endif %}
+ {% endif %}
 </div>
 <div class="col-sm-1">
-  {% if not is_deleted %}
-  <svg 
-    hx-get="{% url 'input_row' %}"
-    hx-target='closest [name="meeting"]'
-    hx-include='#sections, #enforceDepartmentConstraints'
-    onclick='
-      const meetingsCounter = document.getElementById("meetingsContainer")
-      meetingsCounter.setAttribute("hx-vals", `{"outerCounter": "{{ counter }}", "outerSection": "{{ section_pk }}"}`)
-    '
-    hx-trigger="click"
-
-    xmlns="http://www.w3.org/2000/svg" 
-    width="16" 
-    height="16" 
-    fill="currentColor" 
-    role="button"
-    class="bi bi-pencil-square" 
-    viewBox="0 0 16 16">
-    <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
-    <path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
-  </svg>
-  {% endif %}
 </div>
 
 {% if problems %}
   {% include 'problems.html' with problems=problems%}
 {% endif %}
 
-{% if edit_meetings %}
+{% if in_edit_mode  %}
 <div hx-swap-oob="innerHtml:#meetingsContainer">
 {% include 'get_meetings.html' %}
 </div>

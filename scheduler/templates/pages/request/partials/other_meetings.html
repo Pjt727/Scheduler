@@ -9,10 +9,7 @@
   >
     {{ meeting.section }}
     <svg 
-      hx-get="{% url 'get_meeting_details' %}"
-      hx-target="#meetingDetailsContainer"
-      hx-vals='{"inEditMode": "{{ in_edit_mode }}", "meeting": "{{ meeting.pk }}"}'
-      onclick='new bootstrap.Collapse("#meetingDetails", {toggle: false}).show()'
+      onclick='toggleDetail({{ meeting.section.pk }}, {{ meeting.pk  }})'
 
       class="position-absolute top-0 end-0 bi bi-info-circle pt-1 pe-1"
       style="cursor: pointer;"
@@ -30,3 +27,31 @@
   </div>
   {% endfor %}
 {% endfor %}
+
+<script>
+    function newDetails() {
+        let lastSectionPk = null
+        let lastMeetingPk = null
+
+        return function toggleDetail(sectionPk, meetingPk) {
+            if (lastSectionPk == sectionPk && lastMeetingPk == meetingPk) {
+                new bootstrap.Collapse("#meetingDetails", {toggle: true}).show()
+                return
+            }
+            htmx.ajax('GET', '{% url "get_meeting_details" %}', {
+                values: {
+                    'inEditMode': '{{ in_edit_mode }}',
+                    'meeting': `${ meetingPk }`
+
+                },
+                target: "#meetingDetailsContainer",
+            }).then(() => {
+                new bootstrap.Collapse("#meetingDetails", {toggle: false}).show()
+            })
+            lastMeetingPk = meetingPk
+            lastSectionPk = sectionPk
+        }
+    }
+
+    toggleDetail = newDetails()
+</script>

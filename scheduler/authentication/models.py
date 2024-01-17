@@ -21,14 +21,14 @@ class Professor(models.Model):
     meetings: models.QuerySet['Meeting']
     edit_requests_involving: models.QuerySet['EditMeetingRequest']
     edit_request_bundles_sent: models.QuerySet['EditRequestBundle']
-    sent_bundles: models.QuerySet['EditMeetingMessageBundle']
-    receive_bundles: models.QuerySet['EditMeetingMessageBundle']
+    requested_bundles: models.QuerySet['EditMeetingMessageBundleRequest']
+    authorized_bundles: models.QuerySet['EditMeetingMessageBundleResponse']
 
     def __str__(self) -> str:
-        return f"{self.title} {self.last_name}"
+        return f"{self.first_name} {self.last_name}"
     
     #TODO make it also take into consideration if the start and end date
-    def section_in_meetings(self) -> Q():
+    def section_in_meetings(self) -> Q:
         exclusion_filter = Q()
         for meeting in self.meetings.all():
             exclusion_filter |= Q(
@@ -39,8 +39,9 @@ class Professor(models.Model):
         return exclusion_filter
     
     def count_unread_messages(self) -> int:
-        unread_messages = self.sent_bundles.filter(is_read=False) | \
-            self.receive_bundles.filter(is_read=False)
+        unread_messages = self.requested_bundles.filter(response__is_read=False)
+        # TODO: if they are a department head count the requests they should be accepting
+
         return unread_messages.count()
 
 

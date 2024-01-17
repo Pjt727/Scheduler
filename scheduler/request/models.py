@@ -1,7 +1,10 @@
 from django.http import QueryDict
-from django.db import models, IntegrityError, transaction
+from dataclasses import dataclass
+from django.db import models
 from authentication.models import Professor
 from claim.models import *
+from django.db.models import Q
+from datetime import time
 from authentication.models import Professor
 from typing import TypedDict
 
@@ -26,12 +29,12 @@ class EditMeeting:
     start_time: time
     end_time: time
     day: str
-    building: Building
+    building: Building | None
     room: Room | None
-    meeting: Meeting
+    meeting: Meeting | None
     section: Section
-    counter: int | None
-    professor: Professor = None
+    counter: int
+    professor: Professor | None = None
     is_deleted: bool = False
 
     # This logic may be in Section model why then we would have to worry about circular imports
@@ -56,7 +59,7 @@ class EditMeeting:
         edit_meetings = []
         
         # make sure this is sorted
-        for i, meeting in enumerate(section.meetings.all()):
+        for i, meeting in enumerate(section.meetings.all(), start=1):
             edit_meeting = EditMeeting.from_meeting(meeting, i)
             edit_meetings.append(edit_meeting)
 
@@ -131,11 +134,10 @@ class EditMeeting:
                 is_deleted=is_deleted
             )
             edit_meetings.append(edit_meeting)
-
             if changed_section == section_pk and changed_counter == counters[i]:
                 selected_edit_meeting = edit_meeting
         
-        return edit_meetings, selected_edit_meeting
+        return edit_meetings, selected_edit_meeting # pyright: ignore
     
     def get_time_intervals(self) -> list[tuple[time, time]]:
         duration = self.end_time_d() - self.start_time_d()
@@ -143,7 +145,7 @@ class EditMeeting:
 
         return time_intervals
 
-    def room_problems(self, sections_to_exclude: list[Section] = None, check_allocation=True) -> list[Problem]:
+    def room_problems(self, sections_to_exclude: list[Section] | None = None, check_allocation=True) -> list[Problem]:
         if sections_to_exclude is None:
             sections_to_exclude = [self.section]
 
@@ -182,7 +184,7 @@ class EditMeeting:
 
         return problems
 
-    def professor_problems(self, sections_to_exclude: list[Section] = None) -> list[Problem]:
+    def professor_problems(self, sections_to_exclude: list[Section] | None = None) -> list[Problem]:
         if sections_to_exclude is None:
             sections_to_exclude = [self.section]
 
@@ -200,14 +202,15 @@ class EditMeeting:
         problems = []
         if self.professor is None: return problems
 
-        sections = list(map(str, meetings.filter(professor=self.professor).values('section').distinct()))
+        sections = set(map(lambda m: str(m.section), meetings.filter(professor=self.professor)))
         if sections:
             sections_text = ", ".join(sections)
-            text = f"Meeting {self.counter} overlaps with {sections_text} that {self.professor} teaches."
+            text = f"Meeting {self.counter} overlaps with {sections_text} that {self.professor} also teaches."
             problems.append(Problem(Problem.DANGER, text))
         
         return problems
 
+    @staticmethod
     def get_group_problems(edit_meetings: list['EditMeeting']) -> list[Problem]:
         problems: list[Problem] = []
         for i, edit_meeting1 in enumerate(edit_meetings[:-1]):
@@ -234,12 +237,15 @@ class EditMeeting:
         for m in edit_meetings:
             sections.add(m.section)
         assert len(sections) == 1
+        first_section = next(iter(sections), None)
+        assert first_section is not None
 
-        problems: list[Section]= []
+        problems: list[Problem]= []
         section = edit_meetings[0].section
 
         for edit_meeting in edit_meetings:
-            problems.extend(edit_meeting.room_problems(sections_to_exclude, check_allocation=False))
+            meeting_problems = edit_meeting.room_problems(sections_to_exclude, check_allocation=False)
+            problems.extend(meeting_problems)
             problems.extend(edit_meeting.professor_problems(sections_to_exclude))
 
         total_time = sum(map(lambda t: t.end_time_d() - t.start_time_d(), edit_meetings), start=timedelta())
@@ -264,7 +270,7 @@ class EditMeeting:
 
         for dep_allocation in dep_allocations:
             # Maybe think about making this not add one for the section
-            if dep_allocation.exceeds_allocation(edit_meeting.section.term):
+            if dep_allocation.exceeds_allocation(first_section.term):
                 exceeds_allocation = True
                 break
         if exceeds_allocation:
@@ -299,7 +305,7 @@ class EditMeeting:
     # This is now a completely different thing from open_slots
     # just used to show the VISUALLY open slots
     @staticmethod
-    def get_open_slots(term: Term, building: Building, room: Room, professor: Professor, sections_to_exclude: set[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
+    def get_open_slots(term: Term, building: Building, room: Room | None, professor: Professor | None, sections_to_exclude: set[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
         meetings = Meeting.objects.none()
         if professor:
             meetings |= professor.meetings.filter(section__term=term)
@@ -336,7 +342,10 @@ class EditMeeting:
         for time_block in time_blocks:
             new_end_d = time_block.start_end_time.start_d() + duration
             new_end_t = time(hour=new_end_d.seconds // 3600, minute=(new_end_d.seconds % 3600) // 60)
-            department_allocation = time_block.allocation_groups.first().department_allocations.first()
+            allocation_group = time_block.allocation_groups.first()
+            assert allocation_group is not None
+            department_allocation = allocation_group.department_allocations.first()
+            assert department_allocation is not None
             allocation_max = department_allocation.number_of_classrooms
             allocation = department_allocation.count_rooms(term)
             slot: TimeSlot = {
@@ -373,7 +382,7 @@ class EditMeeting:
     # There are still a lot problems with this and probably with forever have a lot of problems but at this points
     # it does not need to be perfect
     @staticmethod
-    def open_slots(*args, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool = True) -> list[TimeSlot]:
+    def open_slots(*_, room: Room | None, professor: Professor, building: Building | None, section: Section , duration: timedelta, edit_meetings: list['EditMeeting'], meetings: QuerySet[Meeting], enforce_allocation: bool = True) -> list[TimeSlot]:
         if building is None:
             building = Building.recommend(section.course, term=section.term)
         in_edit_meetings = Q()
@@ -464,12 +473,13 @@ class EditMeeting:
     # Recommending meeting is painfully complex and pretty slow doing it this way.
     # To remove some of the complexity open_slots is used which probably is not the best way
     # There should be A LOT better of way to recommend bulk subjects without requesting 
+    # A lot of time improvements can be made here but like idk
 
     @staticmethod
     def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section: Section) -> list['EditMeeting']:
         total_duration = timedelta()
         sections_to_exclude = set()
-        number_room_complement: list[tuple[int, Room]] = []
+        number_room_complement: list[tuple[int, Room | None]] = []
         last_counter = 1
         for edit_meeting in edit_meetings:
             sections_to_exclude.add(edit_meeting.section)
@@ -487,15 +497,17 @@ class EditMeeting:
                 number_room_complement.append((tm.number, edit_meeting.room))
             total_duration += edit_meeting.end_time_d() - edit_meeting.start_time_d()
         edit_meetings = list(filter(lambda m: not m.is_deleted, edit_meetings))
+        building = Building.recommend(section.course, term=section.term)
         no_recommendation = EditMeeting(
             start_time=time(0),
             end_time=time(hour=1, minute=15),
             day="MO",
-            building=None,
+            building=building,
             room=None,
             meeting=None,
             section=section,
-            counter=last_counter + 1
+            counter=last_counter + 1,
+            professor=professor
         )
 
         valid_times = section.course.get_approximate_times()
@@ -534,16 +546,16 @@ class EditMeeting:
         return [no_recommendation]
 
     @staticmethod
-    def no_recommendation(section: Section, counter: int, building: Building = None):
+    def no_recommendation(section: Section, counter: int, building: Building | None = None):
         return EditMeeting(
             start_time=time(0), end_time=time(hour=1, minute=15), day="MO",
             building=building, room=None, meeting=None,
-            section=section, counter=counter,
+            section=section, counter=counter, professor=section.primary_professor
         )
 
     @staticmethod
-    def recommend_one_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
-        number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
+    def recommend_one_block(*_, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
+        number_room_complements: list[tuple[int, Room | None]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
 
         for num, room in number_room_complements:
             if room:
@@ -552,12 +564,12 @@ class EditMeeting:
                     .exclude(section__in=sections_to_exclude)
             else:
                 meetings = base_meetings
+            building = Building.recommend(section.course, term=section.term) if room is None else room.building
             open_slots: list[TimeSlot] = EditMeeting.open_slots( room=room, professor=professor,
-                building=None, duration=TimeBlock.ONE_BLOCK, section=section,
+                building=building, duration=TimeBlock.ONE_BLOCK, section=section,
                 edit_meetings=edit_meetings, meetings=meetings, enforce_allocation=False)
             for open_slot in open_slots:
                 if num not in open_slot['numbers']: continue
-                building = None if room is None else room.building
                 return [EditMeeting(
                     start_time=open_slot['start'], end_time=open_slot['end'], day=open_slot['day'],
                     building=building, room=room, meeting=None,
@@ -577,8 +589,8 @@ class EditMeeting:
         )]
     
     @staticmethod
-    def recommend_two_block(*args, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
-        number_room_complements: list[tuple[int, Room]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
+    def recommend_two_block(*_, edit_meetings: list['EditMeeting'], professor: Professor, base_meetings: QuerySet[Meeting], section: Section,
+        number_room_complements: list[tuple[int, Room | None]], sections_to_exclude: set[Section], last_counter: int) -> list['EditMeeting']:
         recommended = []
         building = Building.recommend(section.course, term=section.term)
         # There should at most only be one complement 
@@ -591,7 +603,7 @@ class EditMeeting:
             else:
                 meetings = base_meetings
                 
-            building = building if room is None else room.building
+            building = Building.recommend(section.course, term=section.term) if room is None else room.building
             open_slots: list[TimeSlot] = EditMeeting.open_slots(room=room, professor=professor,
                 building=building, duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings,
                 meetings=meetings, enforce_allocation=False, section=section)
@@ -645,6 +657,8 @@ class EditMeeting:
             if not intersecting_rooms.exists(): continue
 
             room = intersecting_rooms.first()
+            assert room is not None
+            
             m1 = EditMeeting(start_time=slot1['start'], end_time=slot2['end'],
                 day=slot1['day'], building=room.building, room=room,
                 meeting=None, section=section, counter=last_counter+1,
@@ -684,32 +698,36 @@ class EditMeeting:
 
 class EditRequestBundle(models.Model):
     verbose_name = "Edit Meeting Bundle"
-
-    requester = models.ForeignKey(Professor, related_name="edit_request_bundles", on_delete=models.CASCADE)
     edit_sections: QuerySet['EditSectionRequest']
-    message_bundles: QuerySet['EditMeetingMessageBundle']
+    request_message: 'EditMeetingMessageBundleRequest'
 
     def realize(self):
         for edit_section in self.edit_sections.all():
             edit_section.realize()
 
 
-
 class EditSectionRequest(models.Model):
     verbose_name = "Edit Section"
 
-    section = models.OneToOneField(Section, related_name="edit_section", on_delete=models.CASCADE)
+    section = models.ForeignKey(Section, related_name="edit_sections", on_delete=models.CASCADE)
     bundle = models.ForeignKey(EditRequestBundle, related_name="edit_sections", on_delete=models.CASCADE)
     edit_meetings: QuerySet['EditMeetingRequest']
-    
-    def save(self, *args, **kwargs):
-        if EditSectionRequest.objects.filter(section=self.section, bundle__requester=self.bundle.requester).exists():
-            raise IntegrityError("This professor has already requested a change with this section.")
-        super().save(*args, **kwargs)
     
     def realize(self):
         for edit_meeting in self.edit_meetings.all():
             edit_meeting.realize()
+
+    def meetings_sorted(self) -> QuerySet['EditMeetingRequest']:
+        return self.edit_meetings.order_by(models.Case(
+            models.When(day=Day.MONDAY, then=1),
+            models.When(day=Day.TUESDAY, then=2),
+            models.When(day=Day.WEDNESDAY, then=3),
+            models.When(day=Day.THURSDAY, then=4),
+            models.When(day=Day.FRIDAY, then=5),
+            models.When(day=Day.SATURDAY, then=6),
+            models.When(day=Day.SUNDAY, then=7),),
+            'new_start_time'
+        )
 
 
 class EditMeetingRequest(models.Model):
@@ -740,51 +758,6 @@ class EditMeetingRequest(models.Model):
         ]
 
         return any(map(lambda old_new: old_new[0] != old_new[1], old_new))
-
-    def freeze(self, bundle: 'EditMeetingMessageBundle') -> 'EditMeetingMessage':
-        '''Freezes the current state of the request into a message'''
-        if self.original is not None:
-            old_start_time = self.original.time_block.start_end_time.start
-            old_end_time = self.original.time_block.start_end_time.end
-            old_day = self.original.time_block.day
-            old_room = self.original.room
-            old_professor = self.original.professor
-            if old_room is not None:
-                old_building = old_room.building
-            else:
-                old_building = None
-        else:
-            old_professor = None
-            old_start_time = None
-            old_end_time = None
-            old_day = None
-            old_room = None
-            old_building = None
-
-
-
-        message = EditMeetingMessage(
-            is_changed=self.is_changed(),
-
-            old_start_time=old_start_time,
-            old_end_time=old_end_time,
-            old_day=old_day,
-            old_building=old_building,
-            old_room=old_room,
-            old_professor=old_professor,
-
-            new_start_time=self.start_time,
-            new_end_time=self.end_time,
-            new_day=self.day,
-            new_building=self.building,
-            new_room=self.room,
-            new_professor=self.professor,
-
-            section=self.edit_section.section,
-            bundle=bundle,
-        )
-        message.save()
-        return message
 
     def reformat(self, counter: int) -> EditMeeting:
         return EditMeeting(
@@ -823,116 +796,34 @@ class EditMeetingRequest(models.Model):
         meeting.save()
 
 
-class EditMeetingMessageBundle(models.Model):
+class EditMeetingMessageBundleRequest(models.Model):
     verbose_name = "Update meeting message bundle"
 
-    REQUESTED = 'requested'
+    date_sent = models.DateTimeField(auto_now_add=True, blank=True)
+    message = models.CharField(max_length=300, blank=True, null=True, default=None)
+
+    response: 'EditMeetingMessageBundleResponse'
+    requester = models.ForeignKey(Professor, related_name="requested_bundles", on_delete=models.CASCADE)
+    request: EditRequestBundle = models.OneToOneField(EditRequestBundle, related_name="request_message", on_delete=models.CASCADE) # pyright: ignore
+    
+
+class EditMeetingMessageBundleResponse(models.Model):
     ACCEPTED = 'accepted'
     REVISED_ACCEPTED = 'revised_accepted'
     DENIED = 'denied'
-    CANCELED = 'canceled'
     choices = [
-        (REQUESTED, 'Requested'),
         (ACCEPTED, 'Accepted'),
         (REVISED_ACCEPTED, 'Revised and Accepted'),
         (DENIED, 'Denied'),
-        (CANCELED, 'Canceled')
     ]
-    request_pk = models.IntegerField()
+
     date_sent = models.DateTimeField(auto_now_add=True, blank=True)
     is_read = models.BooleanField(default=False, blank=True)
-    
-
     status = models.CharField(max_length=20, choices=choices)
-    sender = models.ForeignKey(Professor, related_name="sent_bundles", on_delete=models.CASCADE)
-        
-    recipient = models.ForeignKey(Professor, related_name="receive_bundles", blank=True, null=True, default=None, on_delete=models.SET_NULL)
-    # If none the request is no longer active and has been resolved
-    # may not be in sync with the message information instead points to the most recent edit of it
-    request = models.ForeignKey(EditRequestBundle, related_name="message_bundles", null=True, on_delete=models.SET_NULL)
+    message = models.CharField(max_length=300, blank=True, null=True, default=None)
 
-    messages: QuerySet['EditMeetingMessage']
+    sender = models.ForeignKey(Professor, related_name="authorized_bundles", on_delete=models.CASCADE)
+    request_bundle: EditRequestBundle = models.OneToOneField(EditRequestBundle, related_name="response", on_delete=models.CASCADE) # pyright: ignore
+    request: EditMeetingMessageBundleRequest = models.OneToOneField(EditMeetingMessageBundleRequest, related_name="response", on_delete=models.CASCADE) # pyright: ignore
 
-    class Meta:
-        ordering = ["-date_sent"]
-
-    def __str__(self) -> str:
-        return f"{self.status.capitalize()} changes from {self.sender} on {self.date_sent.date()}"
-    
-    def get_background_class(self) -> str:
-        if self.status == EditMeetingMessageBundle.REQUESTED:
-            return 'bg-secondary-subtle'
-        elif self.status == EditMeetingMessageBundle.ACCEPTED:
-            return 'bg-success-subtle'
-        elif self.status == EditMeetingMessageBundle.REVISED_ACCEPTED:
-            return 'bg-warning-subtle'
-        elif self.status == EditMeetingMessageBundle.DENIED:
-            return 'bg-danger-subtle'
-        elif self.status == EditMeetingMessageBundle.CANCELED:
-            return 'bg-danger-subtle'
-        else:
-            return 'bg-secondary-subtle'
-    
-    def get_border_class(self) -> str:
-        if self.status == EditMeetingMessageBundle.REQUESTED:
-            return 'border-secondary-subtle'
-        elif self.status == EditMeetingMessageBundle.ACCEPTED:
-            return 'border-success-subtle'
-        elif self.status == EditMeetingMessageBundle.REVISED_ACCEPTED:
-            return 'border-warning-subtle'
-        elif self.status == EditMeetingMessageBundle.DENIED:
-            return 'border-danger-subtle'
-        elif self.status == EditMeetingMessageBundle.CANCELED:
-            return 'border-danger-subtle'
-        else:
-            return 'border-secondary-subtle'
-    
-    def messages_sorted(self) -> QuerySet['EditMeetingMessage']:
-
-        return self.messages.order_by(models.Case(
-            models.When(new_day=Day.MONDAY, then=1),
-            models.When(new_day=Day.TUESDAY, then=2),
-            models.When(new_day=Day.WEDNESDAY, then=3),
-            models.When(new_day=Day.THURSDAY, then=4),
-            models.When(new_day=Day.FRIDAY, then=5),
-            models.When(new_day=Day.SATURDAY, then=6),
-            models.When(new_day=Day.SUNDAY, then=7),),
-            'new_start_time'
-        )
-    
-
-class EditMeetingMessage(models.Model):
-    verbose_name = "Change Meeting Message"
-
-    is_changed = models.BooleanField()
-
-    old_start_time = models.TimeField(blank=True, null=True)
-    old_end_time = models.TimeField(blank=True, null=True)
-    old_day = models.CharField(max_length=2, choices=Day.DAY_CHOICES, blank=True, null=True)
-    old_building = models.ForeignKey(Building, related_name="messages_of_old", blank=True, null=True, on_delete=models.SET_NULL)
-    old_room = models.ForeignKey(Room, related_name="messages_of_old", blank=True, null=True, on_delete=models.SET_NULL)
-    old_professor = models.ForeignKey(Professor, related_name="messages_of_old", blank=True, null=True, on_delete=models.SET_NULL)
-
-    new_start_time = models.TimeField()
-    new_end_time = models.TimeField()
-    new_day = models.CharField(max_length=2, choices=Day.DAY_CHOICES)
-    new_building = models.ForeignKey(Building, related_name="messages_of_new", null=True, on_delete=models.SET_NULL)
-    new_room = models.ForeignKey(Room, related_name="messages_of_new", null=True, on_delete=models.SET_NULL)
-    new_professor = models.ForeignKey(Professor, related_name="messages_of_new", blank=True, null=True, on_delete=models.SET_NULL)
-
-    section = models.ForeignKey(Section, related_name="messages", null=True, on_delete=models.SET_NULL)
-
-    bundle = models.ForeignKey(EditMeetingMessageBundle, related_name="messages", null=True, on_delete=models.CASCADE)
-
-    def get_old_start_time(self):
-        return self.old_start_time.strftime('%I:%M %p')
-    
-    def get_old_end_time(self):
-        return self.old_end_time.strftime('%I:%M %p')
-
-    def get_new_start_time(self):
-        return self.new_start_time.strftime('%I:%M %p')
-
-    def get_new_end_time(self):
-        return self.new_end_time.strftime('%I:%M %p')
 

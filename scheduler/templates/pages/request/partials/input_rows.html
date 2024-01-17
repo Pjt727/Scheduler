@@ -1,0 +1,13 @@
+{% comment "No, you cannot put include on different lines" %}{% endcomment %}
+{% for edit_meeting in recommended %}
+{# if this starts to cause you problem we should combien the part from the section.html file #}
+<div hx-vals='"outerCounter": "{{ m.counter }}", "meeting": "{{ m.get_meeting_pk }}", "outerSection": "{{ m.section.pk }}"'
+    class="row" name="meeting" id="{{ section.pk }},{{ edit_meeting.counter }}">
+    {% include 'input_row.html' %}
+</div>
+{% comment %} Why in the world do I need two end divs here {% endcomment %}
+</div>
+{% endfor %}
+<div hx-swap-oob="innerHtml:#meetingsContainer">
+    {% include 'get_meetings.html' %}
+</div>

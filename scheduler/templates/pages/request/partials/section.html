@@ -1,48 +1,57 @@
 <!-- Going to change for when it needs to render possible request -->
 <section name="section" class="pb-4" hx-vals='"outerSection": "{{ section.pk }}"'>
-  <input class="sectionGrouper" name="sectionGrouper" value="{{ section.pk }}" hidden>
-  <div class="row fw-bold justify-content-center">
-    <div class="col-lg-10">{{ section }}</div>
-    {% comment %} Toggle visibility column {% endcomment %}
-    {% include 'toggle_visibility.html' with is_visible=True %}
-    <div class="col-lg-1">
-      {% if is_added %}
-        <button 
-          type="button" 
-          class="btn-close" 
-          aria-label="Close" 
-          onclick='this.closest(`section[name="section"]`).remove()'>
-      {% endif %}
+    <input class="sectionGrouper" name="sectionGrouper" value="{{ section.pk }}" hidden>
+    <div class="row fw-bold justify-content-center">
+        <div class="col-lg-10">{{ section }}</div>
+        <div class="col-lg-1">
+            {% if is_added %}
+            <button type="button" class="btn-close" aria-label="Close"
+                {# yeahhh sorry for this hack but like I did not want to redesign stuff #}
+                {# tried the following but it did not work idk why#}
+                {# htmx.trigger(body, updateMeetings, {thisRefreshEditMeetings: true}) #}
+                onclick='
+                    const meetingsContainer = document.getElementById("meetingsContainer");
+                    const oldAttribute = meetingsContainer.getAttribute("hx-vals")
+                    meetingsContainer.setAttribute("hx-vals", `{ "thisRefreshEditMeetings": "true"}`)
+                    this.closest(`section[name="section"]`).remove();
+                    htmx.trigger("body", "updateMeetings")
+                    meetingsContainer.setAttribute("hx-vals", `{ "thisRefreshEditMeetings": ${oldAttribute}}`)'>
+            {% endif %}
+        </div>
     </div>
-  </div>
-  {% for edit_meeting in edit_meetings %}
-    <div
-      hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"'
-      name="meeting"
-      id="{{ section.pk }},{{ edit_meeting.counter }}"
-      class="row">
-      {% include 'input_row.html' with edit_meeting=edit_meeting edit_meetings=None %}
+    {% for edit_meeting in section_meetings %}
+    <div hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"' name="meeting"
+        id="{{ section.pk }},{{ edit_meeting.counter }}" class="row">
+        {% include 'input_row.html' with edit_meeting=edit_meeting edit_meetings=None %}
     </div>
-  {% endfor %}
-  <div class="row fw-bold justify-content-center">
-    <div 
-      class="col-lg-10">
-        <button 
-          hx-get="{% url 'add_rows' %}"
-          hx-include="#sections"
-          hx-vals='"selectedSection": "{{ section.pk }}"'
-          hx-target='closest .row'
-          hx-swap="beforebegin"
-          type="button" 
-          class="btn btn-outline-secondary">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-square" viewBox="0 0 16 16">
-              <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/>
-              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-          </svg>
-          Add Meeting(s)
-        </button>
+    {% endfor %}
+    <div class="row fw-bold justify-content-center">
+        <div class="col-lg-10">
+            <button hx-post="{% url 'add_rows' %}" hx-include="#sections"
+                hx-vals='"selectedSection": "{{ section.pk }}", "thisRefreshEditMeetings": "true"'
+                hx-target='closest .row' hx-swap="beforebegin" type="button" class="btn btn-outline-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-plus-square" viewBox="0 0 16 16">
+                    <path
+                        d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+                    <path
+                        d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                </svg>
+                Add Meeting(s)
+            </button>
+        </div>
+        <div class="col-lg-1"></div>
+        <div class="col-lg-1"></div>
     </div>
-    <div class="col-lg-1"></div>
-    <div class="col-lg-1"></div>
-  </div>
 </section>
+<script>
+    function deleteSection () {
+
+    }
+</script>
+
+{% if is_added %}
+<div hx-swap-oob="innerHtml:#meetingsContainer">
+    {% include 'get_meetings.html' %}
+</div>
+{% endif %}

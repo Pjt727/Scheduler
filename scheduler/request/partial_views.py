@@ -29,12 +29,13 @@ class RowContext(TypedDict):
 
 class UpdateMeetingsContext(TypedDict):
     title: str
-    meetings: QuerySet[Meeting]
-    edit_meetings: list[EditMeeting]
-    edit_meeting: EditMeeting
-    open_slots: list[TimeSlot]
+    meetings: QuerySet[Meeting] | None
+    edit_meetings: list[EditMeeting] | None
+    open_slots: list[TimeSlot] | None
     number_icons: list[NumberIcon]
     in_edit_mode: bool
+    building: str | None
+    edit_room: str | None
 
 class InputRowContext(RowContext):
     days: list
@@ -45,61 +46,115 @@ class DisplayRowContext(RowContext):
     is_deleted: bool
 
 
-def get_update_meeting_context(edit_meetings: list[EditMeeting] | None,
-                               building: Building | None,
-                               room: Room | None, duration: timedelta | None,
-                               other_meetings: QuerySet[Meeting],
-                               open_slots: list[TimeSlot]) -> UpdateMeetingsContext:
+def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
+                               building: Building | None = None,
+                               room: Room | None = None, duration: timedelta | None = None,
+                               other_meetings: QuerySet[Meeting] | None = None,
+                               open_slots: list[TimeSlot] | None = None) -> UpdateMeetingsContext:
+    building_pk = None if building == None else building.pk
+    room_pk = None if room == None else room.pk
+    if room is not None:
+        title = f"Conflicts in {room} with duration {str(duration)[:-3]}"
+    elif building is not None:
+        title = f"Conflicts in {building} any room with duration {str(duration)[:-3]}"
+    else:
+        title = f"No conflicts to show! Add meetings to the section."
+        open_slots = []
+
     context: UpdateMeetingsContext = {
-        "edit_meetings": edit_meetings,
-        "building": building, # building is always none if room is none in this case
-        "edit_room": room.pk,
-        "number_icons": TimeBlock.get_number_icons,
-        "title": f"Conflicts for in {room} for {str(duration)[:-3]}",
-        "in_edit_mode": True,
+        "title": title,
         "meetings": other_meetings,
+        "edit_meetings": edit_meetings,
+        "building": building_pk, # building is always none if room is none in this case
+        "edit_room": room_pk,
+        "number_icons": TimeBlock.get_number_icons(),
+        "in_edit_mode": True,
         "open_slots": open_slots,
     }
     return context
 
-
-def generate_update_meeting_context(data: QueryDict | dict, edit_meetings: list[EditMeeting]=None, edit_meeting: EditMeeting = None) -> UpdateMeetingsContext:
+# Please refactor there is too many redundant if's
+def generate_update_meeting_context(data: QueryDict, edit_meetings: list[EditMeeting] | None = None,
+                                    edit_meeting: EditMeeting | None = None,
+                                    added_section: Section | None = None) -> UpdateMeetingsContext:
     if edit_meetings is None:
-        edit_meetings, edit_meeting = EditMeeting.create_all(data)
+        edit_meetings, _ = EditMeeting.create_all(data)
     sections: set[Section] = set()
-    term: Term = None
-    for e_m in edit_meetings:
-        term = e_m.section.term
-        sections.add(e_m.section)
-    start_end_time = str(data.get("thisStartEndTime"))
+    section_pks = data.getlist("sectionGrouper") 
+    assert section_pks is not None
+    for pk in section_pks:
+        sections.add(Section.objects.get(pk=pk))
+    if added_section is not None:
+        sections.add(added_section)
+    first_edit_meeting = next(iter(edit_meetings), None)
+    first_section_pk = data.get('sectionGrouper')
+    first_section = Section.objects.get(pk=first_section_pk)
+    term = first_section.term
+    if data.get("thisStartEndTime"):
+        start_end_time = str(data.get("thisStartEndTime"))
+        start_time, end_time = start_end_time.split(',')
+        start_time = time.fromisoformat(start_time)
+        end_time = time.fromisoformat(end_time)
+        start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute)
+        end_time_d = timedelta(hours=end_time.hour, minutes=end_time.minute)
+        duration = end_time_d - start_time_d
+    elif edit_meeting is not None:
+        duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
+    elif first_edit_meeting is not None:
+        duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
+    else:
+        duration = timedelta(hours=1, minutes=15)
 
-    start_time, end_time = start_end_time.split(',')
-    start_time = time.fromisoformat(start_time)
-    end_time = time.fromisoformat(end_time)
-    start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute)
-    end_time_d = timedelta(hours=end_time.hour, minutes=end_time.minute)
-    duration = end_time_d - start_time_d
 
     building = data.get("thisBuilding")
-    building = Building.objects.get(pk=building)
+    if building == "any":
+        building = Building.recommend(first_section.course, term=term)
+    elif building is not None:
+        building = Building.objects.get(pk=building)
+    elif edit_meeting is not None:
+        building = edit_meeting.building
+    elif first_edit_meeting is not None:
+        building = first_edit_meeting.building
+    else:
+        building = Building.recommend(first_section.course, term=term)
+
     room = data.get("thisRoom")
-    room = Room.objects.get(pk=room)
+    if room == "any":
+        room = None
+    elif room is not None:
+        room = Room.objects.get(pk=room)
+    elif edit_meeting is not None:
+        room = edit_meeting.room
+    elif first_edit_meeting is not None:
+        room = first_edit_meeting.room
+
     professor = data.get("thisProfessor")
-    professor = Professor.objects.get(pk=professor)
-    other_meetings, open_slots = EditMeeting.get_open_slots(
-        term,
-        building,
-        room,
-        professor,
-        sections,
-        duration
-    )
+    if professor == "None" or professor == "":
+        professor = None
+    if professor is not None:
+        professor = Professor.objects.get(pk=professor)
+    elif edit_meeting is not None:
+        professor = edit_meeting.professor
+    elif first_edit_meeting is not None:
+        professor = first_edit_meeting.professor
+    other_meetings = None
+    open_slots = None
+    if building:
+        other_meetings, open_slots = EditMeeting.get_open_slots(
+            term,
+            building,
+            room,
+            professor,
+            sections,
+            duration
+        )
     edit_meetings_or_none = None
     if data.get("thisRefreshEditMeetings") == "true":
+        print("refreshing!!")
         edit_meetings_or_none = edit_meetings
     return get_update_meeting_context(
             edit_meetings=edit_meetings_or_none,
-            building=None,
+            building=building,
             room=room,
             duration=duration,
             other_meetings=other_meetings,
@@ -108,168 +163,51 @@ def generate_update_meeting_context(data: QueryDict | dict, edit_meetings: list[
 
 # TODO look at this code for possibility of editing rows that do not have building
 class DisplayRow(View):
-    @method_decorator(login_required)
-    def get(self, request: HttpRequest) -> HttpResponse:
-        meeting_pk = request.GET.get("meeting")
-        counter = request.GET.get("outerCounter")
-        meeting = Meeting.objects.get(pk=meeting_pk)
-
-        room = meeting.room
-        context: DisplayRowContext = {
-            "is_deleted": False,
-            "meeting_pk": meeting.pk,
-            "section_pk": meeting.section.pk,
-            "start_time": meeting.time_block.start_end_time.start,
-            "end_time": meeting.time_block.start_end_time.end, 
-            "day": meeting.time_block.day,
-            "building": None if room is None else room.building,
-            "room": meeting.room,
-            "counter": counter,
-            "professor": meeting.professor,
+    def delete(self, request: HttpRequest) -> HttpResponse:
+        data = QueryDict(request.body) # pyright: ignore
+        edit_meetings, edit_meeting = EditMeeting.create_all(data)
+        display_meeting_context = {
+            "edit_meeting": edit_meeting
         }
+        edit_meeting.is_deleted = True
+        edit_meetings.remove(edit_meeting)
+        edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
+        update_meeting_context = generate_update_meeting_context(data, edit_meetings)
+
+        context = display_meeting_context | update_meeting_context
 
         return render(request, 'display_row.html', context=context)
 
-    def delete(self, request: HttpRequest) -> HttpResponse:
-        DELETE = QueryDict(request.body)
-        changed_section = DELETE.get('outerSection')
-        changed_counter = DELETE.get('outerCounter')
-
-        edit_meetings = EditMeeting.create_all(DELETE)
-        edit_meeting: None | EditMeeting = None
-        for i, (section_pk, counter) in enumerate(zip(DELETE.getlist('section'), DELETE.getlist('counter'))):
-            if (changed_section == section_pk) and (counter == changed_counter):
-                edit_meeting = edit_meetings[i]
-        edit_meeting: EditMeeting
-
-        context: DisplayRowContext = {
-            "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
-            "section_pk": edit_meeting.section.pk,
-            "building": edit_meeting.building,
-            "room": edit_meeting.room,
-            "day": edit_meeting.day,
-            "professor": edit_meeting.professor,
-            "counter": edit_meeting.counter,
-            "is_deleted": True,
-            "start_time": edit_meeting.start_time,
-            "end_time": edit_meeting.end_time,
+    def put(self, request: HttpRequest) -> HttpResponse:
+        data = QueryDict(request.body) # pyright: ignore
+        edit_meetings, edit_meeting = EditMeeting.create_all(data)
+        display_meeting_context = {
+            "edit_meeting": edit_meeting,
+            "days": Day.CODE_TO_VERBOSE.items(), 
+            "buildings": Building.objects.all(),
         }
+        edit_meeting.is_deleted = False
+        edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
 
-        update_meeting_context = get_update_meeting_context(
-            data=DELETE,
-            edit_meetings=edit_meetings,
-            edit_meeting=edit_meeting,
-            use_edit_meeting=False
-        )
+        update_meeting_context = generate_update_meeting_context(data, edit_meetings)
 
-        return render(request, 'display_row.html', context=context | update_meeting_context)
+        context = display_meeting_context | update_meeting_context
 
-    def post(self, request: HttpRequest) -> HttpResponse:
-        pass
+        return render(request, 'input_row.html', context=context)
+
 
 class InputRow(View):
     @method_decorator(login_required)
     def get(self, request: HttpRequest) -> HttpResponse:
-        GET = request.GET
-        changed_section = GET.get('outerSection')
-        changed_counter = GET.get('outerCounter')
-
-        edit_meetings = EditMeeting.create_all(GET)
-
-        edit_meeting = None
-        for i, (section_pk, counter) in enumerate(zip(GET.getlist('section'), GET.getlist('counter'))):
-            if (changed_section == section_pk) and (counter == changed_counter):
-                edit_meeting = edit_meetings[i]
-        assert edit_meeting is not None
-
-        duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
-        time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
-
-        update_meeting_context = get_update_meeting_context(
-            data=GET,
-            edit_meeting=edit_meeting,
-            edit_meetings=edit_meetings)
-
-        context: InputRowContext = {
-            "meeting_pk": edit_meeting.get_meeting_pk(),
-            "section_pk": edit_meeting.section.pk,
-            "time_intervals": time_intervals,
-            "start_time": edit_meeting.start_time,
-            "end_time": edit_meeting.end_time,
-            "day": edit_meeting.day,
-            "building": edit_meeting.building,
-            "room": edit_meeting.room,
-            "counter": edit_meeting.counter,
-            "professor": edit_meeting.professor,
-            "days": Day.DAY_CHOICES,
-            "buildings": Building.objects.all(),
+        data = QueryDict(request.body) # pyright: ignore
+        edit_meetings, edit_meeting = EditMeeting.create_all(data)
+        display_meeting_context = {
+            "editing_meeting": edit_meeting
         }
-
+        update_meeting_context = generate_update_meeting_context(data, edit_meetings)
+        context = update_meeting_context | display_meeting_context
         return render(request, 'input_row.html', context = context | update_meeting_context)
 
-    # Very important that each input always have a value or the ordering could throw off everything
-    @method_decorator(login_required)
-    def put(self, request: HttpRequest) -> HttpResponse:
-        data = QueryDict(request.body)
-
-        changed_section = data.get('outerSection')
-        changed_counter = data.get('outerCounter')
-        # Only really need to make the one that is being made
-        #   a fair amount of db calls may want to change it
-        edit_meetings = EditMeeting.create_all(data)
-
-        sections_to_exclude = data.getlist('sectionGrouper')
-
-        edit_meeting = None
-        for i, (section_pk, counter) in enumerate(zip(data.getlist('section'), data.getlist('counter'))):
-            if (changed_section == section_pk) and (counter == changed_counter):
-                edit_meeting = edit_meetings[i]
-        assert edit_meeting is not None
-
-        problems = edit_meeting.room_problems(sections_to_exclude)
-        problems.extend(edit_meeting.professor_problems(sections_to_exclude))
-
-        context: RowContext = {
-            "meeting_pk": edit_meeting.meeting.pk if edit_meeting.meeting else None,
-            "section_pk": edit_meeting.section.pk,
-            "building": edit_meeting.building,
-            "room": edit_meeting.room,
-            "day": edit_meeting.day,
-            "professor": edit_meeting.professor,
-            "counter": edit_meeting.counter,
-            "problems": problems
-        }
-
-        if any(map(lambda p: p.type == Problem.DANGER, problems)):
-            duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
-            time_intervals = TimeBlock.get_time_intervals(duration, edit_meeting.day)
-            context: InputRowContext
-            context["start_time"] = edit_meeting.start_time
-            context["end_time"] = edit_meeting.end_time
-            context["time_intervals"] = time_intervals
-            context["days"] = Day.DAY_CHOICES
-            context["buildings"] = Building.objects.all()
-            context["number_icons"] =  TimeBlock.get_number_icons()
-            return render(request, 'input_row.html', context=context)
-
-        context: DisplayRowContext
-        context["is_deleted"] = False
-        context["start_time"] = edit_meeting.start_time
-        context["end_time"] = edit_meeting.end_time
-
-
-        update_meeting_context = get_update_meeting_context(
-            data=data,
-            edit_meeting=None,
-            edit_meetings=edit_meetings,
-            use_edit_meeting=False)
-
-        return render(request, 'display_row.html', context=context | update_meeting_context)
-
-    @method_decorator(login_required)
-    def post(self, request: HttpRequest) -> HttpResponse:
-        
-        pass
 
 
 @login_required
@@ -277,7 +215,9 @@ class InputRow(View):
 def update_time_intervals(request: HttpRequest) -> HttpResponse:
     data = request.GET
     day = data.get('day')
+    assert day is not None
     start_end_time = data.get('startEndTime')
+    assert start_end_time is not None
     start_time, end_time = start_end_time.split(',')
     start_time = time.fromisoformat(start_time)
     end_time = time.fromisoformat(end_time)
@@ -297,7 +237,7 @@ def update_time_intervals(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["PUT"])
 def update_meetings(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body)
+    data = QueryDict(request.body) # pyright: ignore
     context = generate_update_meeting_context(data)
     return render(request, 'get_meetings_builder.html', context=context)
 
@@ -312,85 +252,62 @@ def update_rooms(request: HttpRequest) -> HttpResponse:
     room_options += '</optgroup>'
     return HttpResponse(room_options)
 
+
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["POST"])
 def add_rows(request: HttpRequest) -> HttpResponse:
-    data = request.GET
-    edit_meetings = EditMeeting.create_all(data)
+    data = QueryDict(request.body) # pyright: ignore
+    edit_meetings, _ = EditMeeting.create_all(data)
     section_pk = data.get('selectedSection')
     section = Section.objects.get(pk=section_pk)
-    # TODO better professor guessing
     recommended = EditMeeting.recommend_meetings(edit_meetings, section.primary_professor, section)
     edit_meeting_to_display = list(filter(lambda e: not e.is_deleted,edit_meetings))
     edit_meeting_to_display.extend(recommended)
 
-    context: UpdateMeetingsContext = {
-        'recommended': recommended,
-        'edit_meetings': edit_meeting_to_display,
-        'title': "Editing Meetings",
-        'number_icons': TimeBlock.get_number_icons(),
-        'in_edit_mode': True,
+    update_meetings_context = generate_update_meeting_context(
+            data, edit_meeting_to_display, edit_meeting=recommended[0])
+    input_rows_context = { 
+        "section": section,
+        "recommended": recommended, 
+        "days": Day.CODE_TO_VERBOSE.items(), 
+        "buildings": Building.objects.all(),
     }
+    context = update_meetings_context | input_rows_context
 
-    return render(request, 'display_rows.html', context=context)
+    return render(request, 'input_rows.html', context=context)
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["PUT"])
 def add_section(request: HttpRequest) -> HttpResponse:
-    data = request.GET
-    section_pk = data.get('section')
+    data = QueryDict(request.body) # pyright: ignore 
+    section_pk = data.get('addedSection')
     sections = data.getlist('sectionGrouper')
     if section_pk in sections:
         return HttpResponse(request)
     section = Section.objects.get(pk=section_pk)
-    context = { 
-        'section': section,
-        'is_added': True,
+    added_sections = EditMeeting.from_section(section)
+    section_context = { 
+               'section_meetings': added_sections,
+               'section': section,
+               'is_added': True,
+               'days': Day.CODE_TO_VERBOSE.items(), 
+               'buildings': Building.objects.all(),
     }
+
+    edit_meetings, _ = EditMeeting.create_all(data)
+    edit_meetings.extend(added_sections)
+    update_meeting_context = generate_update_meeting_context(data, edit_meetings, added_section=section)
+
+    context = section_context | update_meeting_context
     return render(request, 'section.html', context=context)
-
-
-@login_required
-@require_http_methods(["PUT"])
-def toggle_visibility(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body)
-    changed_section = data.get('outerSection')
-    visible_sections: list[str] = []
-
-    toggled_visibility = None
-    for section, visibility in zip(data.getlist('sectionGrouper'), data.getlist('isVisible')):
-        visibility = visibility == 'true'
-        if section == changed_section:
-            toggled_visibility = not visibility
-            if toggled_visibility:
-                visible_sections.append(section)
-            continue
-        if visibility: visible_sections.append(section)
-    assert toggled_visibility is not None
-
-    edit_meetings = EditMeeting.create_all(data)
-    edit_meetings = filter(
-        lambda e: (not e.is_deleted) and (str(e.section.pk) in visible_sections),
-        edit_meetings)
-
-
-    context: UpdateMeetingsContext = {
-        'server_trigger': True,
-        'is_visible': toggled_visibility,
-        'edit_meetings': list(edit_meetings),
-        'title': "Edit Meetings",
-        'number_icons': TimeBlock.get_number_icons(),
-        'in_edit_mode': True,
-
-    }
-    return render(request, 'toggle_visibility.html', context=context)
 
 
 @login_required
 @require_http_methods(["POST"])
 def soft_submit(request: HttpRequest) -> HttpResponse:
     data = request.POST
-    edit_meetings = EditMeeting.create_all(data)
+    edit_meetings, _ = EditMeeting.create_all(data)
+
     edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
     group_problems = EditMeeting.get_group_problems(edit_meetings)
     section_problems: list[tuple[Section, list[Problem]]] = []
@@ -401,7 +318,7 @@ def soft_submit(request: HttpRequest) -> HttpResponse:
             continue
         section_edit_meetings[meeting.section] = [meeting]
         
-    sections_to_exclude = section_edit_meetings.keys()
+    sections_to_exclude = list(section_edit_meetings.keys())
     for section, meetings in section_edit_meetings.items():
         section_problems.append(
             (section, EditMeeting.get_section_problems(meetings, sections_to_exclude=sections_to_exclude),))
@@ -420,9 +337,12 @@ def soft_submit(request: HttpRequest) -> HttpResponse:
 @atomic
 def hard_submit(request: HttpRequest) -> HttpResponse:
     data = request.POST
-    e_meetings = EditMeeting.create_all(data)
+    e_meetings, _ = EditMeeting.create_all(data)
+    message = data.get("message")
 
-    bundle = EditRequestBundle(requester=request.user.professor)
+    professor: Professor = request.user.professor # pyright: ignore
+
+    bundle = EditRequestBundle()
     bundle.save()
 
     section_edit_meetings: dict[Section, list[EditMeeting]] = {}
@@ -432,12 +352,11 @@ def hard_submit(request: HttpRequest) -> HttpResponse:
             continue
         section_edit_meetings[meeting.section] = [meeting]
     
-    message_bundle = EditMeetingMessageBundle(
-        status=EditMeetingMessageBundle.REQUESTED,
-        sender = request.user.professor,
-        request=bundle,
-        request_pk=bundle.pk
-    )
+    message_bundle = EditMeetingMessageBundleRequest(
+            message= message,
+            requester = professor,
+            request=bundle,
+            )
     message_bundle.save()
     for section, edit_meetings in section_edit_meetings.items():
         try:
@@ -446,8 +365,7 @@ def hard_submit(request: HttpRequest) -> HttpResponse:
             return HttpResponse()
         edit_section_request.save()
         for edit_meeting in edit_meetings:
-            meeting_request = edit_meeting.save_as_request(edit_section_request)
-            meeting_request.freeze(message_bundle)
+            edit_meeting.save_as_request(edit_section_request)
     
     return HttpResponseClientRedirect(reverse('message_hub'))
 
@@ -456,16 +374,14 @@ def hard_submit(request: HttpRequest) -> HttpResponse:
 @atomic
 def soft_approve(request: HttpRequest) -> HttpResponse:
     data = request.POST
-    request_bundle_pk = data.get('requestBundle')
-    request_bundle = EditRequestBundle.objects.get(pk=request_bundle_pk)
-    professor: Professor = request.user.professor
-    # should never happen unless someone messes with the requests 
-    if not professor.is_department_head:
-        return HttpResponseForbidden("You must be a department head to approve a request!")
+    request_bundle_pk = data.get('messageBundle')
+    request_bundle = EditMeetingMessageBundleRequest.objects.get(pk=request_bundle_pk)
+    professor: Professor = request.user.professor # pyright: ignore
+    # TODO ensure that professor is department head
 
     edit_meetings: list[EditMeeting] = []
     section_edit_meetings: dict[Section, list[EditMeeting]] = {}
-    for edit_section in request_bundle.edit_sections.all():
+    for edit_section in request_bundle.request.edit_sections.all():
         section_edit_meetings[edit_section.section] = []
         for i, edit_meeting_request in enumerate(edit_section.edit_meetings.all(), start=1):
             edit_meeting = edit_meeting_request.reformat(i)
@@ -477,8 +393,9 @@ def soft_approve(request: HttpRequest) -> HttpResponse:
     
     section_problems: list[tuple[Section, list[Problem]]] = []
     for section, meetings in section_edit_meetings.items():
-        section_problems.append(
-            (section, EditMeeting.get_section_problems(meetings, sections_to_exclude=sections_to_exclude),))
+        problems = EditMeeting.get_section_problems(
+                meetings, sections_to_exclude=list(sections_to_exclude))
+        section_problems.append((section, problems))
 
     context = {
         'group_problems': group_problems,
@@ -494,64 +411,71 @@ def soft_approve(request: HttpRequest) -> HttpResponse:
 @atomic
 def hard_approve(request: HttpRequest) -> HttpResponse:
     data = request.POST
-    request_bundle_pk = data.get('requestBundle')
-    request_bundle = EditRequestBundle.objects.get(pk=request_bundle_pk)
-    professor: Professor = request.user.professor
-    # should never happen unless someone messes with the requests 
-    if not professor.is_department_head:
-        return HttpResponseForbidden("You must be a department head to approve a request!")
-    message_bundle = EditMeetingMessageBundle(
-        status=EditMeetingMessageBundle.ACCEPTED,
-        sender=professor,
-        recipient=request_bundle.requester,
-        request_pk=request_bundle.pk
-    )
-    message_bundle.save()
-    for edit_section in request_bundle.edit_sections.all():
-        for edit_meeting in edit_section.edit_meetings.all():
-            message = edit_meeting.freeze(message_bundle)
-            message.save()
+    message = data.get("message")
+    request_bundle_pk = data.get('messageBundle')
+    request_bundle = EditMeetingMessageBundleRequest.objects.get(pk=request_bundle_pk)
+    professor: Professor = request.user.professor # pyright: ignore
+    # TODO add department checks
+    response_bundle = EditMeetingMessageBundleResponse(
+            status=EditMeetingMessageBundleResponse.ACCEPTED,
+            message=message,
+            sender=professor,
+            request_bundle=request_bundle.request,
+            request=request_bundle,
+            )
+    response_bundle.save()
+    request_bundle.request.realize()
 
-    request_bundle.realize()
-    request_bundle.delete()
+    # can change to reloading message components 
     messages.success(request, ("Successfully approved the request"), extra_tags="success")
+    return HttpResponseClientRedirect(reverse('message_hub'))
+
+@login_required
+@require_http_methods(["PUT"])
+def deny_request(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body) # pyright: ignore
+    message = data.get("message")
+    request_bundle_pk = data.get('messageBundle')
+    print(request_bundle_pk)
+    request_bundle = EditMeetingMessageBundleRequest.objects.get(pk=request_bundle_pk)
+    professor: Professor = request.user.professor # pyright: ignore
+    # TODO add department checks
+    response_bundle = EditMeetingMessageBundleResponse(
+            status=EditMeetingMessageBundleResponse.DENIED,
+            message=message,
+            sender=professor,
+            request_bundle=request_bundle.request,
+            request=request_bundle,
+            )
+    response_bundle.save()
+
+    # can change to reloading message components 
+    messages.success(request, ("Successfully denied the request"), extra_tags="success")
+    return HttpResponseClientRedirect(reverse('message_hub'))
+
+@login_required
+@require_http_methods(["PUT"])
+def cancel_request(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body) # pyright: ignore
+    message_bundle_pk = data.get('messageBundle')
+    request_bundle = EditMeetingMessageBundleRequest.objects.get(pk=message_bundle_pk)
+    professor: Professor = request.user.professor # pyright: ignore
+
+    if professor != request_bundle.requester:
+        return HttpResponseForbidden("You did make the request so you cannot cancel it!")
+
+    request_bundle.delete() 
+    messages.success(request, ("Successfully cancelled the request"), extra_tags="success")
+
     return HttpResponseClientRedirect(reverse('message_hub'))
 
 
 @login_required
 @require_http_methods(["PUT"])
 def read_bundle(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body)
+    data = QueryDict(request.body) # pyright: ignore
     message_bundle_pk = data.get('messageBundle')
-    message_bundle = EditMeetingMessageBundle.objects.get(pk=message_bundle_pk)
+    message_bundle = EditMeetingMessageBundleResponse.objects.get(pk=message_bundle_pk)
     message_bundle.is_read = True
     message_bundle.save()
     return HttpResponse()
-
-
-
-@login_required
-@require_http_methods(["PUT"])
-def cancel_request(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body)
-    message_bundle_pk = data.get('messageBundle')
-    message_bundle = EditMeetingMessageBundle.objects.get(pk=message_bundle_pk)
-    professor: Professor = request.user.professor
-    request_bundle = message_bundle.request
-
-    if professor != request_bundle.requester:
-        return HttpResponseForbidden("You did make the request so you cannot cancel it!")
-
-    message_bundle = EditMeetingMessageBundle(
-        status=EditMeetingMessageBundle.CANCELED,
-        sender=professor,
-        request_pk=request_bundle.pk)
-    message_bundle.save()
-    for edit_section in request_bundle.edit_sections.all():
-        for edit_meeting in edit_section.edit_meetings.all():
-            message = edit_meeting.freeze(message_bundle)
-            message.save()
-    request_bundle.delete() 
-    messages.success(request, ("Successfully cancelled the request"), extra_tags="success")
-
-    return HttpResponseClientRedirect(reverse('message_hub'))

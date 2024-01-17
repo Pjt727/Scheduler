@@ -2,28 +2,29 @@
 <div class="col-sm-1 fw-bold">
     <input name="isDeleted" type="text" value="false" hidden>
     <input type="number" name="counter" value="{{ edit_meeting.counter }}" hidden>
-    <input type="text" name="original" value="{{ edit_meeting.meeting.pk }}" hidden>
+    <input type="text" name="original" value="{% if edit_meeting.meeting %} {{ edit_meeting.meeting.pk }} {% else %}None{% endif %}" hidden>
     <input type="text" name="section" value="{{ edit_meeting.section.pk }}" hidden>
     <input type="text" name="professor"
         value="{% if edit_meeting.professor %}{{ edit_meeting.professor.pk }}{% else %}None{% endif %}" hidden>
-    {{ counter }}
+    {{ edit_meeting.counter }}
 </div>
 <div class="col-sm-5 text-start">
-    <select name="startEndTime" onchange='updateMeetings(true)'>
+    <select name="startEndTime" onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)'>
 
         {% for s, e in edit_meeting.get_time_intervals %}
         <option 
             value="{{ s|time_input }},{{ e|time_input }}" 
-            {% if s==edit_meeting.start_time and e==edit_meeting.end_time %}
-                selected {% endif %}>
+            {% if s == edit_meeting.start_time and e == edit_meeting.end_time %}
+                selected 
+            {% endif %}>
             {{ s|time_display }} - {{ e|time_display }}
         </option>
         {% endfor %}
     </select>
-    <select onchange='updateMeetings(true)' hx-target='previous [name="startEndTime"]'
+    <select onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)' hx-target='previous [name="startEndTime"]'
         hx-get="{% url 'update_time_intervals' %}" hx-include='previous [name="startEndTime"]' name="day">
         {% for code, d in days %}
-        <option value="{{ code }}" {% if edit_meeting.day==code %}selected{% endif %}>
+        <option value="{{ code }}" {% if edit_meeting.day == code %}selected{% endif %}>
             {{ d }}
         </option>
         {% endfor %}
@@ -32,7 +33,7 @@
 <div class="col-sm-4 text-start">
     <select hx-get="{% url 'update_rooms' %}" hx-target='next [name="room"]' name="building">
         {% for b in buildings %}
-        <option value="{{ b.pk }}" {% if b==edit_meeting.building %}selected{% endif %}>
+        <option value="{{ b.pk }}" {% if b == edit_meeting.building %}selected{% endif %}>
             {{ b }}
         </option>
         {% endfor %}
@@ -40,14 +41,11 @@
         <option value="any" hidden selected></option>
         {% endif %}
     </select>
-    <select onchange='updateMeetings()' name="room">
+    <select onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}")' name="room">
         <option value="any">Any</option>
-        <option value="anyLab">Any Lab</option>
-        <option value="anyGeneralPurpose">Any General Purpose</option>
-        <option value="anyNongeneralPurpose">Any Nongeneral Purpose</option>
         <optgroup>
             {% for r in edit_meeting.building.rooms.all %}
-            <option value="{{ r.pk }}" {% if r==edit_meeting.room %}selected{% endif %}>
+            <option value="{{ r.pk }}" {% if r == edit_meeting.room %}selected{% endif %}>
                 {{ r.number }} {{ r.classification }} {{ r.is_general_purpose }}
             </option>
             {% endfor %}
@@ -55,8 +53,15 @@
     </select>
 </div>
 <div class="col-sm-1">
-    <svg {% if meeting_pk %} hx-delete="{% url 'display_row' %}" hx-trigger="click" hx-include='#sections'
-        hx-target='closest [name="meeting"]' {% else %} onclick='this.closest(`[name="meeting"]`).remove()' {% endif %}
+    <svg 
+        {% if edit_meeting.meeting %} 
+            hx-delete="{% url 'display_row' %}"
+            hx-trigger="click" hx-include='#sections'
+            hx-target='closest [name="meeting"]' 
+            hx-vals='{"thisRefreshEditMeetings": "true"}'
+        {% else %} 
+            onclick='deleteMeeting("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}")' 
+        {% endif %}
         xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" role="button"
         class="bi bi-x-square" viewBox="0 0 16 16">
         <path
@@ -65,45 +70,13 @@
             d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708z" />
     </svg>
 </div>
-<div class="col-sm-1">
-    <svg hx-put="{% url 'input_row' %}" hx-include='#sections' hx-target='closest [name="meeting"]'
-        xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" role="button"
-        class="bi bi-check-square" viewBox="0 0 16 16">
-        <path
-            d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
-        <path
-            d="M10.97 4.97a.75.75 0 0 1 1.071 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.235.235 0 0 1 .02-.022z" />
-    </svg>
-</div>
-<script>
-    function updateMeetings(refreshEditMeetings = false) {
-        const meetingsCounter = document.getElementById("meetingsContainer")
-        const thisRow = document.getElementById("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}")
-
-        const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
-        const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
-
-        const buildingSelect = thisRow.querySelector('[name="building"]')
-        const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
-
-        const roomSelect = thisRow.querySelector('[name="room"]')
-        const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
-
-        meetingsCounter.setAttribute("hx-vals", ` {
-          "thisStartEndTime": "${selectedTime}",
-          "thisBuilding": "${selectedBuilding}",
-          "thisRoom": "${selectedRoom}",
-          "thisProfessor": "{{ edit_meeting.professor.pk }}",
-          "thisRefreshEditMeetings": "${refreshEditMeetings}"
-       }`)
-        htmx.trigger("body", "updateMeetings")
-    }
-</script>
-
 
 {% if problems %}
 {% include 'problems.html' with problems=problems%}
 {% endif %}
+
+
+{# This condition instead of title like on input needed so that the first page does not rerender stuff #}
 {% if edit_meetings %}
 <div hx-swap-oob="innerHtml:#meetingsContainer">
     {% include 'get_meetings.html' %}

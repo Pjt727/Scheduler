@@ -5,15 +5,12 @@
 {% endblock %}
 {% block title %}Edit Section{% endblock %} {% block content %}
 {% csrf_token %}
-<div class="position-fixed bottom-0 end-0 w-100" style="z-index: 1000;">
-  <div aria-live="polite" aria-atomic="true" class="position-relative">
-    <div id="problems" class="toast-container bottom-0 end-0 mb-3 me-3">
-    </div>
-  </div>
-</div>
 <div class="container text-center">
   <section id="sections" class="pt-2"> 
-    {% include 'section.html' with section=section %}
+      {% regroup edit_meetings by section as sections %}
+      {% for section in sections %}
+      {% include 'section.html' with section=section.grouper section_meetings=section.list %}
+      {% endfor %}
   </section>
   <br>
   <div class="row">
@@ -25,24 +22,23 @@
         type="button" 
         class="btn btn-primary"
         data-bs-toggle="modal" 
-        data-bs-target="#warnings">
+        data-bs-target="#problemsModal">
         Submit
       </button>
     </div>
   </div>
 </div>
 <br>
-<!-- TODO change this first trigger -->
 <div 
   hx-put="{% url 'update_meetings' %}"
   hx-trigger="updateMeetings from:body"
   hx-swap="none"
-  hx-include="#sections, #enforceDepartmentConstraints"
+  hx-include="#sections"
   id="meetingsContainer" >
 {% include 'get_meetings.html' with edit_meetings=edit_meetings %}
 </div>
 
-<div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+<div class="modal fade" id="problemsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -50,12 +46,10 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="problemsBody">
-        <table class="table">
-        </table>
+          Loading...
       </div>
       <div class="modal-footer">
         <button 
-          
           type="button" 
           class="btn btn-secondary" 
           data-bs-dismiss="modal">
@@ -73,20 +67,73 @@
     </div>
   </div>
 </div>
+
+
 {% endblock %} 
 {% block scripts %}
   <script>
-    htmx.onLoad(()=>{
-      const toastElList = document.querySelectorAll('.toast')
-      const toastList = [...toastElList].map(toastEl => {
-        const toast =  new bootstrap.Toast(toastEl)
-        if(!toast.isShown()){
-          toast.show()
-        }
-        toastEl.addEventListener('hidden.bs.toast', () => {
-          toastEl.remove()
-        })
+      function updateMeetingHandler() {
+          let lastCall = null
+          return function updateMeetings(rowId, refreshEditMeetings = false) {
+              const meetingsCounter = document.getElementById("meetingsContainer")
+              const thisRow = document.getElementById(rowId)
+
+              const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
+              const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
+
+              const buildingSelect = thisRow.querySelector('[name="building"]')
+              const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
+
+              const roomSelect = thisRow.querySelector('[name="room"]')
+              const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
+
+              const professor = thisRow.querySelector('[name="professor"]').value
+
+              const [startTime, endTime] = selectedTime.split(',')
+              const [startHour, startMinute] = startTime.split(':')
+              const [endHour, endMinute] = endTime.split(':') 
+              const duration = (Number(endHour) - Number(startHour)) + (Number(endMinute) - Number(startMinute))
+              let currentCall =  `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
+
+              if (currentCall === lastCall && !refreshEditMeetings) {
+                  return
+              }
+
+
+              meetingsCounter.setAttribute("hx-vals", ` {
+                  "thisStartEndTime": "${selectedTime}",
+                      "thisBuilding": "${selectedBuilding}",
+                      "thisRoom": "${selectedRoom}",
+                      "thisProfessor": "${professor}",
+                      "thisRefreshEditMeetings": "${refreshEditMeetings}"
+              }`)
+              lastCall = currentCall
+
+              htmx.trigger("body", "updateMeetings")
+          }
+      }
+
+      updateMeetings = updateMeetingHandler()
+
+      function deleteMeeting(rowId) {
+          const thisRow = document.getElementById(rowId)
+          const gridMeeting = document.querySelector(`[rowId="${thisRow.id}"]`)
+
+          thisRow.remove()
+          gridMeeting.remove()
+      }
+
+      htmx.onLoad(()=>{
+          const toastElList = document.querySelectorAll('.toast')
+          const toastList = [...toastElList].map(toastEl => {
+              const toast =  new bootstrap.Toast(toastEl)
+              if(!toast.isShown()){
+                  toast.show()
+              }
+              toastEl.addEventListener('hidden.bs.toast', () => {
+                  toastEl.remove()
+              })
+          })
       })
-    })
   </script>
 {% endblock %}
