@@ -1,9 +1,11 @@
+# pyright does not like me importing * here bc of the type checking import i think
+from claim.models import Building, Room, Meeting, TimeBlock, Day, Section, DepartmentAllocation, Department, Term
+from datetime import timedelta
 from django.http import QueryDict
 from dataclasses import dataclass
 from django.db import models
 from authentication.models import Professor
-from claim.models import *
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from datetime import time
 from authentication.models import Professor
 from typing import TypedDict
@@ -26,9 +28,9 @@ class Problem:
 
 @dataclass
 class EditMeeting:
-    start_time: time
-    end_time: time
-    day: str
+    start_time: time | None
+    end_time: time | None
+    day: str | None
     building: Building | None
     room: Room | None
     meeting: Meeting | None
@@ -37,14 +39,21 @@ class EditMeeting:
     professor: Professor | None = None
     is_deleted: bool = False
 
-    # This logic may be in Section model why then we would have to worry about circular imports
     @staticmethod
     def from_meeting(meeting: Meeting, counter: int) -> 'EditMeeting':
+        time_block = meeting.time_block
+        start_end_time = None if time_block is None else time_block.start_end_time
+        start_time = None if start_end_time is None else start_end_time.start
+        end_time = None if start_end_time is None else start_end_time.end
+        day = None if time_block is None else time_block.day
+        room = meeting.room
+        building = None if room is None else room.building
+        
         edit_meeting = EditMeeting(
-            start_time=meeting.time_block.start_end_time.start,
-            end_time=meeting.time_block.start_end_time.end,
-            day=meeting.time_block.day,
-            building=meeting.room.building,
+            start_time=start_time,
+            end_time=end_time,
+            day=day,
+            building=building,
             room=meeting.room,
             meeting=meeting,
             section=meeting.section,
@@ -59,7 +68,7 @@ class EditMeeting:
         edit_meetings = []
         
         # make sure this is sorted
-        for i, meeting in enumerate(section.meetings.all(), start=1):
+        for i, meeting in enumerate(section.meetings_sorted().all(), start=1):
             edit_meeting = EditMeeting.from_meeting(meeting, i)
             edit_meetings.append(edit_meeting)
 
@@ -140,6 +149,7 @@ class EditMeeting:
         return edit_meetings, selected_edit_meeting # pyright: ignore
     
     def get_time_intervals(self) -> list[tuple[time, time]]:
+        if not self.day: return []
         duration = self.end_time_d() - self.start_time_d()
         time_intervals = TimeBlock.get_time_intervals(duration, self.day)
 
@@ -172,6 +182,7 @@ class EditMeeting:
         
         if not (self.room.is_general_purpose and check_allocation): return problems
 
+        if not self.start_time or not self.end_time: return problems
         time_blocks = TimeBlock.get_official_time_blocks(self.start_time, self.end_time, day=self.day)
         department_allocations = DepartmentAllocation.objects.filter(
             department = self.section.course.subject.department,
@@ -476,7 +487,7 @@ class EditMeeting:
     # A lot of time improvements can be made here but like idk
 
     @staticmethod
-    def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor, section: Section) -> list['EditMeeting']:
+    def recommend_meetings(edit_meetings: list['EditMeeting'], professor: Professor | None, section: Section) -> list['EditMeeting']:
         total_duration = timedelta()
         sections_to_exclude = set()
         number_room_complement: list[tuple[int, Room | None]] = []
@@ -623,22 +634,22 @@ class EditMeeting:
                 ))
                 return recommended
         open_slots = EditMeeting.open_slots(room=None, professor=professor,
-            building=building, duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings,
-            meetings=base_meetings, enforce_allocation=False, section=section)
-        
+                                            building=building, duration=TimeBlock.ONE_BLOCK, edit_meetings=edit_meetings,
+                                            meetings=base_meetings, enforce_allocation=False, section=section)
+
         # yeah... i know
         seen_numbers: list[str] = []
         for i, slot1 in enumerate(open_slots):
             if any(number in seen_numbers for number in slot1['numbers']):
                 continue
             available_rooms_slot1 = building.get_available_rooms(
-                start_time=slot1['start'],
-                end_time=slot1['end'],
-                day=slot1['day'],
-                term=section.term,
-                include_general= False,
-                sections_to_exclude=sections_to_exclude
-            )
+                    start_time=slot1['start'],
+                    end_time=slot1['end'],
+                    day=slot1['day'],
+                    term=section.term,
+                    include_general= False,
+                    sections_to_exclude=sections_to_exclude
+                    )
             slot2 = None
             if i + 1 == len(open_slots): continue
             for s in open_slots[i+1:]:
@@ -646,53 +657,55 @@ class EditMeeting:
                     slot2=s
             if slot2 is None: continue
             available_rooms_slot2 = building.get_available_rooms(
-                start_time=slot2['start'],
-                end_time=slot2['end'],
-                day=slot2['day'],
-                term=section.term,
-                include_general= False,
-                sections_to_exclude=sections_to_exclude
-            )
+                    start_time=slot2['start'],
+                    end_time=slot2['end'],
+                    day=slot2['day'],
+                    term=section.term,
+                    include_general= False,
+                    sections_to_exclude=sections_to_exclude
+                    )
             intersecting_rooms = available_rooms_slot1 & available_rooms_slot2
             if not intersecting_rooms.exists(): continue
 
             room = intersecting_rooms.first()
             assert room is not None
-            
+
             m1 = EditMeeting(start_time=slot1['start'], end_time=slot2['end'],
-                day=slot1['day'], building=room.building, room=room,
-                meeting=None, section=section, counter=last_counter+1,
-                professor=professor)
+                             day=slot1['day'], building=room.building, room=room,
+                             meeting=None, section=section, counter=last_counter+1,
+                             professor=professor)
             m2 = EditMeeting(start_time=slot2['start'], end_time=slot2['end'],
-                day=slot2['day'], building=room.building, room=room,
-                meeting=None, section=section, counter=last_counter+2,
-                professor=professor)
+                             day=slot2['day'], building=room.building, room=room,
+                             meeting=None, section=section, counter=last_counter+2,
+                             professor=professor)
             return [m1, m2]
 
         return [EditMeeting.no_recommendation(section=section, counter=last_counter+1, building=building)]
-    
+
     def save_as_request(self, edit_section: 'EditSectionRequest') -> 'EditMeetingRequest':
         request = EditMeetingRequest(
-            start_time=self.start_time,
-            end_time=self.end_time,
-            day=self.day,
-            building=self.building,
-            room=self.room,
-            professor=self.professor,
-            original=self.meeting,
-            edit_section=edit_section,
-            is_deleted=self.is_deleted
-        )
+                start_time=self.start_time,
+                end_time=self.end_time,
+                day=self.day,
+                building=self.building,
+                room=self.room,
+                professor=self.professor,
+                original=self.meeting,
+                edit_section=edit_section,
+                is_deleted=self.is_deleted
+                )
         request.save()
         return request
-    
+
     def get_meeting_pk(self) -> None | str:
         return None if self.meeting is None else self.meeting.pk
 
     def start_time_d(self):
+        if not self.start_time: return timedelta()
         return timedelta(hours=self.start_time.hour, minutes=self.start_time.minute)
 
     def end_time_d(self):
+        if not self.end_time: return timedelta()
         return timedelta(hours=self.end_time.hour, minutes=self.end_time.minute)
 
 
@@ -712,7 +725,7 @@ class EditSectionRequest(models.Model):
     section = models.ForeignKey(Section, related_name="edit_sections", on_delete=models.CASCADE)
     bundle = models.ForeignKey(EditRequestBundle, related_name="edit_sections", on_delete=models.CASCADE)
     edit_meetings: QuerySet['EditMeetingRequest']
-    
+
     def realize(self):
         for edit_meeting in self.edit_meetings.all():
             edit_meeting.realize()
@@ -726,8 +739,14 @@ class EditSectionRequest(models.Model):
             models.When(day=Day.FRIDAY, then=5),
             models.When(day=Day.SATURDAY, then=6),
             models.When(day=Day.SUNDAY, then=7),),
-            'new_start_time'
-        )
+                                           )
+
+    def data_edit_meetings(self) -> list[EditMeeting]:
+        edit_meetings: list[EditMeeting] = []
+        for i, edit_meeting_request in enumerate(self.meetings_sorted().all(), start=1):
+            edit_meeting = edit_meeting_request.reformat(i)
+            edit_meetings.append(edit_meeting)
+        return edit_meetings
 
 
 class EditMeetingRequest(models.Model):
@@ -749,10 +768,14 @@ class EditMeetingRequest(models.Model):
 
     def is_changed(self) -> bool:
         if self.original is None: return True
+        old_time_block = self.original.time_block
+        old_start_time = old_time_block.start_end_time.start if old_time_block else None
+        old_end_time = old_time_block.start_end_time.end if old_time_block else None
+        old_day = old_time_block.day if old_time_block else None
         old_new = [
-            (self.original.time_block.start_end_time.start, self.start_time,),
-            (self.original.time_block.start_end_time.end, self.end_time,),
-            (self.original.time_block.day, self.day,),
+            (old_start_time, self.start_time,),
+            (old_end_time, self.end_time,),
+            (old_day, self.day,),
             (self.original.room, self.room,),
             (self.original.professor, self.professor,),
         ]

@@ -9,25 +9,35 @@ from django.db.models import Max
 @login_required
 def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
     section: Section = Section.objects.get(pk=section_pk)
-    edit_section = EditSectionRequest.objects.filter(section=section).first()
+    edit_section = EditSectionRequest.objects \
+            .filter(section=section) \
+            .filter(bundle__request_message__isnull=False) \
+            .filter(bundle__request_message__response__isnull=True) \
+            .first()
 
-    sections_to_exclude = set()
-    edit_meetings = []
+
+    sections_to_exclude: set[Section] = set()
+    edit_meetings: list[EditMeeting] = []
+    og_edit_meetings = []
     if edit_section is not None:
         edit_bundle = edit_section.bundle
         for section_bundle in edit_bundle.edit_sections.all():
             s = section_bundle.section
             sections_to_exclude.add(s)
-            e_ms = EditMeeting.from_section(s)
-            edit_meetings.extend(e_ms):
+            og_e_ms = EditMeeting.from_section(s)
+            og_edit_meetings.extend(og_e_ms)
+            # can do this in one query instead
+            edit_meetings.extend(section_bundle.data_edit_meetings())
     else:
         sections_to_exclude.add(section)
         edit_meetings = EditMeeting.from_section(section)
 
-    EditMeeting.from_section(section)
     first_edit_meeting: EditMeeting | None = next(iter(edit_meetings), None)
     page_conetext = {
+            "og_edit_meetings": og_edit_meetings,
 
+            # used for when there are no edit_meetings
+            "empty_sections": sections_to_exclude,
             }
     input_row_context = {
             "days": Day.CODE_TO_VERBOSE.items(), 
@@ -35,7 +45,7 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
             }
     if first_edit_meeting is None:
         none_calendar_context = get_update_meeting_context()
-        context = input_row_context | none_calendar_context  
+        context = page_conetext | input_row_context | none_calendar_context  
         return render(request, 'edit_section.html', context=context)
 
     
@@ -63,7 +73,7 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
             other_meetings=other_meetings,
             open_slots=open_slots)
 
-    context = input_row_context | calendar_meeting_context
+    context = page_conetext | input_row_context | calendar_meeting_context
 
     return render(request, 'edit_section.html', context=context)
 

@@ -1,139 +1,175 @@
 {% extends "base.html" %}
 {% load static %}
 {% block head %}
-    <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+{% load formhelpers %}
+<link rel="stylesheet" href="{% static 'myMeetings.css' %}">
 {% endblock %}
 {% block title %}Edit Section{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="container text-center">
-  <section id="sections" class="pt-2"> 
-      {% regroup edit_meetings by section as sections %}
-      {% for section in sections %}
-      {% include 'section.html' with section=section.grouper section_meetings=section.list %}
-      {% endfor %}
-  </section>
-  <br>
-  <div class="row">
-    <div class="col text-end">
-      <button 
-        hx-post="{% url 'soft_submit' %}"
-        hx-include="#sections"
-        hx-swap="none"
-        type="button" 
-        class="btn btn-primary"
-        data-bs-toggle="modal" 
-        data-bs-target="#problemsModal">
-        Submit
-      </button>
+    {% if og_edit_meetings %}
+    <section id="og_sections" class="pt-2 pb-2"> 
+        {% regroup og_edit_meetings by section as sections %}
+        {% for section in sections %}
+        {% include 'og_section.html' with section=section.grouper section_meetings=section.list %}
+        {% endfor %}
+    </section>
+    {% endif %}
+    <section id="sections" class="pt-2 pb-2"> 
+        {% regroup edit_meetings by section as sections %}
+        {% for section in sections %}
+        {% include 'section.html' with section=section.grouper section_meetings=section.list %}
+        {% empty %}
+        {% for section in empty_sections %}
+        {% include 'section.html' with section=section section_meetings=None %}
+        {% endfor %}
+        {% endfor %}
+    </section>
+    <div class="row">
+        <div class="col text-end">
+            {% if og_edit_meetings %}
+            <button 
+                hx-post="{% url 'soft_submit' %}"
+                hx-include="#sections"
+                hx-swap="none"
+                type="button" 
+                class="btn btn-warning"
+                data-bs-toggle="modal" 
+                data-bs-target="#problemsModal">
+                Edit Existing Request
+            </button>
+            {% else %}
+            <button 
+                hx-post="{% url 'soft_submit' %}"
+                hx-include="#sections"
+                hx-swap="none"
+                type="button" 
+                class="btn btn-primary"
+                data-bs-toggle="modal" 
+                data-bs-target="#problemsModal">
+                Submit New Request
+            </button>
+            {% endif %}
+        </div>
     </div>
-  </div>
 </div>
 <br>
 <div 
-  hx-put="{% url 'update_meetings' %}"
-  hx-trigger="updateMeetings from:body"
-  hx-swap="none"
-  hx-include="#sections"
-  id="meetingsContainer" >
-{% include 'get_meetings.html' with edit_meetings=edit_meetings %}
+    hx-put="{% url 'update_meetings' %}"
+    hx-trigger="updateMeetings from:body"
+    hx-swap="none"
+    hx-include="#sections"
+    id="meetingsContainer" >
+    {% include 'get_meetings.html' with edit_meetings=edit_meetings %}
 </div>
 
 <div class="modal fade" id="problemsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems</h1>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body" id="problemsBody">
-          Loading...
-      </div>
-      <div class="modal-footer">
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          data-bs-dismiss="modal">
-          Cancel
-        </button>
-        <button 
-          hx-include="#sections"
-          hx-post="{% url 'hard_submit' %}"
-          id="hardSubmitAll" 
-          type="button" 
-          class="btn btn-primary">
-            Submit
-          </button>
-      </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="problemsTitle">Problems</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="problemsBody">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button 
+                    type="button" 
+                    class="btn btn-secondary" 
+                    data-bs-dismiss="modal">
+                    Cancel
+                </button>
+                {% if og_edit_meetings %}
+                <button 
+                    hx-include="#sections"
+                    hx-post="{% url 'hard_submit' %}"
+                    id="hardSubmitAll" 
+                    type="button" 
+                    class="btn btn-warning">
+                    Edit
+                </button>
+                {% else %}
+                <button 
+                    hx-include="#sections"
+                    hx-post="{% url 'hard_submit' %}"
+                    id="hardSubmitAll" 
+                    type="button" 
+                    class="btn btn-primary">
+                    Submit
+                </button>
+                {% endif %}
+            </div>
+        </div>
     </div>
-  </div>
 </div>
 
 
-{% endblock %} 
-{% block scripts %}
-  <script>
-      function updateMeetingHandler() {
-          let lastCall = null
-          return function updateMeetings(rowId, refreshEditMeetings = false) {
-              const meetingsCounter = document.getElementById("meetingsContainer")
-              const thisRow = document.getElementById(rowId)
+    {% endblock %} 
+    {% block scripts %}
+    <script>
+        function updateMeetingHandler() {
+            let lastCall = null
+            return function updateMeetings(rowId, refreshEditMeetings = false) {
+                const meetingsCounter = document.getElementById("meetingsContainer")
+                const thisRow = document.getElementById(rowId)
 
-              const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
-              const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
+                const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
+                const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
 
-              const buildingSelect = thisRow.querySelector('[name="building"]')
-              const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
+                const buildingSelect = thisRow.querySelector('[name="building"]')
+                const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
 
-              const roomSelect = thisRow.querySelector('[name="room"]')
-              const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
+                const roomSelect = thisRow.querySelector('[name="room"]')
+                const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
 
-              const professor = thisRow.querySelector('[name="professor"]').value
+                const professor = thisRow.querySelector('[name="professor"]').value
 
-              const [startTime, endTime] = selectedTime.split(',')
-              const [startHour, startMinute] = startTime.split(':')
-              const [endHour, endMinute] = endTime.split(':') 
-              const duration = (Number(endHour) - Number(startHour)) + (Number(endMinute) - Number(startMinute))
-              let currentCall =  `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
+                const [startTime, endTime] = selectedTime.split(',')
+                const [startHour, startMinute] = startTime.split(':')
+                const [endHour, endMinute] = endTime.split(':') 
+                const duration = (Number(endHour) - Number(startHour)) + (Number(endMinute) - Number(startMinute))
+                let currentCall =  `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
 
-              if (currentCall === lastCall && !refreshEditMeetings) {
-                  return
-              }
+                if (currentCall === lastCall && !refreshEditMeetings) {
+                    return
+                }
 
 
-              meetingsCounter.setAttribute("hx-vals", ` {
-                  "thisStartEndTime": "${selectedTime}",
-                      "thisBuilding": "${selectedBuilding}",
-                      "thisRoom": "${selectedRoom}",
-                      "thisProfessor": "${professor}",
-                      "thisRefreshEditMeetings": "${refreshEditMeetings}"
-              }`)
-              lastCall = currentCall
+                meetingsCounter.setAttribute("hx-vals", ` {
+                    "thisStartEndTime": "${selectedTime}",
+                        "thisBuilding": "${selectedBuilding}",
+                        "thisRoom": "${selectedRoom}",
+                        "thisProfessor": "${professor}",
+                        "thisRefreshEditMeetings": "${refreshEditMeetings}"
+                }`)
+                lastCall = currentCall
 
-              htmx.trigger("body", "updateMeetings")
-          }
-      }
+                htmx.trigger("body", "updateMeetings")
+            }
+        }
 
-      updateMeetings = updateMeetingHandler()
+        updateMeetings = updateMeetingHandler()
 
-      function deleteMeeting(rowId) {
-          const thisRow = document.getElementById(rowId)
-          const gridMeeting = document.querySelector(`[rowId="${thisRow.id}"]`)
+        function deleteMeeting(rowId) {
+            const thisRow = document.getElementById(rowId)
+            const gridMeeting = document.querySelector(`[rowId="${thisRow.id}"]`)
 
-          thisRow.remove()
-          gridMeeting.remove()
-      }
+            thisRow.remove()
+            gridMeeting.remove()
+        }
 
-      htmx.onLoad(()=>{
-          const toastElList = document.querySelectorAll('.toast')
-          const toastList = [...toastElList].map(toastEl => {
-              const toast =  new bootstrap.Toast(toastEl)
-              if(!toast.isShown()){
-                  toast.show()
-              }
-              toastEl.addEventListener('hidden.bs.toast', () => {
-                  toastEl.remove()
-              })
-          })
-      })
-  </script>
-{% endblock %}
+        htmx.onLoad(()=>{
+            const toastElList = document.querySelectorAll('.toast')
+            const toastList = [...toastElList].map(toastEl => {
+                const toast =  new bootstrap.Toast(toastEl)
+                if(!toast.isShown()){
+                    toast.show()
+                }
+                toastEl.addEventListener('hidden.bs.toast', () => {
+                    toastEl.remove()
+                })
+            })
+        })
+    </script>
+    {% endblock %}

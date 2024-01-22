@@ -1,3 +1,4 @@
+from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse, QueryDict, HttpResponseForbidden
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
@@ -308,6 +309,11 @@ def soft_submit(request: HttpRequest) -> HttpResponse:
     data = request.POST
     edit_meetings, _ = EditMeeting.create_all(data)
 
+    is_changed = False
+    for edit_meeting in edit_meetings:
+        is_changed = is_changed or edit_meeting.is_changed()
+    print(is_changed)
+
     edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
     group_problems = EditMeeting.get_group_problems(edit_meetings)
     section_problems: list[tuple[Section, list[Problem]]] = []
@@ -324,10 +330,11 @@ def soft_submit(request: HttpRequest) -> HttpResponse:
             (section, EditMeeting.get_section_problems(meetings, sections_to_exclude=sections_to_exclude),))
     
     context = {
-        'group_problems': group_problems,
-        'section_problems': section_problems,
-        'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
-    }
+            'is_changed': is_changed,
+            'group_problems': group_problems,
+            'section_problems': section_problems,
+            'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
+            }
 
     return render(request, 'problems_group.html', context=context)
 

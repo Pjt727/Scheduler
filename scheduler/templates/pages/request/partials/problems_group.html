@@ -66,14 +66,32 @@
         </td>
       <tr>
       {% endfor %}
-      {% if problems %}
-      {% endif %}
       {% endfor %}
     </tbody>
   </table>
+  {# id just do not want to deal with the two types of buttons #}
+  {# need to put it in block to avoid declaring #}
+  {% if is_changed %}
+  <script>
+      {
+          const button = document.getElementById("hardSubmitAll")
+          console.log(button)
+          button.disabled = false 
+      }
+  </script>
+  {% else %}
+  <script>
+      {
+          const button = document.getElementById("hardSubmitAll")
+          button.disabled = true 
+      }
+  </script>
+  {% endif %}
 </div>
-{% if request_bundle_pk %}
-  <form id="requestForm" hx-swap-oob="true" hidden>
-    <input type="text" name="messageBundle" value="{{ request_bundle_pk }}">
-  </form>
+
+{% if is_changed %}
+<h1 class="modal-title fs-5" id="problemsTitle" hx-swap-oob="true">Problems</h1>
+{% else %}
+<h1 class="modal-title fs-5" id="problemsTitle" hx-swap-oob="true">No changes from current section(s) or current request</h1>
 {% endif %}
+

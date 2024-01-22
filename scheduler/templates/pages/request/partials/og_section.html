@@ -1,0 +1,13 @@
+<section class="pb-4" id="{{ section.id }}">
+    <div class="row fw-bold justify-content-center">
+        <div class="col-lg-10">Current {{ section }}</div>
+        <div class="col-lg-1"></div>
+        <div class="col-lg-1"></div>
+    </div>
+    {% for edit_meeting in section_meetings %}
+    <div class="row">
+        {# could maybe change how this has to work ugly with the in_edit_mode=False#}
+        {% include 'display_row.html' with edit_meeting=edit_meeting edit_meetings=None in_edit_mode=False %}
+    </div>
+    {% endfor %}
+</section>

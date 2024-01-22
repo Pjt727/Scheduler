@@ -1,4 +1,3 @@
-<!-- Going to change for when it needs to render possible request -->
 <section name="section" class="pb-4" hx-vals='"outerSection": "{{ section.pk }}"'>
     <input class="sectionGrouper" name="sectionGrouper" value="{{ section.pk }}" hidden>
     <div class="row fw-bold justify-content-center">
@@ -9,6 +8,7 @@
                 {# yeahhh sorry for this hack but like I did not want to redesign stuff #}
                 {# tried the following but it did not work idk why#}
                 {# htmx.trigger(body, updateMeetings, {thisRefreshEditMeetings: true}) #}
+                {# could move this to edit_section #}
                 onclick='
                     const meetingsContainer = document.getElementById("meetingsContainer");
                     const oldAttribute = meetingsContainer.getAttribute("hx-vals")
@@ -18,6 +18,7 @@
                     meetingsContainer.setAttribute("hx-vals", `{ "thisRefreshEditMeetings": ${oldAttribute}}`)'>
             {% endif %}
         </div>
+        <div class="col-lg-1"></div>
     </div>
     {% for edit_meeting in section_meetings %}
     <div hx-vals='"outerCounter": "{{ forloop.counter }}", "meeting": "{{ meeting.pk }}"' name="meeting"
@@ -33,9 +34,9 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                     class="bi bi-plus-square" viewBox="0 0 16 16">
                     <path
-                        d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+                    d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
                     <path
-                        d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+                    d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
                 </svg>
                 Add Meeting(s)
             </button>
@@ -44,12 +45,6 @@
         <div class="col-lg-1"></div>
     </div>
 </section>
-<script>
-    function deleteSection () {
-
-    }
-</script>
-
 {% if is_added %}
 <div hx-swap-oob="innerHtml:#meetingsContainer">
     {% include 'get_meetings.html' %}

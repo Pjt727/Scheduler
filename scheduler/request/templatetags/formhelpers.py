@@ -1,8 +1,9 @@
-import math
 from django import template
-from claim.models import Meeting, Day, TimeBlock
-from django.utils import timezone, dateformat
+from claim.models import Day
+from django.utils import timezone
 from datetime import timedelta, time, datetime
+
+from request.models import EditMeeting
 
 register = template.Library()
 
@@ -87,3 +88,17 @@ def time_input(t: time) -> str:
 def format_date(d: datetime):
     return timezone.localtime(d).strftime('%b. %d, %Y %I:%M %p')
 
+@register.filter
+def sort_edit_meetings(e_ms: list[EditMeeting]):
+    compare_days = {
+            Day.MONDAY: 1,
+            Day.TUESDAY: 2,
+            Day.WEDNESDAY: 3,
+            Day.THURSDAY: 4,
+            Day.FRIDAY: 5,
+            Day.SATURDAY: 6,
+            Day.SUNDAY: 7,
+            None: 8
+            }
+
+    return sorted(e_ms, key=lambda e: compare_days.get(e.day, 8))

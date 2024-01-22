@@ -1,14 +1,10 @@
 from django.http import HttpRequest, JsonResponse, HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .models import *
 from request.models import *
-from django.db.models import Q
-from datetime import time, timedelta, datetime
-from .utils import *
 from django.views.decorators.http import require_http_methods
-import json
 
 
 @login_required
