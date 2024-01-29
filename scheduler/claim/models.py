@@ -243,6 +243,12 @@ class TimeBlock(models.Model):
     DOUBLE_BLOCK = timedelta(hours=2, minutes=45)
     DOUBLE_BLOCK_NIGHT = timedelta(hours=2, minutes=30)
     TRIPLE_NIGHT = timedelta(hours=3, minutes=30)
+    DURATIONS = [
+            ONE_BLOCK,
+            DOUBLE_BLOCK, 
+            DOUBLE_BLOCK_NIGHT, 
+            TRIPLE_NIGHT
+            ]
     # These numbers occur at the same time so may need special formatting
     LONG_NIGHT_NUMBERS = [21, 22, 23, 24] # 6:30-9:15's
     SHORT_NIGHT_NUMBERS = [17, 18, 19, 20] # 6:30-7:45's & 8:00-9:15's
@@ -274,7 +280,7 @@ class TimeBlock(models.Model):
             self.allocation_groups.add(tm.allocation_groups.first()) # pyright: ignore
 
     @staticmethod
-    def get_official_time_blocks(start: time | timedelta, end: time | timedelta, day: str) -> QuerySet['TimeBlock']:
+    def get_official_time_blocks(start: time | timedelta | None, end: time | timedelta, day: str | None) -> QuerySet['TimeBlock']:
         time_blocks = TimeBlock.objects.filter(
                 number__isnull=False
             ).filter(
@@ -313,18 +319,19 @@ class TimeBlock(models.Model):
         return number_icons
 
     @staticmethod
-    def get_time_intervals(block: timedelta, day_code: str ) -> list[tuple[time, time]]:
-        def unsafe_conversion(t: timedelta) -> time:
+    def get_time_intervals(block: timedelta | None, day_code: str | None ) -> list[tuple[time, time]]:
+        def delta_to_time(t: timedelta) -> time:
             hours = math.floor(t.total_seconds() / 3600)
             minutes = math.floor((t.total_seconds() % 3600) / 60)
             return time(hour=hours, minute=minutes)
+        def time_to_delta(t: time) -> timedelta:
+            return timedelta(hours=t.hour, minutes=t.minute)
+        def sum_unlike(t: time, d: timedelta) -> time:
+            sum = time_to_delta(t) + d
+            return delta_to_time(sum)
+            
 
-        blocks = [
-            TimeBlock.ONE_BLOCK,
-            TimeBlock.DOUBLE_BLOCK, 
-            TimeBlock.DOUBLE_BLOCK_NIGHT, 
-            TimeBlock.TRIPLE_NIGHT
-        ]
+        blocks = TimeBlock.DURATIONS
 
         days = [
             Day.MONDAY,
@@ -340,51 +347,47 @@ class TimeBlock(models.Model):
         if block not in blocks:
             block = TimeBlock.ONE_BLOCK
         start_end_times: list[tuple[time, time]] = []
+        # could def write a better query with something like .values()
         if block == TimeBlock.ONE_BLOCK:
             time_blocks = TimeBlock.objects \
                 .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS)\
                 .filter(day=day_code) \
-                .filter(number__isnull=False)
-                
+                .filter(number__isnull=False) 
             for time_block in time_blocks.all():
-                end_time = time_block.start_end_time.end_d()
-                start_time = end_time - block
-                time_tuple = (unsafe_conversion(start_time), unsafe_conversion(end_time))
-                start_end_times.append(time_tuple)
+                start_end_times.append(
+                        (time_block.start_end_time.start, time_block.start_end_time.end))
         elif block == TimeBlock.DOUBLE_BLOCK:
             time_blocks = TimeBlock.objects \
-                .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
-                .filter(day=day_code) \
-                .filter(number__isnull=False) \
-                .exclude(start_end_time__start=time(hour=8))
+                    .exclude(number__in=TimeBlock.LONG_NIGHT_NUMBERS) \
+                    .filter(day=day_code) \
+                    .filter(number__isnull=False) \
+                    .exclude(start_end_time__start=time(hour=20)) \
+                    .exclude(
+                            start_end_time__start=time(hour=15, minute=30),
+                            day=Day.FRIDAY)
             for time_block in time_blocks.all():
-                end_time = time_block.start_end_time.end_d()
-                start_time = end_time - block
+                start = time_block.start_end_time.start
                 start_end_times.append(
-                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+                        (start, sum_unlike(start, TimeBlock.DOUBLE_BLOCK) ))
         elif block == TimeBlock.DOUBLE_BLOCK_NIGHT:
             time_blocks = TimeBlock.objects \
                 .filter(day=day_code) \
                 .filter(number__in=TimeBlock.LONG_NIGHT_NUMBERS)
             for time_block in time_blocks.all():
-                start_time = time_block.start_end_time.start_d()
-                end_time = start_time + block
+                start = time_block.start_end_time.start
                 start_end_times.append(
-                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
+                        (start, sum_unlike(start, TimeBlock.DOUBLE_BLOCK_NIGHT) ))
         elif block == TimeBlock.TRIPLE_NIGHT:
             time_blocks = TimeBlock.objects \
                 .filter(day=day_code) \
                 .filter(number__in=TimeBlock.LONG_NIGHT_NUMBERS)
             for time_block in time_blocks.all():
-                start_time = time_block.start_end_time.start_d()
-                end_time = start_time + block
+                start = time_block.start_end_time.start
                 start_end_times.append(
-                    (unsafe_conversion(start_time), unsafe_conversion(end_time)))
-
+                        (start, sum_unlike(start, TimeBlock.TRIPLE_NIGHT) ))
             
         return start_end_times
                 
-
 
 class Subject(models.Model):
     verbose_name = "Subject"
@@ -392,7 +395,7 @@ class Subject(models.Model):
     code = models.CharField(max_length=10)
     description = models.CharField(max_length=100, blank=True, null=True, default=None)
 
-    department = models.ForeignKey(Department, related_name="subjects", null=True, on_delete=models.CASCADE)
+    department = models.ForeignKey(Department, related_name="subjects", on_delete=models.CASCADE)
 
     courses: QuerySet['Course']
    
@@ -424,7 +427,7 @@ class Course(models.Model):
     prerequisite = models.CharField(max_length=100, blank=True, null=True, default=None)
     corequisite = models.CharField(max_length=100, blank=True, null=True, default=None)
 
-    subject = models.ForeignKey(Subject, related_name="courses", null=True, on_delete=models.SET_NULL)
+    subject = models.ForeignKey(Subject, related_name="courses", on_delete=models.CASCADE)
 
     sections: QuerySet['Section']
    
@@ -466,18 +469,20 @@ class Course(models.Model):
         return course_filter
     
     @staticmethod
-    def search(query: str, term_pk: str, department_pk: str = "any", subject_pk: str = "any") -> tuple[QuerySet['Course'], bool]:
+    def search(query: str | None, term_pk: str | None, 
+               department: Department | None = None, subject: Subject | None = None) -> tuple[QuerySet['Course'], bool]:
+        print(subject)
         courses = Course.objects.filter(sections__term=term_pk).distinct()
         courses_less_filtered = courses
-        if subject_pk == "any":
-            if department_pk != "any":
-                subject_values = Subject.objects.filter(department=department_pk)
+        if subject is None:
+            if department is not None:
+                subject_values = Subject.objects.filter(department=department)
                 courses = courses.filter(subject__in=subject_values)
         else:
-            courses = courses.filter(subject=subject_pk)
+            courses = courses.filter(subject=subject)
         
         query_filter = None
-        if query:
+        if query is not None:
             query_filter = Course.live_search_filter(query)
             courses = courses.filter(query_filter)
         if len(courses) > 0:
@@ -597,10 +602,14 @@ class Meeting(models.Model):
     room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
     professor = models.ForeignKey(Professor, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     
+    def get_duration(self) -> timedelta:
+        time_block = self.time_block
+        if time_block is None: return timedelta()
+        start_time = time_block.start_end_time.start_d()
+        end_time = time_block.start_end_time.end_d()
+        return end_time - start_time
 
-    def __str__(self) -> str:
-        return f"{self.time_block.day} {self.time_block.start_end_time}"
-    
+
     def __repr__(self) -> str:
         return f"section={self.section}, time block={self.time_block}, room={self.room}, teacher={self.professor}"
     

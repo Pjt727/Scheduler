@@ -16,18 +16,6 @@ from typing import TypedDict
 
 # TODO OPEN SLOTS CAN SIMPLY HAVE A VIEW INTO THE DIFFERENT SECTIONS THAT ARE CURRENTLY IN IT
 
-class RowContext(TypedDict):
-    meeting_pk: None | str
-    section_pk: str
-    building: Building
-    room: Room
-    day: str
-    professor: None | str
-    counter: str
-    problems: list[Problem]
-    start_time: time
-    end_time: time
-
 class UpdateMeetingsContext(TypedDict):
     title: str
     meetings: QuerySet[Meeting] | None
@@ -38,13 +26,11 @@ class UpdateMeetingsContext(TypedDict):
     building: str | None
     edit_room: str | None
 
-class InputRowContext(RowContext):
+class InputRowContext:
+    durations: list[timedelta]
     days: list
     buildings: list[Building]
     time_intervals: list[tuple[timedelta, timedelta]]
-
-class DisplayRowContext(RowContext):
-    is_deleted: bool
 
 
 def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
@@ -91,20 +77,18 @@ def generate_update_meeting_context(data: QueryDict, edit_meetings: list[EditMee
     first_section_pk = data.get('sectionGrouper')
     first_section = Section.objects.get(pk=first_section_pk)
     term = first_section.term
-    if data.get("thisStartEndTime"):
-        start_end_time = str(data.get("thisStartEndTime"))
-        start_time, end_time = start_end_time.split(',')
-        start_time = time.fromisoformat(start_time)
-        end_time = time.fromisoformat(end_time)
-        start_time_d = timedelta(hours=start_time.hour, minutes=start_time.minute)
-        end_time_d = timedelta(hours=end_time.hour, minutes=end_time.minute)
-        duration = end_time_d - start_time_d
+    if data.get("thisDuration"):
+        start_end_time = str(data.get("thisDuration"))
+        hours, minutes = start_end_time.split(':')
+        total_seconds = int(hours) * (60 * 60)
+        total_seconds += int(minutes) * 60
+        duration = timedelta(seconds=total_seconds)
     elif edit_meeting is not None:
-        duration = edit_meeting.end_time_d() - edit_meeting.start_time_d()
+        duration = edit_meeting.duration
     elif first_edit_meeting is not None:
-        duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
+        duration = first_edit_meeting.duration
     else:
-        duration = timedelta(hours=1, minutes=15)
+        duration = TimeBlock.ONE_BLOCK
 
 
     building = data.get("thisBuilding")
@@ -151,7 +135,6 @@ def generate_update_meeting_context(data: QueryDict, edit_meetings: list[EditMee
         )
     edit_meetings_or_none = None
     if data.get("thisRefreshEditMeetings") == "true":
-        print("refreshing!!")
         edit_meetings_or_none = edit_meetings
     return get_update_meeting_context(
             edit_meetings=edit_meetings_or_none,
@@ -186,6 +169,7 @@ class DisplayRow(View):
             "edit_meeting": edit_meeting,
             "days": Day.CODE_TO_VERBOSE.items(), 
             "buildings": Building.objects.all(),
+            "durations": TimeBlock.DURATIONS,
         }
         edit_meeting.is_deleted = False
         edit_meetings = list(filter(lambda e: not e.is_deleted, edit_meetings))
@@ -217,23 +201,56 @@ def update_time_intervals(request: HttpRequest) -> HttpResponse:
     data = request.GET
     day = data.get('day')
     assert day is not None
-    start_end_time = data.get('startEndTime')
-    assert start_end_time is not None
-    start_time, end_time = start_end_time.split(',')
-    start_time = time.fromisoformat(start_time)
-    end_time = time.fromisoformat(end_time)
-
-    duration = timedelta(hours=start_time.hour, minutes=start_time.minute) - \
-        timedelta(hours=end_time.hour, minutes=end_time.minute)
+    duration_input = data.get('duration')
+    assert duration_input is not None
+    hours, minutes = duration_input.split(':')
+    duration = timedelta(hours=int(hours), minutes=int(minutes))
     time_intervals = TimeBlock.get_time_intervals(duration, day)
 
+    current_start_time_input = data.get('startTime')
+    assert current_start_time_input is not None
+    hour, minute = current_start_time_input.split(':')
+    current_start_time = time(hour=int(hour), minute=int(minute))
+
     context = {
-        "time_intervals": time_intervals,
-        "start_time": start_time,
-        "end_time": end_time,
+            "time_intervals": time_intervals,
+            "start_time": current_start_time,
+    }
+    response = render(request, 'time_intervals.html', context=context)
+    
+    return response
+
+
+@login_required
+@require_http_methods(["PUT"])
+def update_duration(request: HttpRequest) -> HttpResponse:
+    data = QueryDict(request.body)
+    edit_meetings, edit_meeting = EditMeeting.create_all(data)
+    
+    time_intervals = TimeBlock.get_time_intervals(edit_meeting.duration, edit_meeting.day)
+    
+    
+    start_time_in_interval = any(map(
+        lambda i: i[0] == edit_meeting.start_time, time_intervals))
+    if start_time_in_interval:
+        start_time = edit_meeting.start_time
+    else:
+        start_time = next(iter(time_intervals))[0]
+        edit_meeting.start_time = start_time
+
+    page_context = {
+            "time_intervals": time_intervals,
+            "start_time": start_time,
     }
 
-    return render(request, 'time_intervals.html', context=context)
+    print(edit_meeting.start_time)
+    print(edit_meeting.duration)
+    update_meeting_context = generate_update_meeting_context(data, edit_meetings, edit_meeting)
+    context = page_context | update_meeting_context
+
+    response = render(request, 'time_intervals.html', context=context)
+    
+    return response
 
 @login_required
 @require_http_methods(["PUT"])
@@ -268,10 +285,11 @@ def add_rows(request: HttpRequest) -> HttpResponse:
     update_meetings_context = generate_update_meeting_context(
             data, edit_meeting_to_display, edit_meeting=recommended[0])
     input_rows_context = { 
-        "section": section,
-        "recommended": recommended, 
-        "days": Day.CODE_TO_VERBOSE.items(), 
-        "buildings": Building.objects.all(),
+                          "section": section,
+                          "recommended": recommended, 
+                          "days": Day.CODE_TO_VERBOSE.items(), 
+                          "buildings": Building.objects.all(),
+                          "durations": TimeBlock.DURATIONS,
     }
     context = update_meetings_context | input_rows_context
 
@@ -288,11 +306,12 @@ def add_section(request: HttpRequest) -> HttpResponse:
     section = Section.objects.get(pk=section_pk)
     added_sections = EditMeeting.from_section(section)
     section_context = { 
-               'section_meetings': added_sections,
-               'section': section,
-               'is_added': True,
-               'days': Day.CODE_TO_VERBOSE.items(), 
-               'buildings': Building.objects.all(),
+                       'section_meetings': added_sections,
+                       'section': section,
+                       'is_added': True,
+                       'days': Day.CODE_TO_VERBOSE.items(), 
+                       'buildings': Building.objects.all(),
+                       'durations': TimeBlock.DURATIONS
     }
 
     edit_meetings, _ = EditMeeting.create_all(data)
@@ -405,10 +424,11 @@ def soft_approve(request: HttpRequest) -> HttpResponse:
         section_problems.append((section, problems))
 
     context = {
-        'group_problems': group_problems,
-        'request_bundle_pk': request_bundle_pk,
-        'section_problems': section_problems,
-        'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
+            'is_approve': True,
+            'group_problems': group_problems,
+            'request_bundle_pk': request_bundle_pk,
+            'section_problems': section_problems,
+            'exclude_group_problems': (len(sections_to_exclude) == 1) and (len(group_problems) == 0),
     }
 
     return render(request, 'problems_group.html', context=context)
@@ -420,6 +440,7 @@ def hard_approve(request: HttpRequest) -> HttpResponse:
     data = request.POST
     message = data.get("message")
     request_bundle_pk = data.get('messageBundle')
+    print(request_bundle_pk)
     request_bundle = EditMeetingMessageBundleRequest.objects.get(pk=request_bundle_pk)
     professor: Professor = request.user.professor # pyright: ignore
     # TODO add department checks

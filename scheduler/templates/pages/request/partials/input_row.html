@@ -8,24 +8,53 @@
         value="{% if edit_meeting.professor %}{{ edit_meeting.professor.pk }}{% else %}None{% endif %}" hidden>
     {{ edit_meeting.counter }}
 </div>
-<div class="col-sm-5 text-start">
-    <select name="startEndTime" onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)'>
-
-        {% for s, e in edit_meeting.get_time_intervals %}
-        <option 
-            value="{{ s|time_input }},{{ e|time_input }}" 
-            {% if s == edit_meeting.start_time and e == edit_meeting.end_time %}
-                selected 
-            {% endif %}>
-            {{ s|time_display }} - {{ e|time_display }}
-        </option>
-        {% endfor %}
+<div class="col-sm-5 text-start" name="timing">
+    <select name="startTime" onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)'>
+        <option value="None">Any Time</option>
+        <optgroup>
+            {% for s, e in edit_meeting.get_time_intervals %}
+            <option 
+                value="{{ s|time_input }}" 
+                {% if s == edit_meeting.start_time %}
+                    selected 
+                {% endif %}>
+                {{ s|time_display }} - {{ e|time_display }}
+            </option>
+            {% endfor %}
+        </optgroup>
     </select>
-    <select onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)' hx-target='previous [name="startEndTime"]'
-        hx-get="{% url 'update_time_intervals' %}" hx-include='previous [name="startEndTime"]' name="day">
-        {% for code, d in days %}
-        <option value="{{ code }}" {% if edit_meeting.day == code %}selected{% endif %}>
-            {{ d }}
+    <select onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)' 
+        hx-target='previous [name="startTime"]'
+        hx-get="{% url 'update_time_intervals' %}" 
+        hx-include='closest [name="timing"]' 
+        name="day">
+        <option value="None">Any Day</option>
+        <optgroup>
+            {% for code, d in days %}
+            <option value="{{ code }}" {% if edit_meeting.day == code %}selected{% endif %}>
+                {{ d }}
+            </option>
+            {% endfor %}
+        </optgroup>
+    </select>
+    <!-- 
+    {#
+    Changing it to trigger on the response of the update meeting when the duration changed
+    onchange='updateMeetings("{{ edit_meeting.section.pk }},{{ edit_meeting.counter }}", true)' 
+    #} 
+    -->
+    <select 
+        name="duration"
+        hx-target='previous [name="startTime"]'
+        hx-put="{% url 'update_duration' %}" 
+        hx-vals='{"thisRefreshEditMeetings": "true"}'
+        hx-include='#sections' 
+        >
+        {% for duration in durations %}
+        <option 
+        value="{{ duration|duration_input }}" 
+        {% if edit_meeting.duration == duration %}selected{% endif %}>
+            Length {{ duration|duration_input }}
         </option>
         {% endfor %}
     </select>
@@ -46,7 +75,7 @@
         <optgroup>
             {% for r in edit_meeting.building.rooms.all %}
             <option value="{{ r.pk }}" {% if r == edit_meeting.room %}selected{% endif %}>
-                {{ r.number }} {{ r.classification }} {{ r.is_general_purpose }}
+                {{ r.number }}
             </option>
             {% endfor %}
         </optgroup>
@@ -82,3 +111,4 @@
     {% include 'get_meetings.html' %}
 </div>
 {% endif %}
+

@@ -68,6 +68,18 @@
     padding-right: 2px;
   }
   
+  .no-time {
+    grid-column: 1;
+    text-align: right;
+    align-self: end;
+    font-size: 80%;
+    position: relative;
+    bottom: 5ex;
+    color: #70757a;
+    padding-right: 2px;
+
+  }
+  
   .meeting-col {
     border-right: 1px solid #dadce0;
     grid-row: 1/span 11;

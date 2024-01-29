@@ -5,14 +5,16 @@
 {% block title %}Message Hub{% endblock %} {% block content %}
 
 {% for message_bundle  in current_bundles %}
+  <div class="mt-3">
   {% include 'message_grouper.html' with message_bundle=message_bundle is_current=True %}
+  </div>
 {% empty %}
-<div>
-  No new messages
-</div>
+<h2>
+  No current messages
+</h2>
 {% endfor %}
 {% if past_bundles %}
-<div class="mb-3 mt-3" style="width: 100%; height: 20px; border-bottom: 1px solid black; text-align: center">
+<div class="mb-4 mt-3" style="width: 100%; height: 20px; border-bottom: 1px solid black; text-align: center">
   <span style="font-size: 20; background-color: #F3F5F6; padding: 10px;">
     Previous messages
   </span>
@@ -21,11 +23,13 @@
 {% for message_bundle in past_bundles %}
   {% include 'message_grouper.html' with message_bundle=message_bundle  %}
 {% endfor %}
+<form id="approveForm">
+</form>
 <div class="modal fade" id="warnings" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems</h1>
+        <h1 class="modal-title fs-5" id="staticBackdropLabel">Problems and Info</h1>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body" id="problemsBody">
@@ -39,11 +43,9 @@
           data-bs-dismiss="modal">
           Cancel
         </button>
-        <form id="requestForm" hx-swap-oob="true" hidden>
-        </form>
         <button 
           id="approveButton"
-          hx-include="#requestForm"
+          hx-include="#approveForm"
           hx-post="{% url 'hard_approve' %}"
           type="button" 
           class="btn btn-success">

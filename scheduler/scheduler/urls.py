@@ -60,6 +60,7 @@ urlpatterns = [
     path('cancel_request', request_partial_views.cancel_request, name="cancel_request"),
     path('deny_request', request_partial_views.deny_request, name="deny_request"),
     path('update_time_intervals', request_partial_views.update_time_intervals, name="update_time_intervals"),
+    path('update_durations', request_partial_views.update_duration, name="update_duration"),
 
     # Claim views
     ## pages

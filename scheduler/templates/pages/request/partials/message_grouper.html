@@ -111,21 +111,35 @@
             </div>
             {% for edit_meeting in edit_section.edit_meetings.all %}
             {% with is_changed=edit_meeting.is_changed %}
-            <div class="row{% if is_changed %} fst-italic{% endif %}">
-                <div class="col-4">{{ edit_meeting.start_time|time_display }} - {{ edit_meeting.end_time|time_display }}</div>
+            <div class="row
+                {% if is_changed %} fst-italic{% endif %} 
+                {% if edit_meeting.is_deleted %}text-decoration-line-through{% endif %} 
+                "
+                >
+                <div class="col-4">
+                    {{ edit_meeting.start_time|time_display }} - {{ edit_meeting.get_end_time|time_display }} 
+                </div>
                 <div class="col-1">{{ edit_meeting.day }}</div>
-                <div class="col-3">{{ edit_meeting.room }}</div>
+                <div class="col-3">
+                    {% if edit_meeting.building and not edit_meeting.room %}
+                    {{ edit_meeting.building }} No Room
+                    {% else %}
+                    {{ edit_meeting.room }}
+                    {% endif %}
+                </div>
                 <div class="col-3">{{ edit_meeting.professor }}</div>
                 <div class="col-1">
-                    {% if is_changed %}
+                    {% if edit_meeting.is_deleted %}
+                    {% elif not edit_meeting.original %}
+                    New
+                    {% elif is_changed %}
                     <button 
                         class="btn btn-sm btn-outline-secondary" 
                         type="button" 
                         data-bs-toggle="collapse" 
                         data-bs-target="#oldToggle{{ edit_meeting.pk }}" 
                         aria-expanded="false" 
-                        aria-controls="collapseExample"
-                        {% if not is_changed %}disabled{% endif %}>
+                        aria-controls="collapseExample">
                         Current
                     </button>
                     {% else %}
@@ -140,7 +154,7 @@
                     -
                     {{ edit_meeting.original.time_block.start_end_time.end|time_display }}
                 </div>
-                <div class="col-1">{{ edit_meeting.original.day }}</div>
+                <div class="col-1">{{ edit_meeting.original.time_block.day }}</div>
                 <div class="col-3">{{ edit_meeting.original.room }}</div>
                 <div class="col-3">{{ edit_meeting.original.professor }}</div>
             </div>

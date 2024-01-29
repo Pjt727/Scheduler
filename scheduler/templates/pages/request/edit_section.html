@@ -67,7 +67,7 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h1 class="modal-title fs-5" id="problemsTitle">Problems</h1>
+                <h1 class="modal-title fs-5" id="problemsTitle">Problems and Info</h1>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="problemsBody">
@@ -114,8 +114,7 @@
                 const meetingsCounter = document.getElementById("meetingsContainer")
                 const thisRow = document.getElementById(rowId)
 
-                const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
-                const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
+                const duration = thisRow.querySelector('[name="duration"]').value
 
                 const buildingSelect = thisRow.querySelector('[name="building"]')
                 const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
@@ -125,10 +124,6 @@
 
                 const professor = thisRow.querySelector('[name="professor"]').value
 
-                const [startTime, endTime] = selectedTime.split(',')
-                const [startHour, startMinute] = startTime.split(':')
-                const [endHour, endMinute] = endTime.split(':') 
-                const duration = (Number(endHour) - Number(startHour)) + (Number(endMinute) - Number(startMinute))
                 let currentCall =  `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
 
                 if (currentCall === lastCall && !refreshEditMeetings) {
@@ -137,7 +132,7 @@
 
 
                 meetingsCounter.setAttribute("hx-vals", ` {
-                    "thisStartEndTime": "${selectedTime}",
+                        "thisDuration": "${duration}",
                         "thisBuilding": "${selectedBuilding}",
                         "thisRoom": "${selectedRoom}",
                         "thisProfessor": "${professor}",

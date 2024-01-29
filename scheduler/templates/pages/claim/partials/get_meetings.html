@@ -10,9 +10,10 @@
     <div class="day">Thursday</div>
     <div class="day">Friday</div>
     <div class="day">Saturday</div>
-    <div class="day">Sunday</div>
+    <div class="day fw-bold">Any Day</div>
   </div>
   <div class="content" id="meetingsGrid">
+    <div class="no-time fw-bold" style="grid-row:1"><div>Any Time</div></div>
     <div class="time" style="grid-row:1"><div>08:00</div></div>
     <div class="time-double" style="grid-row:2"><div>09:15&nbsp&nbsp</div><div>09:30&nbsp&nbsp</div></div>
     <div class="time-double" style="grid-row:3"><div>10:45&nbsp&nbsp</div><div>11:00&nbsp&nbsp</div></div>
@@ -78,8 +79,8 @@
     const meetingsCounter = document.getElementById("meetingsContainer")
     const thisRow = document.getElementById(rowId)
 
-    const startEndTimeSelect = thisRow.querySelector('[name="startEndTime"]')
-    const selectedTime = startEndTimeSelect.options[startEndTimeSelect.selectedIndex].value
+    const startTime = thisRow.querySelector('[name="startTime"]')
+    const selectedTime = startTime.options[startTime.selectedIndex].value
 
     const buildingSelect = thisRow.querySelector('[name="building"]')
     const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
@@ -110,7 +111,7 @@
     // moving the element
     draggedElement.style.gridArea = dropTarget.style.gridArea;
     const inputRow = document.getElementById(draggedMeetingId);
-    inputRow.querySelector(`[name="startEndTime"]`).value = dropTarget.getAttribute("value");
+    inputRow.querySelector(`[name="startTime"]`).value = dropTarget.getAttribute("value");
     inputRow.querySelector(`[name="day"]`).value = dropTarget.getAttribute("day");
     // implement switch for two in editing meeting
   }

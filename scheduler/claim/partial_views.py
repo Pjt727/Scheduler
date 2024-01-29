@@ -14,30 +14,29 @@ def get_course_search(request: HttpRequest) -> HttpResponse:
     term = Term.objects.get(pk=term_pk)
 
     department_pk = request.GET.get("department")
-    subject_pk = request.GET.get("subject")
-    course_query = request.GET.get("course_query")
-
-    # TODO Maybe remedy sort of glitch since we do not know when input was just changed this code cannot be fixed as is
-    #   problem/feature: changing department to any wont work if subject is not any since it will repopulate the subject's department
-    subjects = Subject.objects.filter(courses__sections__term=term_pk).distinct()
-    if subject_pk == "any" and department_pk == "any":
+    if department_pk == "any":
         department = None
-        subject = None
-    elif department_pk == "any":
-        subject = Subject.objects.get(pk=subject_pk)
-        department = subject.department
-        department_pk = department.pk
-    elif subject_pk == "any":
+    else:
         department = Department.objects.get(pk=department_pk)
+    subject_pk = request.GET.get("subject")
+    if subject_pk == "any":
         subject = None
     else:
         subject = Subject.objects.get(pk=subject_pk)
-        department = Department.objects.get(pk=department_pk)
+    course_query = request.GET.get("course_query")
+    is_department_change = request.GET.get("isDepartmentChange") == "True"
+    print(request.GET.get("isDepartmentChange") )
+
+    subjects = Subject.objects.filter(courses__sections__term=term_pk).distinct()
+    if is_department_change:
+        subject = None
+    else:
+        department = None if subject is None else subject.department
 
     if department is not None:
         subjects = subjects.filter(department=department)
 
-    courses, has_results = Course.search(course_query, term_pk, department_pk, subject_pk)
+    courses, has_results = Course.search(course_query, term_pk, department, subject)
     courses = courses.order_by('title')
     # TODO implement if can be made faster
     # courses = Course.sort_with_prof(courses, professor=request.user.professor)
@@ -67,7 +66,7 @@ def get_course_options(request: HttpRequest, offset: int) -> HttpResponse:
     subject_pk = request.GET.get("subject")
     course_query = request.GET.get("course_query")
 
-    courses, has_results = Course.search(course_query, term, department_pk, subject_pk)
+    courses, has_results = Course.search(course_query, term.pk, department_pk, subject_pk)
     courses = courses.order_by('title')
     # TODO implement if can be made faster
     # courses = Course.sort_with_prof(courses, professor=request.user.professor)
@@ -90,10 +89,10 @@ def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
     if str(course) in courses:
         return render(request, 'course_pill.html')
 
-    course = Course.objects.get(pk=course)
+    course_obj = Course.objects.get(pk=course)
 
     context = {
-        "course": course
+        "course": course_obj
     }
 
     return render(request, 'course_pill.html', context=context)
@@ -134,8 +133,6 @@ def get_meeting_details(request: HttpRequest) -> HttpResponse:
         'in_edit_mode': in_edit_mode 
     }
     return render(request, 'meeting_details.html', context=data)
-
-
     
 @login_required
 @require_http_methods(["GET"])

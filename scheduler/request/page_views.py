@@ -42,6 +42,7 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
     input_row_context = {
             "days": Day.CODE_TO_VERBOSE.items(), 
             "buildings": Building.objects.all(),
+            "durations": TimeBlock.DURATIONS
             }
     if first_edit_meeting is None:
         none_calendar_context = get_update_meeting_context()
@@ -49,7 +50,7 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
         return render(request, 'edit_section.html', context=context)
 
     
-    duration = first_edit_meeting.end_time_d() - first_edit_meeting.start_time_d()
+    duration = first_edit_meeting.duration
 
     first_building = first_edit_meeting.building
     if first_building is None:
@@ -83,17 +84,19 @@ def message_hub(request: HttpRequest) -> HttpResponse:
     professor: Professor = request.user.professor # pyright: ignore
 
     current_bundles = professor.requested_bundles \
-            .filter(response__is_read=False)
+            .filter(response__isnull=True) \
+            .exclude(response__is_read=True)
+
 
     current_bundles_sorted = current_bundles \
             .annotate(max_date=Max('date_sent', 'response__date_sent')) \
-            .order_by('max_date')
+            .order_by('-max_date')
 
     # sorting does not work as expected
     past_bundles = professor.requested_bundles \
             .exclude(pk__in=current_bundles) \
             .annotate(max_date=Max('date_sent', 'response__date_sent')) \
-            .order_by('max_date')
+            .order_by('-max_date')
 
     context = {
         'professor': professor,

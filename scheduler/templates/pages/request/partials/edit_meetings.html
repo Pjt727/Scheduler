@@ -8,9 +8,9 @@
       draggable="true"
       ondragstart="meetingDragstartHandler(event)"
       class="event grabbable calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
-      style="grid-area: {% grid_area meeting.start_time meeting.end_time meeting.day  %};"
+      style="grid-area: {% grid_area meeting.start_time meeting.get_end_time meeting.day  %};"
     >
-    {{ section.grouper }}
+    #{{ meeting.counter }} - {{ section.grouper }}
     </div>
     {% endif %}
   {% endfor %}

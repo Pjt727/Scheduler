@@ -16,7 +16,7 @@ def get_item(dictionary: dict, key):
     return dictionary.get(key)
 
 @register.simple_tag
-def grid_area(start_time: time, end_time: time, day: str) -> str:
+def grid_area(start_time: time, end_time: time, day: str, is_editing=False) -> str:
     codes_to_col = {
         Day.MONDAY: 3,
         Day.TUESDAY: 4,
@@ -50,7 +50,13 @@ def grid_area(start_time: time, end_time: time, day: str) -> str:
 
     grid_col_start = codes_to_col.get(day)
     if grid_col_start is None:
-        grid_col_start = 3
+        grid_col_start = 9
+
+    if not start_time or not end_time:
+        grid_row_start = 1
+        grid_row_end = 2
+        return f"{grid_row_start} / {grid_col_start} / {grid_row_end} / {grid_col_start}"
+
 
     meeting_seconds = start_time.hour * 3600 + start_time.minute * 60
     closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
@@ -79,10 +85,18 @@ def time_display(t: time) -> str:
 
 @register.filter
 def time_input(t: time) -> str:
-    try:
-        return t.strftime('%H:%M')
-    except AttributeError:
-        return ''
+    if t is None:
+        return "None"
+    return t.strftime('%H:%M')
+
+@register.filter
+def duration_input(t_d: timedelta) -> str:
+    total_seconds = t_d.total_seconds()
+    hours = int(total_seconds // (60 * 60))
+    total_seconds %= (60 * 60)
+    minutes = int(total_seconds // (60))
+
+    return f"{hours}:{minutes:02d}"
 
 @register.filter
 def format_date(d: datetime):
@@ -102,3 +116,5 @@ def sort_edit_meetings(e_ms: list[EditMeeting]):
             }
 
     return sorted(e_ms, key=lambda e: compare_days.get(e.day, 8))
+
+

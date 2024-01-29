@@ -3,7 +3,8 @@
 <input name="isDeleted" type="text" value="{% if edit_meeting.is_deleted %}true{% else %}false{% endif %}" hidden>
 <input name="original" type="text" value="{% if edit_meeting.meeting %}{{ edit_meeting.meeting.pk }}{% else %}None{% endif %}" hidden>
 <input name="section" type="text" value="{{ edit_meeting.section.pk }}" hidden>
-<input name="startEndTime" type="text" value="{{ edit_meeting.start_time|time_input }},{{ edit_meeting.end_time|time_input }}" hidden>
+<input name="startTime" type="text" value="{{ edit_meeting.start_time|time_input }}" hidden>
+<input name="duration" type="text" value="{{ edit_meeting.duration|duration_input }}" hidden>
 <input name="day" type="text" value="{{ edit_meeting.day }}" hidden>
 <input name="building" type="text" value="{% if edit_meeting.building %}{{edit_meeting.building.pk}}{% else %}any{% endif %}" hidden>
 <input name="room" type="text" value="{% if edit_meeting.room %}{{edit_meeting.room.pk}}{% else %}any{% endif %}" hidden>
@@ -14,7 +15,17 @@
   {{ edit_meeting.counter }}
 </div>
 <div class="col-sm-5 text-start {% if edit_meeting.is_deleted %}text-decoration-line-through{% endif %}">
-  {{ edit_meeting.start_time|time_display }} - {{ edit_meeting.end_time|time_display }} &nbsp {{ edit_meeting.day }}
+  {% if edit_meeting.start_time %}
+  {{ edit_meeting.start_time|time_display }} - {{ edit_meeting.get_end_time|time_display }} 
+  {% else %}
+  Any Time
+  {% endif %}
+  &nbsp 
+  {% if edit_meeting.day %}
+  {{ edit_meeting.day }}
+  {% else %}
+  Any Day
+  {% endif %}
 </div>
 <div class="col-sm-4 text-start {% if edit_meeting.is_deleted %}text-decoration-line-through{% endif %}">
   {% if edit_meeting.building %} {{ edit_meeting.building }} {% else %} Any Building {% endif %}
