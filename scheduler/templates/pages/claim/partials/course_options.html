@@ -1,28 +1,20 @@
-{% if not has_results%}
-{% if offset == 0 %}
-    {% if not courses %}
-    <div class="row align-items-center fw-bold">No results found</div>
-    {% else %}
-    <div class="row align-items-center fw-bold">Results not found with that subject/department widening scope</div>
-    {% endif %}
-{% endif %}
-{% endif %}
-{% for course in courses %}
-<section 
-    {% if forloop.last %}
-        hx-get="{% url 'get_course_options' offset=next_offset %}"
-        hx-trigger="intersect once" 
-        hx-swap="afterend" 
-    {% endif %}
-    >
-    <div class="row align-items-start pb-2"
-        hx-target="#courseMultiSelect"
-        hx-get="{% url 'add_course_pill' course=course.pk %}"
-        hx-include="#courseMultiSelect"
-        hx-swap="beforeend"
-    >
-        <div class="col">{{course.title}}</div>
-        <div class="col-2">{{course.code}}</div>
+<div class="row" hx-include="[name='term'], [name='department'], [name='subject'], [name='course_query']">
+    <div class="col">
+        <div class="p-2">
+            <label for="id_term">Term:</label>
+            <select hx-get="{% url 'get_course_search' %}" hx-target="#course_search" name="term" class="form-select"
+                id="term">
+                {% for term in terms %}
+                {% if term == selected_term %}
+                <option value="{{ term.pk }}" selected>{{ term }}</option>
+                {% else %}
+                <option value="{{ term.pk }}">{{ term }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+        {% include 'department_subject.html' %}
     </div>
-</section>
-{% endfor %}
+    <div class="col">
+    </div>
+</div>

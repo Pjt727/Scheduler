@@ -1,4 +1,4 @@
-from django.http import HttpRequest, JsonResponse, HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -58,12 +58,14 @@ def get_course_search(request: HttpRequest) -> HttpResponse:
 
 @login_required
 @require_http_methods(["GET"])
-def get_course_options(request: HttpRequest, offset: int) -> HttpResponse:
+def get_course_results(request: HttpRequest, offset: int) -> HttpResponse:
     term_pk = request.GET.get("term")
     term = Term.objects.get(pk=term_pk)
 
     department_pk = request.GET.get("department")
+    assert department_pk is not None
     subject_pk = request.GET.get("subject")
+    assert subject_pk is not None
     course_query = request.GET.get("course_query")
 
     courses, has_results = Course.search(course_query, term.pk, department_pk, subject_pk)

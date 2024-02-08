@@ -8,8 +8,8 @@
 {% block title %}Claim{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="d-grid gap-3 container">
-    <div id="course_search">
-        {% include 'course_search.html' %}
+    <div id="course_options">
+        {% include 'course_options.html' %}
     </div>
     <div class="row">
         <div id="courseMultiSelect"></div>    
@@ -45,17 +45,35 @@
     hx-include="#courseMultiSelect, #term, #professorControls" 
     hx-target="#sections"
 >
-            
-    <div>
-        <label>Sections:</label>
-        <button
-            hx-get="{% url 'section_search' %}"
-            class="cursor-pointer search-icon-link" id="meetingSearch">
-            Search
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
-            </svg>
-        </button>
+    <div class="row">
+        <h4 class="col-3 text-center">Section Search:</h4>
+        <div class="col-6 search-container">
+            <input 
+                hx-get="{% url 'get_course_results' offset=0%}" 
+                hx-target="#course-options"
+                hx-trigger="keyup changed delay:250ms, search" 
+                name="course_query" 
+                placeholder="Course Title or Number"
+                type="text" 
+                class="form-control"
+                id="course-text" value="{{ course_query }}">
+            </input>
+            <div class="live-search-results" id="course-search-results">
+                <div class="container" id="course-options">
+                    {% include 'course_results.html' with offset=0 next_offset=courses|length %}
+                </div>
+            </div>
+        </div>
+        <div class="col-3">
+            <button
+                hx-get="{% url 'section_search' %}"
+                class="cursor-pointer search-icon-link" id="meetingSearch">
+                Search
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                </svg>
+            </button>
+        </div>
     </div>
     <div id="sections"></div>
 </div>
@@ -81,6 +99,19 @@
       </div>
     </div>
   </div>
+
+<script>
+    const courseText = document.getElementById('course-text');
+    const courseSearchResults = document.getElementById('course-search-results');
+    courseText.addEventListener('focus', () => {
+        courseSearchResults.style.display = 'block';
+    });
+    courseText.addEventListener('blur', () => {
+        setTimeout(() => {
+            courseSearchResults.style.display = 'none';
+        }, 100);
+    });
+</script>
 
 {% endblock %}
 {% block scripts %}

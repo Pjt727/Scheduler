@@ -68,7 +68,7 @@ urlpatterns = [
     path('my_meetings/', claim_page_views.my_meetings, name='my_meetings'),
     ## partial responses
     path('get_course_search/', claim_partial_views.get_course_search, name="get_course_search"),
-    path('get_course_options/<int:offset>', claim_partial_views.get_course_options, name='get_course_options'),
+    path('get_course_results/<int:offset>', claim_partial_views.get_course_results, name='get_course_results'),
     path('add_course_pill/<int:course>', claim_partial_views.add_course_pill, name='add_course_pill'),
     path('section_search/', claim_partial_views.section_search, name='section_search'),
     path('get_meetings/', claim_partial_views.get_meetings, name='get_meetings'),
