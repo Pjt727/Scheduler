@@ -11,7 +11,6 @@ from django.views.decorators.http import require_http_methods
 @require_http_methods(["GET"])
 def get_course_search(request: HttpRequest) -> HttpResponse:
     term_pk = request.GET.get("term")
-    term = Term.objects.get(pk=term_pk)
 
     department_pk = request.GET.get("department")
     if department_pk == "any":
@@ -25,7 +24,6 @@ def get_course_search(request: HttpRequest) -> HttpResponse:
         subject = Subject.objects.get(pk=subject_pk)
     course_query = request.GET.get("course_query")
     is_department_change = request.GET.get("isDepartmentChange") == "True"
-    print(request.GET.get("isDepartmentChange") )
 
     subjects = Subject.objects.filter(courses__sections__term=term_pk).distinct()
     if is_department_change:
@@ -36,25 +34,27 @@ def get_course_search(request: HttpRequest) -> HttpResponse:
     if department is not None:
         subjects = subjects.filter(department=department)
 
-    courses, has_results = Course.search(course_query, term_pk, department, subject)
-    courses = courses.order_by('title')
-    # TODO implement if can be made faster
-    # courses = Course.sort_with_prof(courses, professor=request.user.professor)
+    # update the user preferencesi 
+    professor: Professor = request.user.professor #pyright: ignore
+    # dont really need this bc it is expected that professor already has a preference
+    #   from loading the page
+    preferences = Preferences.get_or_create_from_professor(professor)
+    preferences.claim_department = department
+    preferences.claim_subject = subject
+    preferences.claim_term = Term.objects.get(pk=term_pk)
+    preferences.save()
+
 
     context = {
-        'terms': Term.objects.all(),
-        'selected_term': term,
         'departments': Department.objects.all(),
         'selected_department': department,
         'subjects': subjects.distinct().all(),
         'selected_subject': subject,
         'course_query': course_query,
-        'courses': courses.all()[:Course.SEARCH_INTERVAL],
 
-        'has_results': has_results
     }
 
-    return render(request, 'course_search.html', context=context)
+    return render(request, 'department_subject.html', context=context)
 
 @login_required
 @require_http_methods(["GET"])
@@ -63,24 +63,33 @@ def get_course_results(request: HttpRequest, offset: int) -> HttpResponse:
     term = Term.objects.get(pk=term_pk)
 
     department_pk = request.GET.get("department")
-    assert department_pk is not None
+    if department_pk == "any":
+        department = None
+    else:
+        department = Department.objects.get(pk=department_pk)
     subject_pk = request.GET.get("subject")
-    assert subject_pk is not None
-    course_query = request.GET.get("course_query")
+    if subject_pk == "any":
+        subject = None
+    else:
+        subject = Subject.objects.get(pk=subject_pk)
 
-    courses, has_results = Course.search(course_query, term.pk, department_pk, subject_pk)
+    course_query = request.GET.get("course_query")
+    courses, has_results = Course.search(course_query, term.pk, department, subject)
     courses = courses.order_by('title')
     # TODO implement if can be made faster
     # courses = Course.sort_with_prof(courses, professor=request.user.professor)
 
+
+
     context = {
         'courses': courses.all()[offset : offset+Course.SEARCH_INTERVAL],
         'offset': offset,
+        'get_more': len(courses) > (offset + Course.SEARCH_INTERVAL),
         'next_offset': offset + Course.SEARCH_INTERVAL,
         'has_results': has_results
     }
 
-    return render(request, 'course_options.html', context=context)
+    return render(request, 'course_results.html', context=context)
 
 @login_required
 @require_http_methods(["GET"])
@@ -113,7 +122,6 @@ def get_meetings(request: HttpRequest) -> HttpResponse:
         "professor": professor,
         "title": term,
         "meetings": meetings,
-        "unscheduled_sections": professor.sections.filter(meetings__isnull=True).all(),
     }
 
     return render(request, "get_meetings.html", context=data)
@@ -197,8 +205,6 @@ def section_search(request: HttpRequest) -> HttpResponse:
     
     section_qs = Section.sort_sections(section_qs=section_qs, sort_column=sort_column, sort_type=sort_type)
     original_length = len(section_qs)
-    print(start_slice, end_slice)
-    print(original_length)
     sections = section_qs[start_slice:end_slice]
     context["sections"] = sections
     context["end_slice"] = min(end_slice, original_length)

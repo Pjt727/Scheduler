@@ -8,10 +8,12 @@
 {% endif %}
 {% endif %}
 {% for course in courses %}
-<section 
-    {% if forloop.last %}
+<div class="course-result" 
+    {% if forloop.last and get_more %}
         hx-get="{% url 'get_course_results' offset=next_offset %}"
         hx-trigger="intersect once" 
+        hx-target="this"
+        hx-include="#course-options"
         hx-swap="afterend" 
     {% endif %}
     >
@@ -24,5 +26,11 @@
         <div class="col">{{course.title}}</div>
         <div class="col-2">{{course.code}}</div>
     </div>
-</section>
+</div>
 {% endfor %}
+{% if offset == 0 %}
+{# reset the counter #}
+<script>
+    selectedOptionIndex = -1;
+</script>
+{% endif %}

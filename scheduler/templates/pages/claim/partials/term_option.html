@@ -1,0 +1,17 @@
+<div class="row">
+    <div class="col">
+        <div class="p-2">
+            <label for="id_term">Term:</label>
+            <select hx-get="{% url 'get_course_search' %}" hx-target="#course" name="term" class="form-select"
+                id="term">
+                {% for term in terms %}
+                {% if term == selected_term %}
+                <option value="{{ term.pk }}" selected>{{ term }}</option>
+                {% else %}
+                <option value="{{ term.pk }}">{{ term }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>

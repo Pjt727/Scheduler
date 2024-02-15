@@ -1,0 +1,40 @@
+<div class="col">
+    <div class="p-2">
+        <label for="id_department">Department:</label>
+        <select 
+            hx-get="{% url 'get_course_search' %}" 
+            hx-include="#course-options"
+            hx-target="closest .row"
+            hx-vals='{"isDepartmentChange": "True"}' 
+            name="department" class="form-select" id="department">
+            <option value="any" value {% if not selected_department %}selected{% endif %}>Any</option>
+            <optgroup id="departmentOptions">
+                {% for department in departments %}
+                <option value=" {{ department.pk }}" {% if department == selected_department %}selected{% endif %}>
+                    {{ department }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+</div>
+<div class="col">
+    <div class="p-2">
+        <label for="id_subject">Subject:</label>
+        <select 
+            hx-get="{% url 'get_course_search' %}"
+            hx-target="closest .row"
+            hx-include="#course-options"
+            name="subject" 
+            class="form-select"
+            id="subject">
+            <option value="any" value {% if not selected_subject %}selected{% endif %}>Any</option>
+            <optgroup id="subjectOptions">
+                {% for subject in subjects %}
+                <option value="{{ subject.pk }}" {% if subject == selected_subject %}selected{% endif %}>
+                    {{ subject }}
+                </option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+</div>

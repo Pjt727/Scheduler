@@ -118,7 +118,6 @@ class Building(models.Model):
         return building_counts.order_by('-count')[0]
 
 
-
 class Room(models.Model):
     verbose_name = "Room"
 
@@ -205,7 +204,6 @@ class AllocationGroup(models.Model):
         return self.time_blocks.filter(
                 number__in=TimeBlock.LONG_NIGHT_NUMBERS
             ).exists()
-
 
 
 class DepartmentAllocation(models.Model):
@@ -471,7 +469,6 @@ class Course(models.Model):
     @staticmethod
     def search(query: str | None, term_pk: str | None, 
                department: Department | None = None, subject: Subject | None = None) -> tuple[QuerySet['Course'], bool]:
-        print(subject)
         courses = Course.objects.filter(sections__term=term_pk).distinct()
         courses_less_filtered = courses
         if subject is None:
@@ -528,7 +525,6 @@ class Term(models.Model):
     
     def __repr__(self) -> str:
         return f"{self.season.capitalize()} {self.year}"
-    
 
 
 class Section(models.Model):
@@ -613,4 +609,39 @@ class Meeting(models.Model):
     def __repr__(self) -> str:
         return f"section={self.section}, time block={self.time_block}, room={self.room}, teacher={self.professor}"
     
+class Preferences(models.Model):
+    verbose_name = "Preferences"
+
+    professor = models.OneToOneField(Professor, related_name="preferences", on_delete=models.CASCADE)
+    claim_department = models.ForeignKey(Department, on_delete=models.CASCADE, null=True)
+    claim_subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True)
+    claim_term = models.ForeignKey(Term, on_delete=models.CASCADE, null=True)
+
+    @staticmethod
+    def get_or_create_from_professor(professor: Professor) -> 'Preferences':
+        existing_preferences = Preferences.objects.filter(professor=professor).first()
+        if existing_preferences is not None:
+            return existing_preferences
+        # could implement a better way to guess
+        suggested_department = None
+        suggested_subject = None
+        some_meeting = professor.meetings.first()
+        if some_meeting:
+            suggested_department = some_meeting.section.course.subject.department
+            suggested_subject = some_meeting.section.course.subject
+        suggested_term = Term.objects.first()
+        new_preferences = Preferences(
+                professor=professor,
+                claim_department=suggested_department,
+                claim_subject=suggested_subject,
+                claim_term=suggested_term,
+                )
+        return new_preferences
+
+class TimeExclusion(models.Model):
+    verbose_name = "Time Exclusion"
+    preferences = models.ForeignKey(Preferences, on_delete=models.CASCADE, related_name="time_exclusions")
+    start = models.TimeField()
+    end = models.TimeField()
+
     

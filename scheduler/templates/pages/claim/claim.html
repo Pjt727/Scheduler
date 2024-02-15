@@ -8,9 +8,12 @@
 {% block title %}Claim{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="d-grid gap-3 container">
-    <div id="course_options">
-        {% include 'course_options.html' %}
-    </div>
+    <form id="course-options">
+        {% include 'term_option.html' %}
+        <div class="row">
+        {% include 'department_subject.html' %}
+        </div>
+    </form>
     <div class="row">
         <div id="courseMultiSelect"></div>    
     </div>
@@ -21,26 +24,6 @@
     <input type="checkbox" class="form-check-input" name="available" id="available" checked>
     <label for="available">Is available</label>
 </div>
-<div class="container p-2">
-    <div class="row">
-        <div class="col center">
-            <label>Exclude certain times:</label>
-            <select id="day">
-                {% for day_code, day in days %}
-                    <option value="{{ day_code }}">{{ day }}</option>
-                {% endfor %}
-            </select>
-            <label for="startTime">Start Time</label>
-            <input type="time" id="startTime"  min="00:00" max="23:59">
-            <label for="endTime">End Time</label>
-            <input type="time" id="endTime"  min="00:00" max="23:59">
-            <button type="button" id="excludeButton">Exclude Time</button>
-        </div>
-    </div>
-    <div class="row" id="exclusionTimes">
-
-    </div>
-</div>
 <div class="p-2" 
     hx-include="#courseMultiSelect, #term, #professorControls" 
     hx-target="#sections"
@@ -50,8 +33,9 @@
         <div class="col-6 search-container">
             <input 
                 hx-get="{% url 'get_course_results' offset=0%}" 
-                hx-target="#course-options"
-                hx-trigger="keyup changed delay:250ms, search" 
+                hx-include="#course-options"
+                hx-target="#course-results"
+                hx-trigger="keyup changed delay:250ms, search, load" 
                 name="course_query" 
                 placeholder="Course Title or Number"
                 type="text" 
@@ -59,7 +43,7 @@
                 id="course-text" value="{{ course_query }}">
             </input>
             <div class="live-search-results" id="course-search-results">
-                <div class="container" id="course-options">
+                <div class="container" id="course-results">
                     {% include 'course_results.html' with offset=0 next_offset=courses|length %}
                 </div>
             </div>
@@ -67,6 +51,7 @@
         <div class="col-3">
             <button
                 hx-get="{% url 'section_search' %}"
+                hx-trigger="load, click"
                 class="cursor-pointer search-icon-link" id="meetingSearch">
                 Search
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
@@ -83,7 +68,7 @@
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h1 class="modal-title fs-5" id="claimLabel">Claim</span></h1>
+          <h1 class="modal-title fs-5" id="claimLabel">Claim</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -101,19 +86,53 @@
   </div>
 
 <script>
-    const courseText = document.getElementById('course-text');
+    let selectedOptionIndex = - 1;
+    const courseTextLiveSearch = document.getElementById('course-text');
     const courseSearchResults = document.getElementById('course-search-results');
-    courseText.addEventListener('focus', () => {
+    courseTextLiveSearch.addEventListener('focus', () => {
         courseSearchResults.style.display = 'block';
     });
-    courseText.addEventListener('blur', () => {
+    courseTextLiveSearch.addEventListener('blur', () => {
         setTimeout(() => {
             courseSearchResults.style.display = 'none';
         }, 100);
     });
+    courseTextLiveSearch.addEventListener('keydown', (event) => {
+        const options = courseSearchResults.querySelectorAll('.course-option');
+        
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (selectedOptionIndex > 0) {
+                options[selectedOptionIndex].classList.remove('selected-course');
+                selectedOptionIndex--;
+                options[selectedOptionIndex].classList.add('selected-course');
+            }
+        } else if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (selectedOptionIndex < options.length - 1) {
+                if (selectedOptionIndex >= 0) {
+                    options[selectedOptionIndex].classList.remove('selected-course');
+                }
+                selectedOptionIndex++;
+                options[selectedOptionIndex].classList.add('selected-course');
+            }
+        }
+        if (event.key === 'Enter' || event.key === 'Return') {
+            if (options.length == 1 ) {
+                htmx.trigger(options[0], 'click');
+            } else if (selectedOptionIndex >= 0) {
+                htmx.trigger(options[selectedOptionIndex], 'click');
+            }
+        }
+        // Scroll the selected option into view
+        if (options[selectedOptionIndex]) {
+            options[selectedOptionIndex].scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest',
+                inline: 'nearest'
+            });
+        }
+    });
 </script>
 
-{% endblock %}
-{% block scripts %}
-    <script src={% static 'message.js' %}></script> 
 {% endblock %}
