@@ -1,0 +1,22 @@
+<div class="toast-container position-fixed top-0 start-50 p-1 translate-middle-x">
+    <div id="newUserProf" class="toast bg-success" role="alert" aria-live="assertive" aria-atomic="true"
+        data-bs-autohide="false">
+        <div class="toast-header">
+            <strong class="me-auto" id="toast-title">Claimed {{ claimed_section }}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            {% if claimed_meetings %}
+            Claimed the following meeting(s):
+            <ol>
+                {% for meeting in claimed_meetings %}
+                <li>{{ meeting }}</li>
+                {% endfor %}
+            </ol>
+
+            {% else %}
+            There are no meetings for this seciton yet. Go to my meetings to start adding some!
+            {% endif %}
+        </div>
+    </div>
+</div>

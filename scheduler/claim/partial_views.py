@@ -1,4 +1,4 @@
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 from django.urls import reverse
@@ -260,13 +260,22 @@ def get_claim_info(request: HttpRequest, section_pk: int) -> HttpResponse:
 def claim_section(request: HttpRequest, section_pk: int) -> HttpResponse:
     professor: Professor = request.user.professor # pyright: ignore
     section = Section.objects.get(pk=section_pk)
-    data = QueryDict(request.body)
-    print(data)
+    data = QueryDict(request.body) # pyright: ignore
     if section.primary_professor is None:
         section.primary_professor = professor
+        section.save()
+    claimed_meetings: list[Meeting] = []
     meetings = section.meetings
     for meeting in meetings.all():
-        if (meeting.professor is None):
-            pass
+        if meeting.professor is None and str(meeting.pk) in data:
+            meeting.professor = professor
+            meeting.save()
+            claimed_meetings.append(meeting)
 
-    return HttpResponse()
+    context = {
+            'claimed_section': section,
+            'claimed_meetings': claimed_meetings,
+            }
+
+    return render(request, 'claim_message.html', context=context)
+

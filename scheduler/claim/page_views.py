@@ -9,7 +9,7 @@ def claim(request: HttpRequest) -> HttpResponse:
     terms = Term.objects.all()
     professor: Professor = request.user.professor #pyright: ignore
     preferences = Preferences.get_or_create_from_professor(professor)
-    courses_from_preferences = map(lambda p: p.course, professor.preferences.claim_courses.all())
+    courses_from_preferences = map(lambda p: p.course, preferences.claim_courses.all())
 
     data = {
         'departments': Department.objects.all(),
@@ -28,9 +28,16 @@ def claim(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def my_meetings(request: HttpRequest) -> HttpResponse:
+    professor: Professor = request.user.professor # pyright: ignore
+
+    # getting the sections that the professor is primary for but does not have any
+    # meetings with
+    sections_without_meetings = professor.sections.exclude(meetings__professor=professor).all()
+    print(sections_without_meetings)
     data = {
         # could change this to limit from a certain year
         'terms': Term.objects.all(),
+        'sections_without_meetings': sections_without_meetings
     }
     return render(request, 'my_meetings.html', context=data)
 

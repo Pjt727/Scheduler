@@ -19,6 +19,7 @@ class Professor(models.Model):
     user = models.OneToOneField(User, on_delete=models.SET_NULL, related_name='professor', null=True, blank=True, default=None)
 
     meetings: models.QuerySet['Meeting']
+    sections: models.QuerySet['Section']
     edit_requests_involving: models.QuerySet['EditMeetingRequest']
     edit_request_bundles_sent: models.QuerySet['EditRequestBundle']
     requested_bundles: models.QuerySet['EditMeetingMessageBundleRequest']

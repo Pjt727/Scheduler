@@ -79,40 +79,14 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" id="claimButton" class="btn btn-primary">Claim</button>
+          <button type="button" id="claimButton" class="btn btn-primary" disabled>Claim</button>
         </div>
       </div>
     </div>
 </div>
 
-{# old modal for submitting time (not built out) maybe get input on whether this is useful #}
-<div class="modal fade" id="exclusion" tabindex="-1" aria-labelledby="exclusionLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h1 class="modal-title fs-5" id="exclusionLabel">Block of Excluded Time</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-            <form>
-                <label>Monday</label><input type="checkbox" name="isMonday">
-                <label>Tuesday</label><input type="checkbox" name="isTuesday">
-                <label>Wednesday</label><input type="checkbox" name="isWednesday">
-                <label>Thursday</label><input type="checkbox" name="isThursday">
-                <label>Friday</label><input type="checkbox" name="isFriday">
-                <label>Saturday</label><input type="checkbox" name="isSaturday">
-                <label>Sunday</label><input type="checkbox" name="isSunday">
-                <button type="submit">Exclude Block</button>
-            </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" id="claimButton" class="btn btn-primary">Claim</button>
-        </div>
-      </div
-    </div>
-</div>
-
+{# space for feedback to show to up #}
+<div id="claimFeedback"></div>
 
 <script>
     let selectedOptionIndex = - 1;

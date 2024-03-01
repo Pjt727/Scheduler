@@ -50,8 +50,9 @@
   <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
   <button 
       data-bs-dismiss="modal"
+      hx-target="#claimFeedback"
       hx-include="#whichMeetings"
-      hx-swap="none"
+      hx-swap="innerHTML"
       hx-put="{% url 'claim_section' section_pk=section.pk %}"
       type="button"
       id="claimbutton"

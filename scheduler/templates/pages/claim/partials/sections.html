@@ -1,9 +1,10 @@
 {% load formhelpers %}
 <div 
-    {%if allocation_group %}
+    {% if allocation_group %}
     hx-vals='{"allocationGroup":"{{ allocation_group }}"}' 
-    {%endif %}
+    {% endif %}
     class="container position-relative" id="sectionsTableContainer"
+    style="min-height: 1000px"
 >
 <table class="table align-middle" id="sectionsTable">
     <thead>

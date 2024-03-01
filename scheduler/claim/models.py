@@ -393,7 +393,9 @@ class Subject(models.Model):
     code = models.CharField(max_length=10)
     description = models.CharField(max_length=100, blank=True, null=True, default=None)
 
-    department = models.ForeignKey(Department, related_name="subjects", on_delete=models.CASCADE)
+
+    # NULL SECTIONS MAY NEED TO BE DEALT WITH INTRODUCES A NUMBER OF POSSIBLE BUGS
+    department = models.ForeignKey(Department, related_name="subjects", on_delete=models.CASCADE, null=True, default=None )
 
     courses: QuerySet['Course']
    
@@ -637,6 +639,7 @@ class Preferences(models.Model):
                 claim_subject=suggested_subject,
                 claim_term=suggested_term,
                 )
+        new_preferences.save()
         return new_preferences
 
 class PreferencesCourse(models.Model):
