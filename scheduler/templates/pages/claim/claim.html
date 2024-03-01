@@ -15,21 +15,24 @@
         </div>
     </form>
     <div class="row">
-        <div id="courseMultiSelect"></div>    
+        <h3>Courses included:</h3>
+        <div id="courseMultiSelect">
+            {% include 'course_pills.html' with courses=courses %}
+        </div>    
     </div>
 </div> 
 <div class="p-2" id="professorControls">
     <input type="checkbox" class="form-check-input" name="fits" id="fits" checked>
     <label for="fits">Fits in Schedule</label>
     <input type="checkbox" class="form-check-input" name="available" id="available" checked>
-    <label for="available">Is available</label>
+    <label for="available">Is Unclaimed</label>
 </div>
 <div class="p-2" 
     hx-include="#courseMultiSelect, #term, #professorControls" 
     hx-target="#sections"
 >
     <div class="row">
-        <h4 class="col-3 text-center">Section Search:</h4>
+        <h4 class="col-3 text-center">Add Course to Search:</h4>
         <div class="col-6 search-container">
             <input 
                 hx-get="{% url 'get_course_results' offset=0%}" 
@@ -53,7 +56,7 @@
                 hx-get="{% url 'section_search' %}"
                 hx-trigger="load, click"
                 class="cursor-pointer search-icon-link" id="meetingSearch">
-                Search
+                Search Sections From Courses
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
                 </svg>
@@ -63,19 +66,16 @@
     <div id="sections"></div>
 </div>
 
-<!-- Modal to submit a claim for a section/ particular meetings-->
+{# Modal to submit a claim for a section/ particular meetings #}
 <div class="modal fade" id="submitClaim" tabindex="-1" aria-labelledby="claimLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <div class="modal-content">
+      <div class="modal-content" id="claimMeetings">
         <div class="modal-header">
           <h1 class="modal-title fs-5" id="claimLabel">Claim</h1>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-            <div class="mb-2">Meeting times:</div>
-            <div class="mb-3" id="claimMeetings">
-                
-            </div>
+            <div class="fw-bold mb-2">Loading Content</div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -83,7 +83,36 @@
         </div>
       </div>
     </div>
-  </div>
+</div>
+
+{# old modal for submitting time (not built out) maybe get input on whether this is useful #}
+<div class="modal fade" id="exclusion" tabindex="-1" aria-labelledby="exclusionLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5" id="exclusionLabel">Block of Excluded Time</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form>
+                <label>Monday</label><input type="checkbox" name="isMonday">
+                <label>Tuesday</label><input type="checkbox" name="isTuesday">
+                <label>Wednesday</label><input type="checkbox" name="isWednesday">
+                <label>Thursday</label><input type="checkbox" name="isThursday">
+                <label>Friday</label><input type="checkbox" name="isFriday">
+                <label>Saturday</label><input type="checkbox" name="isSaturday">
+                <label>Sunday</label><input type="checkbox" name="isSunday">
+                <button type="submit">Exclude Block</button>
+            </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" id="claimButton" class="btn btn-primary">Claim</button>
+        </div>
+      </div
+    </div>
+</div>
+
 
 <script>
     let selectedOptionIndex = - 1;
@@ -95,7 +124,7 @@
     courseTextLiveSearch.addEventListener('blur', () => {
         setTimeout(() => {
             courseSearchResults.style.display = 'none';
-        }, 100);
+        }, 200);
     });
     courseTextLiveSearch.addEventListener('keydown', (event) => {
         const options = courseSearchResults.querySelectorAll('.course-option');
@@ -118,10 +147,13 @@
             }
         }
         if (event.key === 'Enter' || event.key === 'Return') {
+            const eventDetails = {
+                'hx-swap': 'innerHTML'
+            };
             if (options.length == 1 ) {
-                htmx.trigger(options[0], 'click');
+                htmx.trigger(options[0], 'click', eventDetails);
             } else if (selectedOptionIndex >= 0) {
-                htmx.trigger(options[selectedOptionIndex], 'click');
+                htmx.trigger(options[selectedOptionIndex], 'click', eventDetails);
             }
         }
         // Scroll the selected option into view

@@ -1,6 +1,8 @@
 {% load formhelpers %}
 <div 
-    {%if allocation_group %}hx-vals='{"allocationGroup":"{{ allocation_group }}"}' {%endif %}
+    {%if allocation_group %}
+    hx-vals='{"allocationGroup":"{{ allocation_group }}"}' 
+    {%endif %}
     class="container position-relative" id="sectionsTableContainer"
 >
 <table class="table align-middle" id="sectionsTable">
@@ -138,7 +140,6 @@
                         <td>{{ meeting.time_block.start_end_time }},</td>
                         <td>{{ meeting.room }}</td>
                     </tr>
-                </a>
                 {% empty %}
                 None
                 {% endfor %}
@@ -147,13 +148,13 @@
 
             </td>
             {% if claim %}
-            <td>
+            <td hx-disinherit="*">
                 <button type="button" data-bs-toggle="modal" 
                     data-bs-target="#submitClaim"
-                    data-bs-title="{{ section.course.title }}"
-                    data-bs-subject="{{ section.course.subject.code }}"
-                    data-bs-course="{{ section.course.code }}"
-                    meetings="meetingsFor{{ section.pk }}">
+                    
+                    hx-get="{% url 'get_claim_info' section_pk=section.pk %}"
+                    hx-target="#claimMeetings"
+                    hx-swap="innerHTML" >
                     Claim
                 </button>
             </td>

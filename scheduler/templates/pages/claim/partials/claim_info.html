@@ -1,0 +1,64 @@
+{# <div class="modal-content"> #}
+<div class="modal-header">
+    <h1 class="modal-title fs-5" id="claimlabel">Claim {{ section }}</h1>
+    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close"></button>
+</div>
+<div class="modal-body">
+    {% if not can_claim %}
+    <div class="mb-3">
+        <span class="text-primary font-weight-bold">{{ section.primary_professor.email }}</span>
+        has claimed this section
+    </div>
+    {% endif %}
+    <div class="mb-2">
+        {% if can_claim %}
+        Meetings (check all meetings you will teach):
+        {% else %}
+        Meetings:
+        {% endif %}
+    </div>
+    <div class="mb-3">
+        <table id="whichMeetings">
+            {% for meeting in section.meetings_sorted.all  %}
+            <tr value='{{ meeting.pk }}'>
+                <td>{{ meeting.time_block.day }},</td>
+                <td>{{ meeting.time_block.start_end_time }},</td>
+                <td>{{ meeting.room }}</td>
+                <td>
+                    <input 
+                    type="checkbox"
+                    name="{{ meeting.pk }}"
+                    {% if meeting.professor is not none %}
+                    disabled
+                    {% else %}
+                    checked
+                    {% endif %}
+                    >
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td>
+                    No meetings for for this section yet!
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+<div class="modal-footer">
+  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+  <button 
+      data-bs-dismiss="modal"
+      hx-include="#whichMeetings"
+      hx-swap="none"
+      hx-put="{% url 'claim_section' section_pk=section.pk %}"
+      type="button"
+      id="claimbutton"
+      class="btn btn-primary"
+      {% if not can_claim %}
+      disabled
+      {% endif %}>
+      Claim</button>
+</div>
+{# </div> #}

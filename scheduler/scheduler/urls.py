@@ -70,9 +70,12 @@ urlpatterns = [
     path('get_course_search/', claim_partial_views.get_course_search, name="get_course_search"),
     path('get_course_results/<int:offset>', claim_partial_views.get_course_results, name='get_course_results'),
     path('add_course_pill/<int:course>', claim_partial_views.add_course_pill, name='add_course_pill'),
+    path('remove_course_pill/<int:course>', claim_partial_views.remove_course_pill, name='remove_course_pill'),
     path('section_search/', claim_partial_views.section_search, name='section_search'),
     path('get_meetings/', claim_partial_views.get_meetings, name='get_meetings'),
     path('get_meeting_details/', claim_partial_views.get_meeting_details, name='get_meeting_details'),
+    path('get_claim_info/<int:section_pk>', claim_partial_views.get_claim_info, name='get_claim_info'),
+    path('claim_section/<int:section_pk>', claim_partial_views.claim_section, name='claim_section'),
     
     # Head views
     ## pages

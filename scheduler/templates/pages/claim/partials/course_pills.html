@@ -1,0 +1,7 @@
+<section>
+{% for course in courses %}
+    {% include 'course_pill.html' with course=course %}
+{% empty %}
+<div>No courses selected</div>
+{% endfor %}
+</section>

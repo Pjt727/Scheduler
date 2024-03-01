@@ -580,7 +580,6 @@ class Section(models.Model):
 
         return section_qs
 
-
 class Meeting(models.Model):
     verbose_name = "Meeting"
     
@@ -617,6 +616,8 @@ class Preferences(models.Model):
     claim_subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True)
     claim_term = models.ForeignKey(Term, on_delete=models.CASCADE, null=True)
 
+    claim_courses: QuerySet['PreferencesCourse']
+
     @staticmethod
     def get_or_create_from_professor(professor: Professor) -> 'Preferences':
         existing_preferences = Preferences.objects.filter(professor=professor).first()
@@ -638,6 +639,18 @@ class Preferences(models.Model):
                 )
         return new_preferences
 
+class PreferencesCourse(models.Model):
+    verbose_name = "Preference Course"
+    preferences = models.ForeignKey(Preferences, on_delete=models.CASCADE, related_name="claim_courses")
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+
+    class Meta: #pyright: ignore 
+        unique_together = ('preferences', 'course')
+        ordering = ['id']
+
+
+
+# Currently not implemented yet may be nice so include if people want
 class TimeExclusion(models.Model):
     verbose_name = "Time Exclusion"
     preferences = models.ForeignKey(Preferences, on_delete=models.CASCADE, related_name="time_exclusions")

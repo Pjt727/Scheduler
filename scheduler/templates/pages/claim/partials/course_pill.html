@@ -1,7 +1,15 @@
 {% if course %}
-<span class="badge text-bg-light fs-5 m-2">
+<div class="badge text-bg-light fs-5 m-2">
     <input name="course" value="{{ course.pk }}" hidden></input>
     {{ course.subject.code }}: {{ course.code }}
-    <button type="button" class="btn-close" aria-label="Close" onclick="event.target.parentNode.remove()">
-</span>
+    <button 
+        hx-delete="{% url 'remove_course_pill' course=course.pk %}"
+        hx-include="#courseMultiSelect"
+        hx-target="#courseMultiSelect"
+        hx-swap="innerHTML"
+        type="button" 
+        class="btn-close" 
+        aria-label="Close">
+    </button>
+</div>
 {% endif %}

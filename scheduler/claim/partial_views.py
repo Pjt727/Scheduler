@@ -1,8 +1,10 @@
 from django.http import HttpRequest, HttpResponse
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from .models import *
+from django.db.utils import IntegrityError
 from request.models import *
 from django.views.decorators.http import require_http_methods
 
@@ -94,20 +96,43 @@ def get_course_results(request: HttpRequest, offset: int) -> HttpResponse:
 @login_required
 @require_http_methods(["GET"])
 def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
-    
-    courses = request.GET.getlist("course", [])
-
-    if str(course) in courses:
-        return render(request, 'course_pill.html')
-
+    professor: Professor = request.user.professor #pyright: ignore
     course_obj = Course.objects.get(pk=course)
+    try:
+        pref_course = PreferencesCourse(preferences=professor.preferences, course=course_obj)
+        pref_course.save()
+    except IntegrityError:
+        # the pref_course probably already existed
+        pass
 
     context = {
-        "course": course_obj
+            "courses": map(lambda p: p.course, professor.preferences.claim_courses.all())
     }
 
-    return render(request, 'course_pill.html', context=context)
+    return render(request, 'course_pills.html', context=context)
 
+@login_required
+@require_http_methods(["DELETE"])
+def remove_course_pill(request: HttpRequest, course: int) -> HttpResponse:
+    # mainly doing it this way to ensure that empty course selections are 
+    #    properly maintained
+    professor: Professor = request.user.professor #pyright: ignore
+    data = QueryDict(request.body)
+    courses = data.getlist("course", [])
+    courses_objs = list(Course.objects.filter(id__in=courses).exclude(id=course).all())
+
+    pref_courses = PreferencesCourse.objects.filter(
+            preferences=professor.preferences, 
+            course=course
+            )
+    pref_course = pref_courses.first()
+    if pref_course:
+        pref_course.delete()
+
+    context = {
+        "courses": courses_objs
+    }
+    return render(request, 'course_pills.html', context=context)
 
 @login_required
 @require_http_methods(["GET"])
@@ -125,7 +150,6 @@ def get_meetings(request: HttpRequest) -> HttpResponse:
     }
 
     return render(request, "get_meetings.html", context=data)
-
 
 @login_required
 @require_http_methods(["GET"])
@@ -183,7 +207,10 @@ def section_search(request: HttpRequest) -> HttpResponse:
     section_qs = Section.objects.filter(term=term, course__in=courses)
 
     if is_available:
-        section_qs = section_qs.filter(meetings__professor__isnull=True)
+        available_meeting = Q(meetings__professor__isnull=True) & Q(meetings__isnull=False)
+        available_section_primary = Q(primary_professor__isnull=True)
+
+        section_qs = section_qs.filter(available_meeting | available_section_primary)
 
     # TODO also move implementation
     # if exclusion_times:
@@ -212,3 +239,34 @@ def section_search(request: HttpRequest) -> HttpResponse:
 
 
     return render(request, "sections.html", context=context)
+
+@login_required
+@require_http_methods(["GET"])
+def get_claim_info(request: HttpRequest, section_pk: int) -> HttpResponse:
+    section = Section.objects.get(pk=section_pk)
+    has_primary = section.primary_professor != None
+    available = section.meetings.filter(professor=None).first() != None
+    can_claim = (not has_primary) or (available)
+
+    context = {
+            "section": section,
+            "can_claim": can_claim,
+            }
+
+    return render(request, "claim_info.html", context=context)
+
+@login_required
+@require_http_methods(["PUT"])
+def claim_section(request: HttpRequest, section_pk: int) -> HttpResponse:
+    professor: Professor = request.user.professor # pyright: ignore
+    section = Section.objects.get(pk=section_pk)
+    data = QueryDict(request.body)
+    print(data)
+    if section.primary_professor is None:
+        section.primary_professor = professor
+    meetings = section.meetings
+    for meeting in meetings.all():
+        if (meeting.professor is None):
+            pass
+
+    return HttpResponse()

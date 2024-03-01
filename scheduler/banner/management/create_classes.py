@@ -80,7 +80,7 @@ def add_section(section: dict):
         if prof['primaryIndicator']:
             primary_professor = professor
         else:
-            secondary_professor
+            secondary_professor = professor
 
     section_db, section_is_new = MaristDB.Section.objects.get_or_create(
         number=section['sequenceNumber'],

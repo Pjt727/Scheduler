@@ -9,12 +9,14 @@ def claim(request: HttpRequest) -> HttpResponse:
     terms = Term.objects.all()
     professor: Professor = request.user.professor #pyright: ignore
     preferences = Preferences.get_or_create_from_professor(professor)
+    courses_from_preferences = map(lambda p: p.course, professor.preferences.claim_courses.all())
 
     data = {
         'departments': Department.objects.all(),
         'selected_department':preferences.claim_department,
         'subjects': Subject.objects.all(),
         'selected_subject': preferences.claim_subject,
+        'courses': courses_from_preferences,
         # could change this to limit from a certain year
         'terms': terms,
         'selected_term': preferences.claim_term,
