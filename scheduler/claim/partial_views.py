@@ -1,5 +1,4 @@
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -212,21 +211,7 @@ def section_search(request: HttpRequest) -> HttpResponse:
 
         section_qs = section_qs.filter(available_meeting | available_section_primary)
 
-    # TODO also move implementation
-    # if exclusion_times:
-    #     exclusion_query = Q()
-    #     for exclusion_time in exclusion_times:
-    #         day = exclusion_time['day']
-    #         start_time = time.fromisoformat(exclusion_time['start_time'])
-    #         end_time = time.fromisoformat(exclusion_time['end_time'])
-
-    #         exclusion_query |= Q(meetings__time_block__day=day,
-    #                             meetings__time_block__start_end_time__start__lte=end_time,
-    #                             meetings__time_block__start_end_time__end__gte=start_time)
-    #     section_qs = section_qs.exclude(exclusion_query)
-
     # Exclude all meetings that overlap with professor meetings
-
     if does_fit:
         section_qs = section_qs.exclude(professor.section_in_meetings())
     

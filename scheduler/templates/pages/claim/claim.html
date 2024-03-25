@@ -15,28 +15,11 @@
         </div>
     </form>
     <div class="row">
-        <h3>Courses included:</h3>
-        <div id="courseMultiSelect">
-            {% include 'course_pills.html' with courses=courses %}
-        </div>    
-    </div>
-</div> 
-<div class="p-2" id="professorControls">
-    <input type="checkbox" class="form-check-input" name="fits" id="fits" checked>
-    <label for="fits">Fits in Schedule</label>
-    <input type="checkbox" class="form-check-input" name="available" id="available" checked>
-    <label for="available">Is Unclaimed</label>
-</div>
-<div class="p-2" 
-    hx-include="#courseMultiSelect, #term, #professorControls" 
-    hx-target="#sections"
->
-    <div class="row">
         <h4 class="col-3 text-center">Add Course to Search:</h4>
-        <div class="col-6 search-container">
+        <div class="col-9 search-container">
             <input 
                 hx-get="{% url 'get_course_results' offset=0%}" 
-                hx-include="#course-options"
+                hx-include="#course-options, #courseMultiSelect"
                 hx-target="#course-results"
                 hx-trigger="keyup changed delay:250ms, search, load" 
                 name="course_query" 
@@ -51,12 +34,31 @@
                 </div>
             </div>
         </div>
+    </div>
+    <div class="row">
+        <div id="courseMultiSelect">
+            {% include 'course_pills.html' with courses=courses %}
+        </div>    
+    </div>
+</div> 
+<div class="p-2" id="professorControls">
+    <div class="row">
+        <div class="col-5">
+            <input type="checkbox" class="form-check-input" name="isCourseSearch" id="isCourseSearch" checked>
+            <label for="isCourseSearch">Search on courses</label>
+            <input type="checkbox" class="form-check-input" name="fits" id="fits" checked>
+            <label for="fits">Fits in Schedule</label>
+            <input type="checkbox" class="form-check-input" name="available" id="available" checked>
+            <label for="available">Is Claimable</label>
+        </div>
         <div class="col-3">
             <button
                 hx-get="{% url 'section_search' %}"
                 hx-trigger="load, click"
+                hx-include="#courseMultiSelect, #term, #professorControls"
+                hx-target="#sections"
                 class="cursor-pointer search-icon-link" id="meetingSearch">
-                Search Sections From Courses
+                Search For Sections 
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
                     <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
                 </svg>
@@ -64,6 +66,11 @@
         </div>
     </div>
     <div id="sections"></div>
+</div>
+<div class="p-2" 
+    hx-include="#courseMultiSelect, #term, #professorControls" 
+    hx-target="#sections"
+>
 </div>
 
 {# Modal to submit a claim for a section/ particular meetings #}

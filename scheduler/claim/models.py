@@ -566,14 +566,14 @@ class Section(models.Model):
          
 
     @staticmethod
-    def sort_sections(section_qs: QuerySet, sort_column: str, sort_type: str) -> QuerySet:
+    def sort_sections(section_qs: QuerySet, sort_column: str | None, sort_type: str | None) -> QuerySet:
         field_names = {
         'sortTitle': 'course__title',
         'sortSubject': 'course__subject__code',
         'sortCode': 'course__code',
         }
 
-        field_name = field_names.get(sort_column)
+        field_name = field_names.get(str(sort_column))
         if field_name is not None:
             if sort_type == "descending":
                 field_name = '-' + field_name
