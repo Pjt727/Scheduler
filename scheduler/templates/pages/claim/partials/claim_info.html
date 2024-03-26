@@ -6,7 +6,10 @@
 <div class="modal-body">
     {% if not can_claim %}
     <div class="mb-3">
-        <span class="text-primary font-weight-bold">{{ section.primary_professor.email }}</span>
+        <a href="{% url 'professor_meetings' professor_pk=section.primary_professor.pk %}">
+            {{ section.primary_professor }}
+        </a>
+        ({{ section.primary_professor.email }})
         has claimed this section
     </div>
     {% endif %}

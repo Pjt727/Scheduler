@@ -135,20 +135,32 @@ def remove_course_pill(request: HttpRequest, course: int) -> HttpResponse:
 
 @login_required
 @require_http_methods(["GET"])
-def get_meetings(request: HttpRequest) -> HttpResponse:
+def get_meetings(request: HttpRequest, professor_pk: int) -> HttpResponse:
     
     term = request.GET.get('term')
     term = Term.objects.get(pk=term)
-    professor = Professor.objects.get(user=request.user)
+    requester = Professor.objects.get(user=request.user)
+    professor = Professor.objects.get(pk=professor_pk)
     meetings = professor.meetings.filter(section__term=term)
+    sections_without_meetings = professor.sections \
+        .exclude(meetings__professor=professor) \
+        .filter(term=term) \
+        .all()
+    if requester == professor:
+        title = f"Your {term}"
+    else:
+        title = f"{professor} - {term}"
+
+
 
     data = {
         "professor": professor,
-        "title": term,
+        "title": title,
         "meetings": meetings,
+        'sections_without_meetings': sections_without_meetings
     }
 
-    return render(request, "get_meetings.html", context=data)
+    return render(request, "p_my_meetings.html", context=data)
 
 @login_required
 @require_http_methods(["GET"])

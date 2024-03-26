@@ -7,7 +7,7 @@
 {% block content %}
 <label for="id_term">Term:</label>
 <select 
-    hx-get="{% url 'get_meetings' %}"
+    hx-get="{% url 'get_meetings' professor_pk=professor.pk%}"
     hx-trigger="change, load"
     hx-target="#meetings"
     name="term" class="form-select mb-3" id="term"
@@ -20,19 +20,6 @@
         {% endif %}
     {% endfor %}
 </select>
-{% if sections_without_meetings %}
-<div>Sections without meeings:</div>
-<div class="container">
-    {% for section in sections_without_meetings %}
-    <li>
-        {{ section }} 
-        <a href="{% url 'edit_section' section_pk=section.pk %}">
-            Edit
-        </a>
-    </li>
-    {% endfor %}
-</div>
-{% endif %}
 
 <div id="meetings">
 </div>

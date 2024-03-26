@@ -1,0 +1,14 @@
+{% if sections_without_meetings %}
+<div>Sections without meeings:</div>
+<div class="container">
+    {% for section in sections_without_meetings %}
+    <li>
+        {{ section }}
+        <a href="{% url 'edit_section' section_pk=section.pk %}">
+            Edit
+        </a>
+    </li>
+    {% endfor %}
+</div>
+{% endif %}
+{% include "get_meetings.html" %}

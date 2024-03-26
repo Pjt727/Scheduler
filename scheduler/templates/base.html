@@ -39,7 +39,7 @@
                         <a class="nav-link" href="{% url 'term_overview' %}">Term Overview</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'my_meetings' %}">My Meetings</a>
+                        <a class="nav-link" href="{% url 'professor_meetings' professor_pk=user.professor.pk %}">My Meetings</a>
                     </li>
                     <li class="nav-item">
                         <a class="position-relative nav-link" href="{% url 'message_hub' %}">

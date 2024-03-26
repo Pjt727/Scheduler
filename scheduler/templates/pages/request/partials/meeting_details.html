@@ -8,9 +8,8 @@
         {% if in_edit_mode %}
         <div class="col col-lg-5 fw-bold" hx-disinherit="*">
             <button hx-put="{% url 'add_section' %}" hx-include="#sections"
-                hx-vals='"addedSection": "{{ section.pk }}", "thisRefreshEditMeetings": "true"'
-                hx-target="#sections" hx-swap="beforeend"
-                type="button" class="btn btn-outline-primary">
+                hx-vals='"addedSection": "{{ section.pk }}", "thisRefreshEditMeetings": "true"' hx-target="#sections"
+                hx-swap="beforeend" type="button" class="btn btn-outline-primary">
                 Edit in Group
             </button>
         </div>
@@ -25,7 +24,9 @@
     {% if not is_shared_section %}
     <div class="row fst-italic justify-content-end">
         <div class="col fst-italic col-md-auto">
-            {{ section.primary_professor }}
+            <a href="{% url 'professor_meetings' professor_pk=section.primary_professor.pk %}">
+                {{ section.primary_professor }}
+            </a>
         </div>
     </div>
     {% endif %}
