@@ -10,7 +10,6 @@ def claim(request: HttpRequest) -> HttpResponse:
     professor: Professor = request.user.professor #pyright: ignore
     preferences = Preferences.get_or_create_from_professor(professor)
     courses_from_preferences = map(lambda p: p.course, preferences.claim_courses.all())
-
     data = {
         'departments': Department.objects.all(),
         'selected_department':preferences.claim_department,

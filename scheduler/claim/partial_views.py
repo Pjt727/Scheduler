@@ -170,12 +170,21 @@ def get_meeting_details(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET"])
 def section_search(request: HttpRequest) -> HttpResponse:
+    print(request.GET)
 
     courses = request.GET.getlist("course", [])
+    only_search_on_courses = request.GET.get("isCourseSearch") is None
+    print(only_search_on_courses)
+    subject = None
+    department = None
+    if only_search_on_courses:
+        department = request.GET.get("department")
+        subject = request.GET.get("subject")
+
     if not isinstance(courses, list):
         courses = [courses]
 
-    term = request.GET.get('term')
+    term = request.GET['term']
     
     # TODO implement
     # exclusion_times = data.get('exclusion_times', [])
@@ -203,7 +212,17 @@ def section_search(request: HttpRequest) -> HttpResponse:
         return render(request, "sections.html", context=context)
 
     professor = Professor.objects.get(user=request.user)
-    section_qs = Section.objects.filter(term=term, course__in=courses)
+    if only_search_on_courses:
+        if subject == "any" and department != "any":
+            section_qs = Section.objects.filter(term=term, course__department=department)
+        elif subject != "any":
+            section_qs = Section.objects.filter(term=term, course__subject=subject)
+        else:
+            section_qs = Section.objects.filter(term=term)
+    elif not courses:
+        return render(request, "sections.html", context=context)
+    else:
+        section_qs = Section.objects.filter(term=term, course__in=courses)
 
     if is_available:
         available_meeting = Q(meetings__professor__isnull=True) & Q(meetings__isnull=False)
@@ -213,7 +232,7 @@ def section_search(request: HttpRequest) -> HttpResponse:
 
     # Exclude all meetings that overlap with professor meetings
     if does_fit:
-        section_qs = section_qs.exclude(professor.section_in_meetings())
+        section_qs = section_qs.exclude(professor.section_in_meetings(term))
     
     section_qs = Section.sort_sections(section_qs=section_qs, sort_column=sort_column, sort_type=sort_type)
     original_length = len(section_qs)

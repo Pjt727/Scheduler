@@ -30,9 +30,9 @@ class Professor(models.Model):
         return f"{self.first_name} {self.last_name}"
     
     #TODO make it also take into consideration if the start and end date
-    def section_in_meetings(self) -> Q:
+    def section_in_meetings(self, term: str) -> Q:
         exclusion_filter = Q()
-        for meeting in self.meetings.all():
+        for meeting in self.meetings.filter(section__term=term):
             if meeting.time_block is None: continue
             exclusion_filter |= Q(
                 meetings__time_block__day=meeting.time_block.day,
