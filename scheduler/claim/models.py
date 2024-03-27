@@ -129,8 +129,8 @@ class Room(models.Model):
     )
 
     number = models.CharField(max_length=6)
-    classification = models.CharField(max_length=20, choices=CLASSIFICATIONS)
     capacity = models.IntegerField(null=True, blank=True, default=False)
+    classification = models.CharField(max_length=20, choices=CLASSIFICATIONS)
     is_general_purpose = models.BooleanField(null=True, blank=True, default=False)
     
     building = models.ForeignKey(Building, related_name="rooms", null=True, on_delete=models.SET_NULL)
@@ -174,7 +174,7 @@ class StartEndTime(models.Model):
 
     def end_d(self) -> timedelta:
         return timedelta(hours=self.end.hour, minutes=self.end.minute)
-    
+
 
 class Department(models.Model):
     verbose_name = "Department"
@@ -192,7 +192,7 @@ class Department(models.Model):
     
     def __repr__(self) -> str:
         return f"name={self.name}, code={self.code}, chair={self.chair}"
-    
+
 
 class AllocationGroup(models.Model):
     verbose_name = "Slot Group"
@@ -228,11 +228,13 @@ class DepartmentAllocation(models.Model):
     def exceeds_allocation(self, term: 'Term', amount_adding=1):
         return self.count_rooms(term) + amount_adding > self.number_of_classrooms
     
+
 class NumberIcon(TypedDict):
     start: time
     end: time
     day: str
     numbers: str
+
 
 class TimeBlock(models.Model):
     verbose_name = "Time Block"
@@ -582,6 +584,7 @@ class Section(models.Model):
 
         return section_qs
 
+
 class Meeting(models.Model):
     verbose_name = "Meeting"
     
@@ -596,9 +599,14 @@ class Meeting(models.Model):
 
     section = models.ForeignKey(Section, related_name="meetings", on_delete=models.CASCADE)
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
     professor = models.ForeignKey(Professor, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
-    
+    room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
+
+    # room criteria only should be set in cases where the room is null
+    building = models.ForeignKey(Building, on_delete=models.SET_NULL, null=True, blank=True)
+    room_classification = models.CharField(max_length=20, choices=Room.CLASSIFICATIONS, null=True, blank=True)
+    student_minimum = models.IntegerField(null=True, blank=True)
+
     def get_duration(self) -> timedelta:
         time_block = self.time_block
         if time_block is None: return timedelta()
@@ -610,6 +618,7 @@ class Meeting(models.Model):
     def __repr__(self) -> str:
         return f"section={self.section}, time block={self.time_block}, room={self.room}, teacher={self.professor}"
     
+
 class Preferences(models.Model):
     verbose_name = "Preferences"
 
@@ -642,6 +651,7 @@ class Preferences(models.Model):
         new_preferences.save()
         return new_preferences
 
+
 class PreferencesCourse(models.Model):
     verbose_name = "Preference Course"
     preferences = models.ForeignKey(Preferences, on_delete=models.CASCADE, related_name="claim_courses")
@@ -650,7 +660,6 @@ class PreferencesCourse(models.Model):
     class Meta: #pyright: ignore 
         unique_together = ('preferences', 'course')
         ordering = ['id']
-
 
 
 # Currently not implemented yet may be nice so include if people want
