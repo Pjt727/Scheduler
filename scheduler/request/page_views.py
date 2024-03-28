@@ -58,12 +58,13 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
                 first_edit_meeting.section.course, first_edit_meeting.section.term)
 
     other_meetings, open_slots = EditMeeting.get_open_slots(
-        section.term,
-        first_building,
-        first_edit_meeting.room,
-        first_edit_meeting.professor,
-        sections_to_exclude,
-        duration
+            section.term,
+            first_building,
+            first_edit_meeting.room,
+            section.course.subject.department,
+            first_edit_meeting.professor,
+            sections_to_exclude,
+            duration
     )
 
     calendar_meeting_context = get_update_meeting_context(

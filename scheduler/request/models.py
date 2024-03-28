@@ -1,5 +1,5 @@
 # pyright does not like me importing * here bc of the type checking import i think
-from claim.models import Building, Room, Meeting, StartEndTime, TimeBlock, Day, Section, DepartmentAllocation, Term
+from claim.models import Building, Room, Meeting, StartEndTime, TimeBlock, Day, Section, DepartmentAllocation, Term, Department
 from datetime import timedelta, time
 from django.http import QueryDict
 from dataclasses import dataclass
@@ -327,7 +327,9 @@ class EditMeeting:
     # This is now a completely different thing from open_slots
     # just used to show the VISUALLY open slots
     @staticmethod
-    def get_open_slots(term: Term, building: Building, room: Room | None, professor: Professor | None, sections_to_exclude: set[Section], duration: timedelta, enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
+    def get_open_slots(term: Term, building: Building, room: Room | None, department: Department,
+                       professor: Professor | None, sections_to_exclude: set[Section], duration: timedelta,
+                       enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
         meetings = Meeting.objects.none()
         if professor:
             meetings |= professor.meetings.filter(section__term=term)
@@ -367,7 +369,8 @@ class EditMeeting:
             new_end_t = time(hour=new_end_d.seconds // 3600, minute=(new_end_d.seconds % 3600) // 60)
             allocation_group = time_block.allocation_groups.first()
             assert allocation_group is not None
-            department_allocation = allocation_group.department_allocations.first()
+            # TODO MAYBE CLEAN UP DATABASE SO I CAN SAFELY USE .get()
+            department_allocation = allocation_group.department_allocations.filter(department=department).first()
             assert department_allocation is not None
             allocation_max = department_allocation.number_of_classrooms
             allocation = department_allocation.count_rooms(term)
@@ -835,10 +838,13 @@ class EditMeetingRequest(models.Model):
             day=self.day)
 
         if self.original:
-            self.original.room = self.room
-            self.original.professor = self.professor
-            self.original.time_block = time_block
-            self.original.save()
+            if self.is_deleted:
+                self.original.delete()
+            else:
+                self.original.room = self.room
+                self.original.professor = self.professor
+                self.original.time_block = time_block
+                self.original.save()
             return
         
         meeting = Meeting(

@@ -141,7 +141,7 @@ def get_meetings(request: HttpRequest, professor_pk: int) -> HttpResponse:
     term = Term.objects.get(pk=term)
     requester = Professor.objects.get(user=request.user)
     professor = Professor.objects.get(pk=professor_pk)
-    meetings = professor.meetings.filter(section__term=term)
+    meetings = professor.meetings.filter(section__term=term).order_by("section__pk")
     sections_without_meetings = professor.sections \
         .exclude(meetings__professor=professor) \
         .filter(term=term) \

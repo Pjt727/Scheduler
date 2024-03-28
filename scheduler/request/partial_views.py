@@ -129,6 +129,7 @@ def generate_update_meeting_context(data: QueryDict, edit_meetings: list[EditMee
             term,
             building,
             room,
+            first_section.course.subject.department, # TODO: FIX DEPARTMENT
             professor,
             sections,
             duration
@@ -192,8 +193,6 @@ class InputRow(View):
         update_meeting_context = generate_update_meeting_context(data, edit_meetings)
         context = update_meeting_context | display_meeting_context
         return render(request, 'input_row.html', context = context | update_meeting_context)
-
-
 
 @login_required
 @require_http_methods(["GET"])
