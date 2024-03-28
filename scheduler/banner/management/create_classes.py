@@ -35,7 +35,7 @@ def add_course(course: dict):
         }
     )
 
-    course, _ = MaristDB.Course.objects.get_or_create(
+    MaristDB.Course.objects.get_or_create(
         code=course['courseNumber'],
         subject=subject,
         defaults={
@@ -53,20 +53,16 @@ def add_section(section: dict):
     course_number = section['courseNumber']
 
     subject_code = section['subject']
-    subject, _ = MaristDB.Subject.objects.get_or_create(
-        code=subject_code,
-        department=None, # THERE IS NO WAY TO KNOW THE DEPARTMENT HERE
-        defaults= {
-            'description': section.get('subjectDescription'),
-        }
-    )
+
     course, _ = MaristDB.Course.objects.get_or_create(
         code=course_number,
-        subject=subject,
+        subject__code=subject_code,
         defaults={
             'title': section['courseTitle'],
             'credits': section['creditHourLow'],
             'banner_id': section["courseReferenceNumber"],
+            'subject__description': section.get('subjectDescription'),
+            'subject__department': MaristDB.Department.objects.get(code="OT"),
         }
         )
 
@@ -137,17 +133,21 @@ def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Pr
             time_block.add_allocation_groups()
 
         try: 
-            building, _ = MaristDB.Building.objects.get_or_create(
-                name=meeting['buildingDescription'],
-                code=meeting['building']
-            )
-            room, _ = MaristDB.Room.objects.get_or_create(
-                building=building,
-                number=meeting['room'],
-                defaults={
-                    "classification": meeting['meetingType'],
-                }
-            )
+            name = meeting['buildingDescription']
+            code = meeting['building']
+            room = meeting['room']
+            if (name is not None) and (code is not None) and (room is not None):
+                building, _ = MaristDB.Building.objects.get_or_create(
+                    name=name,
+                    code=code
+                )
+                room, _ = MaristDB.Room.objects.get_or_create(
+                    building=building,
+                    number=room,
+                    defaults={
+                        "classification": meeting['meetingType'],
+                    }
+                )
         except KeyError:
             building = None
             room = None
@@ -165,14 +165,14 @@ def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Pr
 
         meeting_db.save()
 
-
 def create_terms(section_paths):
     BANNER_DUMP_PATH = os.path.join(settings.BASE_DIR, 'banner', 'data', 'classes')
     
-    with open(os.path.join(BANNER_DUMP_PATH, 'courses.json'), 'r') as file:
-        courses = json.load(file)
-        for course in courses:
-            add_course(course)
+    if MaristDB.Subject.objects.first() is None:
+        with open(os.path.join(BANNER_DUMP_PATH, 'courses.json'), 'r') as file:
+            courses = json.load(file)
+            for course in courses:
+                add_course(course)
 
     for path in section_paths:
         with open(path, 'r') as file:

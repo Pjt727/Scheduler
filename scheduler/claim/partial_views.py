@@ -182,11 +182,9 @@ def get_meeting_details(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET"])
 def section_search(request: HttpRequest) -> HttpResponse:
-    print(request.GET)
-
     courses = request.GET.getlist("course", [])
     only_search_on_courses = request.GET.get("isCourseSearch") is None
-    print(only_search_on_courses)
+    
     subject = None
     department = None
     if only_search_on_courses:
@@ -236,17 +234,18 @@ def section_search(request: HttpRequest) -> HttpResponse:
     else:
         section_qs = Section.objects.filter(term=term, course__in=courses)
 
+    # exclude meetings with professors
     if is_available:
-        available_meeting = Q(meetings__professor__isnull=True) & Q(meetings__isnull=False)
-        available_section_primary = Q(primary_professor__isnull=True)
+        sections_with_any_open_meetings = Q(meetings__professor__isnull=True)
+        sections_with_any_open_primaries  = Q(primary_professor__isnull=True)
 
-        section_qs = section_qs.filter(available_meeting | available_section_primary)
+        section_qs = section_qs.filter(sections_with_any_open_meetings | sections_with_any_open_primaries)
 
     # Exclude all meetings that overlap with professor meetings
     if does_fit:
         section_qs = section_qs.exclude(professor.section_in_meetings(term))
     
-    section_qs = Section.sort_sections(section_qs=section_qs, sort_column=sort_column, sort_type=sort_type)
+    section_qs = Section.sort_sections(section_qs=section_qs.distinct(), sort_column=sort_column, sort_type=sort_type)
     original_length = len(section_qs)
     sections = section_qs[start_slice:end_slice]
     context["sections"] = sections

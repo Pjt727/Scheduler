@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     
     @transaction.atomic
-    def handle(self, *args, **options) -> None:
+    def handle(self, *_, **options) -> None:
         BANNER_DUMP_PATH = os.path.join(settings.BASE_DIR, 'banner', 'data', 'classes')
         
         sections: list[str] = []

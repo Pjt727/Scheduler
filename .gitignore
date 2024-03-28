@@ -2,6 +2,8 @@
 .nvim*
 # ps1
 *.ps1
+# backup database file
+*.bak
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
