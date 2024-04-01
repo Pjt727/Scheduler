@@ -601,8 +601,10 @@ class Meeting(models.Model):
     time_block = models.ForeignKey(TimeBlock, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     professor = models.ForeignKey(Professor, related_name="meetings", on_delete=models.SET_NULL, blank=True, null=True, default=None)
     room = models.ForeignKey(Room, related_name="meetings", on_delete=models.SET_NULL, null=True, blank=True, default=None)
-
-    # room criteria only should be set in cases where the room is null
+    # room should always agree with this unless room is None
+    room_is_general_purpose = models.CharField(max_length=20, choices=Room.CLASSIFICATIONS, null=True, blank=True)
+    # room criteria only should be looked at if room is none
+    #   idk a good way to represent this well so we just gonna break database rules for now
     building = models.ForeignKey(Building, on_delete=models.SET_NULL, null=True, blank=True)
     room_classification = models.CharField(max_length=20, choices=Room.CLASSIFICATIONS, null=True, blank=True)
     student_minimum = models.IntegerField(null=True, blank=True)

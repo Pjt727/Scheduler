@@ -26,11 +26,12 @@ class UpdateMeetingsContext(TypedDict):
     building: str | None
     edit_room: str | None
 
-class InputRowContext:
+class InnutRowContext:
     durations: list[timedelta]
     days: list
     buildings: list[Building]
     time_intervals: list[tuple[timedelta, timedelta]]
+    room_classifications: list[tuple[str, str]]
 
 
 def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
@@ -188,7 +189,8 @@ class InputRow(View):
         data = QueryDict(request.body) # pyright: ignore
         edit_meetings, edit_meeting = EditMeeting.create_all(data)
         display_meeting_context = {
-            "editing_meeting": edit_meeting
+            "editing_meeting": edit_meeting,
+            "room_classifications": Room.CLASSIFICATIONS,
         }
         update_meeting_context = generate_update_meeting_context(data, edit_meetings)
         context = update_meeting_context | display_meeting_context
@@ -223,7 +225,7 @@ def update_time_intervals(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["PUT"])
 def update_duration(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body)
+    data = QueryDict(request.body) # pyright: ignore
     edit_meetings, edit_meeting = EditMeeting.create_all(data)
     
     time_intervals = TimeBlock.get_time_intervals(edit_meeting.duration, edit_meeting.day)
@@ -305,6 +307,7 @@ def add_section(request: HttpRequest) -> HttpResponse:
     section = Section.objects.get(pk=section_pk)
     added_sections = EditMeeting.from_section(section)
     section_context = { 
+                       "room_classifications": Room.CLASSIFICATIONS,
                        'section_meetings': added_sections,
                        'section': section,
                        'is_added': True,

@@ -42,6 +42,7 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
     input_row_context = {
             "days": Day.CODE_TO_VERBOSE.items(), 
             "buildings": Building.objects.all(),
+            "room_classifications": Room.CLASSIFICATIONS,
             "durations": TimeBlock.DURATIONS
             }
     if first_edit_meeting is None:

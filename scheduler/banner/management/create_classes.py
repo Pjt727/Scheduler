@@ -112,7 +112,7 @@ def add_section(section: dict):
             next_professor = secondary_professor
 
 
-def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Professor):
+def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Professor | None):
     for day_key, db_code in DAY_KEYS_TO_DB_CODE.items():
         if not meeting.get(day_key): continue
         start_date = datetime.strptime(meeting['startDate'], "%m/%d/%Y")
@@ -132,25 +132,28 @@ def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Pr
         if time_block_is_new:
             time_block.add_allocation_groups()
 
-        try: 
-            name = meeting['buildingDescription']
-            code = meeting['building']
-            room = meeting['room']
-            if (name is not None) and (code is not None) and (room is not None):
-                building, _ = MaristDB.Building.objects.get_or_create(
-                    name=name,
-                    code=code
-                )
-                room, _ = MaristDB.Room.objects.get_or_create(
-                    building=building,
-                    number=room,
-                    defaults={
-                        "classification": meeting['meetingType'],
-                    }
-                )
-        except KeyError:
-            building = None
-            room = None
+        classification = MaristDB.Room.LECTURE
+        is_general_purpose = False
+
+        name = meeting.get('buildingDescription')
+        code = meeting.get('building')
+        room = meeting.get('room')
+        if (name is not None) and (code is not None) and (room is not None):
+            building, _ = MaristDB.Building.objects.get_or_create(
+                name=name,
+                code=code
+            )
+            if meeting['meetingType'] == "LAB":
+                classification = MaristDB.Room.LAB
+
+            room, _ = MaristDB.Room.objects.get_or_create(
+                building=building,
+                number=room,
+                defaults={
+                    "classification": classification,
+                }
+            )
+            is_general_purpose = room.is_general_purpose
 
         meeting_db: MaristDB.Meeting = MaristDB.Meeting(
             start_date=start_date,
@@ -159,8 +162,10 @@ def add_meeting(meeting: dict, section: MaristDB.Section, professor: MaristDB_Pr
             style_description=meeting['meetingTypeDescription'],
             section=section,
             time_block=time_block,
-            room=room,
             professor=professor,
+            # do not set the room data used for no room
+            room_classification=classification,
+            room_is_general_purpose=is_general_purpose,
         )
 
         meeting_db.save()
