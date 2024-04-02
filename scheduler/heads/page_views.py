@@ -10,11 +10,12 @@ def only_department_heads(view_func):
     def wrapper(request, *args, **kwargs):
         user = request.user
         prof = Professor.objects.get(user=user)
-        if not prof.department_head:
+        # change condition
+        if not prof:
             return redirect('index')
+        raise NotImplemented("check for department head somehow")
 
     return wrapper
-
 
 # Fetch Api requests
 

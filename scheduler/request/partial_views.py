@@ -44,9 +44,10 @@ def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
     if room is not None:
         title = f"Conflicts in {room} with duration {str(duration)[:-3]}"
     elif building is not None:
+        # slice to get rid of pm (lazy way sloppy way to do this)
         title = f"Conflicts in {building} any room with duration {str(duration)[:-3]}"
     else:
-        title = f"No conflicts to show! Add meetings to the section."
+        title = f"Conflicts with duration {str(duration)[:-3]}"
         open_slots = []
 
     context: UpdateMeetingsContext = {

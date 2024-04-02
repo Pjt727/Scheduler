@@ -218,14 +218,15 @@ class DepartmentAllocation(models.Model):
     def __repr__(self) -> str:
         return f"number of classroom={self.number_of_classrooms}, time block={self.allocation_group.time_blocks.all()}, department={self.department}"
 
-    def count_rooms(self, term: 'Term') -> int:
+    def count_rooms(self, term: 'str') -> int:
         return Room.objects.filter(
             meetings__section__course__subject__department=self.department,
             meetings__section__term=term,
             is_general_purpose=True,
             meetings__time_block__in=self.allocation_group.time_blocks.all()
         ).distinct().count()
-    def exceeds_allocation(self, term: 'Term', amount_adding=1):
+
+    def exceeds_allocation(self, term: 'str', amount_adding=1):
         return self.count_rooms(term) + amount_adding > self.number_of_classrooms
     
 

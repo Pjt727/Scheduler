@@ -1,19 +1,10 @@
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render, redirect
+from django.http import HttpRequest, HttpResponse
+from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from claim.models import *
-from django.db.models import Q, Case, When, IntegerField, Count, F, Sum, QuerySet, Max, Min, Subquery, Value, Func, DurationField, TimeField
-from datetime import timedelta
+from .page_views import only_department_heads
 
-def only_department_heads(view_func):
-    def wrapper(request, *args, **kwargs):
-        user = request.user
-        prof = Professor.objects.get(user=user)
-        if not prof.department_head:
-            return redirect('index')
-
-    return wrapper
 
 
 # Fetch Api requests
@@ -24,7 +15,7 @@ def only_department_heads(view_func):
 def dep_allo(request: HttpRequest) -> HttpResponse:
     department = request.GET.get('department')
     department = Department.objects.get(pk=department)
-    term = request.GET.get('term')
+    term = request.GET['term']
     print(department, term)
 
     
