@@ -22,7 +22,7 @@
         hx-include="#courseMultiSelect"
         hx-swap="innerHTML"
         hx-trigger="click"
-        hx-get="{% url add_url course=course.pk %}"
+        hx-get="{% url 'add_course_pill' course=course.pk %}"
         >
         <div class="col">{{course.title}}</div>
         <div class="col-2">{{course.code}}</div>

@@ -15,7 +15,11 @@
         </div>
     </form>
     <div id="courseSearch">
+        {% with add_url='add_course_pill' %}
+        {% with remove_url='remove_course_pill' %}
         {% include 'course_search.html' with course_search_title="Add Course To Search" %}
+        {% endwith %}
+        {% endwith %}
     </div>
 </div> 
 <div class="p-2" id="professorControls">

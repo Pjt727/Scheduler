@@ -512,3 +512,24 @@ def read_bundle(request: HttpRequest) -> HttpResponse:
     message_bundle.save()
     return HttpResponse()
 
+@login_required
+@require_http_methods(["GET"])
+def add_conflicting_course_pill(request: HttpRequest, course: int) -> HttpResponse:
+    course_obj = Course.objects.get(pk=course)
+    context = {
+            "course": course_obj,
+    }
+    return render(request, 'course_pill.html', context=context)
+
+@login_required
+@require_http_methods(["DELETE"])
+def remove_conflicting_course_pill(request: HttpRequest, course: int) -> HttpResponse:
+    data = QueryDict(request.body) # pyright: ignore
+    courses = data.getlist("course", [])
+    courses_objs = list(Course.objects.filter(id__in=courses).exclude(id=course).all())
+
+    context = {
+        "courses": courses_objs,
+    }
+    return render(request, 'course_pills.html', context=context)
+

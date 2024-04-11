@@ -335,7 +335,7 @@ class EditMeeting:
             meetings |= professor.meetings.filter(section__term=term)
         if room:
             meetings |= Meeting.objects.filter(room=room, section__term=term)
-        meetings |= Meeting.objects.filter(section__course__in=sections_to_exclude)
+        meetings |= Meeting.objects.filter(section__in=sections_to_exclude)
         
         meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
 

@@ -3,6 +3,7 @@
 {% block head %}
 {% load formhelpers %}
 <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+<link rel="stylesheet" href="{% static 'search.css' %}">
 {% endblock %}
 {% block title %}Edit Section{% endblock %} {% block content %}
 {% csrf_token %}
@@ -25,6 +26,18 @@
         {% endfor %}
         {% endfor %}
     </section>
+<div class="d-grid gap-3 container">
+    <div id="course-options" hidden>
+        <input type="text" name="term" value="{{ term.pk }}">
+        <input type="text" name="department" value="{{ department.pk }}">
+        <input type="text" name="subject" value="{{ subject.pk }}">
+    </div>
+    {% with add_url='add_course_pill' %}
+    {% with remove_url='remove_course_pill' %}
+    {% include 'course_search.html' with course_search_title="Add conflicting courses:" %}
+    {% endwith %}
+    {% endwith %}
+</div>
     <div class="row">
         <div class="col text-end">
             {% if og_edit_meetings %}
