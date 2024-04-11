@@ -26,12 +26,11 @@ class UpdateMeetingsContext(TypedDict):
     building: str | None
     edit_room: str | None
 
-class InnutRowContext:
+class InputRowContext:
     durations: list[timedelta]
     days: list
     buildings: list[Building]
     time_intervals: list[tuple[timedelta, timedelta]]
-    room_classifications: list[tuple[str, str]]
 
 
 def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
@@ -44,10 +43,9 @@ def get_update_meeting_context(edit_meetings: list[EditMeeting] | None = None,
     if room is not None:
         title = f"Conflicts in {room} with duration {str(duration)[:-3]}"
     elif building is not None:
-        # slice to get rid of pm (lazy way sloppy way to do this)
         title = f"Conflicts in {building} any room with duration {str(duration)[:-3]}"
     else:
-        title = f"Conflicts with duration {str(duration)[:-3]}"
+        title = f"No conflicts to show! Add meetings to the section."
         open_slots = []
 
     context: UpdateMeetingsContext = {
@@ -126,15 +124,18 @@ def generate_update_meeting_context(data: QueryDict, edit_meetings: list[EditMee
         professor = first_edit_meeting.professor
     other_meetings = None
     open_slots = None
+    conflicting_courses = set(data.getlist('conflicting_course'))
+    # TODO change this condition
     if building:
         other_meetings, open_slots = EditMeeting.get_open_slots(
-            term,
-            building,
-            room,
-            first_section.course.subject.department, # TODO: FIX DEPARTMENT
-            professor,
-            sections,
-            duration
+            term=term,
+            building=building,
+            room=room,
+            professor=professor,
+            department=first_section.course.subject.department,
+            sections_to_exclude=sections,
+            conflicting_courses=conflicting_courses,
+            duration=duration,
         )
     edit_meetings_or_none = None
     if data.get("thisRefreshEditMeetings") == "true":
@@ -190,12 +191,13 @@ class InputRow(View):
         data = QueryDict(request.body) # pyright: ignore
         edit_meetings, edit_meeting = EditMeeting.create_all(data)
         display_meeting_context = {
-            "editing_meeting": edit_meeting,
-            "room_classifications": Room.CLASSIFICATIONS,
+            "editing_meeting": edit_meeting
         }
         update_meeting_context = generate_update_meeting_context(data, edit_meetings)
         context = update_meeting_context | display_meeting_context
         return render(request, 'input_row.html', context = context | update_meeting_context)
+
+
 
 @login_required
 @require_http_methods(["GET"])
@@ -226,7 +228,7 @@ def update_time_intervals(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["PUT"])
 def update_duration(request: HttpRequest) -> HttpResponse:
-    data = QueryDict(request.body) # pyright: ignore
+    data = QueryDict(request.body)
     edit_meetings, edit_meeting = EditMeeting.create_all(data)
     
     time_intervals = TimeBlock.get_time_intervals(edit_meeting.duration, edit_meeting.day)
@@ -308,7 +310,6 @@ def add_section(request: HttpRequest) -> HttpResponse:
     section = Section.objects.get(pk=section_pk)
     added_sections = EditMeeting.from_section(section)
     section_context = { 
-                       "room_classifications": Room.CLASSIFICATIONS,
                        'section_meetings': added_sections,
                        'section': section,
                        'is_added': True,
@@ -510,3 +511,4 @@ def read_bundle(request: HttpRequest) -> HttpResponse:
     message_bundle.is_read = True
     message_bundle.save()
     return HttpResponse()
+

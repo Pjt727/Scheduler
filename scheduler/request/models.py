@@ -1,5 +1,5 @@
 # pyright does not like me importing * here bc of the type checking import i think
-from claim.models import Building, Room, Meeting, StartEndTime, TimeBlock, Day, Section, DepartmentAllocation, Term, Department
+from claim.models import Building, Room, Meeting, StartEndTime, TimeBlock, Day, Section, DepartmentAllocation, Term, Department, Course
 from datetime import timedelta, time
 from django.http import QueryDict
 from dataclasses import dataclass
@@ -302,8 +302,7 @@ class EditMeeting:
             message = f'The department allocation is exceeded for one or more of these meetings.'
             problems.append(Problem(Problem.WARNING, message))
 
-        
-        
+        # TODO insure that time slots are followed
         # TODO? implement a warning for giving a professor too many teaching hours
 
         return problems
@@ -327,22 +326,16 @@ class EditMeeting:
     # This is now a completely different thing from open_slots
     # just used to show the VISUALLY open slots
     @staticmethod
-    def get_open_slots(term: Term, building: Building, room: Room | None, department: Department,
-                       professor: Professor | None, sections_to_exclude: set[Section], duration: timedelta,
+    def get_open_slots(term: Term, building: Building, room: Room | None, department: Department | None,
+                       professor: Professor | None, sections_to_exclude: set[Section],
+                       duration: timedelta, conflicting_courses: set[str],
                        enforce_allocation: bool = False) -> tuple[QuerySet[Meeting], list[TimeSlot]]:
         meetings = Meeting.objects.none()
         if professor:
             meetings |= professor.meetings.filter(section__term=term)
         if room:
             meetings |= Meeting.objects.filter(room=room, section__term=term)
-        
-        meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
-
-        meetings = Meeting.objects.none()
-        if professor:
-            meetings |= professor.meetings.filter(section__term=term)
-        if room:
-            meetings |= Meeting.objects.filter(room=room, section__term=term)
+        meetings |= Meeting.objects.filter(section__course__in=sections_to_exclude)
         
         meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
 
