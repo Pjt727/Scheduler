@@ -1,7 +1,7 @@
 <section name="section" class="pb-4" hx-vals='"outerSection": "{{ section.pk }}"'>
     <input class="sectionGrouper" name="sectionGrouper" value="{{ section.pk }}" hidden>
     <div class="row fw-bold justify-content-center">
-        <div class="col-lg-10">{{ section }}</div>
+        <div class="col-lg-11">{{ section }} {{ section.course.title }}</div>
         <div class="col-lg-1">
             {% if is_added %}
             <button type="button" class="btn-close" aria-label="Close"

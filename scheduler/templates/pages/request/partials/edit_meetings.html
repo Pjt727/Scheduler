@@ -4,11 +4,15 @@
   {% for meeting in section.list %}
     {% if not meeting.is_deleted %}
     <div
-      rowId="{{ meeting.section.pk }},{{ meeting.counter }}"
-      draggable="true"
-      ondragstart="meetingDragstartHandler(event)"
-      class="event grabbable calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
-      style="grid-area: {% grid_area meeting.start_time meeting.get_end_time meeting.day  %};"
+        {% if in_edit_mode %}
+        intersectionGroup="{{ section_pk_to_intersection_group|get_item:meeting.section.pk }}"
+        day="{{ meeting.day }}"
+        {% endif %}
+        rowId="{{ meeting.section.pk }},{{ meeting.counter }}"
+        draggable="true"
+        ondragstart="meetingDragstartHandler(event)"
+        class="meetingDisplay event grabbable calendar{{ forloop.parentloop.counter|modulo:8|add:8}} position-relative selectedCalendar" 
+        style="grid-area: {% grid_area meeting.start_time meeting.get_end_time meeting.day  %};"
     >
     #{{ meeting.counter }} - {{ section.grouper }}
     </div>

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 {% block head %}
-    <link rel="stylesheet" href="{% static 'formSubmission.css' %}">
-    <link rel="stylesheet" href="{% static 'search.css' %}">
+<link rel="stylesheet" href="{% static 'formSubmission.css' %}">
+<link rel="stylesheet" href="{% static 'search.css' %}">
 {% endblock %}
 
 {% block title %}Claim{% endblock %} {% block content %}
@@ -11,22 +11,20 @@
     <form id="course-options">
         {% include 'term_option.html' %}
         <div class="row">
-        {% include 'department_subject.html' %}
+            {% include 'department_subject.html' %}
         </div>
     </form>
     <div id="courseSearch">
-        {% include 'course_search.html' with course_search_title="Add Course To Search" %}
+        {% with add_course_url="add_course_pill" %}
+        {% include 'course_search.html' with course_search_title="Add Course To Search:" course_results="course_pills.html" %}
+        {% endwith %}
     </div>
-</div> 
+</div>
 <div class="p-2" id="professorControls">
     <div class="row pb-2">
         <div class="col-9">
-            <input 
-            onchange="toggleCourseLiveSearch()"
-            type="checkbox" class="form-check-input"
-            name="isCourseSearch"
-            id="isCourseSearch"
-            checked>
+            <input onchange="toggleCourseLiveSearch()" type="checkbox" class="form-check-input" name="isCourseSearch"
+                id="isCourseSearch" checked>
             <label for="isCourseSearch">Search on courses</label>
             <input type="checkbox" class="form-check-input" name="fits" id="fits" checked>
             <label for="fits">Fits in Schedule</label>
@@ -34,46 +32,53 @@
             <label for="available">Is Claimable</label>
         </div>
         <div class="col-3">
-            <button
-                hx-get="{% url 'section_search' %}"
-                hx-trigger="load, click"
-                hx-include="#courseMultiSelect, #term, #professorControls, #course-options"
-                hx-target="#sections"
+            <button hx-get="{% url 'section_search' %}" hx-trigger="load, click"
+                hx-include="#courseMultiSelect, #term, #professorControls, #course-options" hx-target="#sections"
                 class="cursor-pointer search-icon-link" id="meetingSearch">
-                Search For Sections 
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
-                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                Search For Sections
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
                 </svg>
             </button>
         </div>
     </div>
 </div>
-<div class="p-2" 
-    id="sections"
-    hx-include="#courseMultiSelect, #term, #professorControls, #course-options" 
-    hx-target="#sections"
->
+<div class="p-2" id="sections" hx-include="#courseMultiSelect, #term, #professorControls, #course-options"
+    hx-target="#sections">
 </div>
 
 {# Modal to submit a claim for a section/ particular meetings #}
 <div class="modal fade" id="submitClaim" tabindex="-1" aria-labelledby="claimLabel" aria-hidden="true">
     <div class="modal-dialog">
-      <div class="modal-content" id="claimMeetings">
-        <div class="modal-header">
-          <h1 class="modal-title fs-5" id="claimLabel">Claim</h1>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="modal-content" id="claimMeetings">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5" id="claimLabel">Claim</h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="fw-bold mb-2">Loading Content</div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="claimButton" class="btn btn-primary" disabled>Claim</button>
+            </div>
         </div>
-        <div class="modal-body">
-            <div class="fw-bold mb-2">Loading Content</div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" id="claimButton" class="btn btn-primary" disabled>Claim</button>
-        </div>
-      </div>
     </div>
 </div>
 
 {# space for feedback to show to up #}
 <div id="claimFeedback"></div>
+<script>
+    const courseLiveSearchContainer = document.getElementById('courseSearch');
+    const courseLiveSearchCheckBox = document.getElementById('isCourseSearch');
+    function toggleCourseLiveSearch() {
+        if (courseLiveSearchCheckBox.checked) {
+            courseLiveSearchContainer.style.opacity = 1;
+        } else {
+            courseLiveSearchContainer.style.opacity = 0;
+        }
+    }
+</script>
 {% endblock %}

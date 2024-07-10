@@ -4,8 +4,12 @@
   {% for meeting in section.list %}
   
   <div 
-    class="event calendar{{ forloop.parentloop.counter|modulo:16 }} position-relative"
-    style="grid-area: {% grid_area meeting.time_block.start_end_time.start meeting.time_block.start_end_time.end meeting.time_block.day %};"
+      {% if in_edit_mode %}
+      intersectionGroup="{{ section_pk_to_intersection_group|get_item:meeting.section.pk }}"
+      day="{{ meeting.time_block.day }}"
+      {% endif %}
+      class="meetingDisplay event calendar{{ forloop.parentloop.counter|modulo:16 }} position-relative"
+      style="grid-area: {% grid_area meeting.time_block.start_end_time.start meeting.time_block.start_end_time.end meeting.time_block.day %};"
   >
   {{ meeting.section }} 
     <svg 

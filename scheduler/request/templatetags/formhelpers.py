@@ -1,19 +1,22 @@
-from django import template
-from claim.models import Day
-from django.utils import timezone
-from datetime import timedelta, time, datetime
+from datetime import datetime, time, timedelta
 
+from claim.models import Day
+from django import template
+from django.utils import timezone
 from request.models import EditMeeting
 
 register = template.Library()
+
 
 @register.filter
 def get_list(dictionary, key):
     return dictionary.getlist(key)
 
+
 @register.filter
 def get_item(dictionary: dict, key):
     return dictionary.get(key)
+
 
 @register.simple_tag
 def grid_area(start_time: time, end_time: time, day: str, is_editing=False) -> str:
@@ -45,7 +48,7 @@ def grid_area(start_time: time, end_time: time, day: str, is_editing=False) -> s
         timedelta(hours=19, minutes=45): 10,
         timedelta(hours=20): 10,
         timedelta(hours=21): 11,
-        timedelta(hours=22): 12
+        timedelta(hours=22): 12,
     }
 
     grid_col_start = codes_to_col.get(day)
@@ -55,66 +58,78 @@ def grid_area(start_time: time, end_time: time, day: str, is_editing=False) -> s
     if not start_time or not end_time:
         grid_row_start = 1
         grid_row_end = 2
-        return f"{grid_row_start} / {grid_col_start} / {grid_row_end} / {grid_col_start}"
-
+        return (
+            f"{grid_row_start} / {grid_col_start} / {grid_row_end} / {grid_col_start}"
+        )
 
     meeting_seconds = start_time.hour * 3600 + start_time.minute * 60
-    closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
+    closest_time_delta = min(
+        times_to_col.keys(),
+        key=lambda time: abs(meeting_seconds - time.total_seconds()),
+    )
     grid_row_start = times_to_col[closest_time_delta]
 
     meeting_seconds = end_time.hour * 3600 + end_time.minute * 60
-    closest_time_delta = min(times_to_col.keys(), key=lambda time: abs(meeting_seconds-time.total_seconds()))
+    closest_time_delta = min(
+        times_to_col.keys(),
+        key=lambda time: abs(meeting_seconds - time.total_seconds()),
+    )
     grid_row_end = times_to_col[closest_time_delta]
 
     return f"{grid_row_start} / {grid_col_start} / {grid_row_end} / {grid_col_start}"
+
 
 @register.filter
 def modulo(num, val):
     return num % val
 
+
 @register.filter
 def subtract(num1: int, num2: int) -> int:
     return num1 - num2
 
+
 @register.filter
 def time_display(t: time) -> str:
     try:
-        return t.strftime('%I:%M %p')
+        return t.strftime("%I:%M %p")
     except AttributeError:
-        return ''
+        return ""
+
 
 @register.filter
 def time_input(t: time) -> str:
     if t is None:
         return "None"
-    return t.strftime('%H:%M')
+    return t.strftime("%H:%M")
+
 
 @register.filter
 def duration_input(t_d: timedelta) -> str:
     total_seconds = t_d.total_seconds()
     hours = int(total_seconds // (60 * 60))
-    total_seconds %= (60 * 60)
+    total_seconds %= 60 * 60
     minutes = int(total_seconds // (60))
 
     return f"{hours}:{minutes:02d}"
 
+
 @register.filter
 def format_date(d: datetime):
-    return timezone.localtime(d).strftime('%b. %d, %Y %I:%M %p')
+    return timezone.localtime(d).strftime("%b. %d, %Y %I:%M %p")
+
 
 @register.filter
 def sort_edit_meetings(e_ms: list[EditMeeting]):
     compare_days = {
-            Day.MONDAY: 1,
-            Day.TUESDAY: 2,
-            Day.WEDNESDAY: 3,
-            Day.THURSDAY: 4,
-            Day.FRIDAY: 5,
-            Day.SATURDAY: 6,
-            Day.SUNDAY: 7,
-            None: 8
-            }
+        Day.MONDAY: 1,
+        Day.TUESDAY: 2,
+        Day.WEDNESDAY: 3,
+        Day.THURSDAY: 4,
+        Day.FRIDAY: 5,
+        Day.SATURDAY: 6,
+        Day.SUNDAY: 7,
+        None: 8,
+    }
 
     return sorted(e_ms, key=lambda e: compare_days.get(e.day, 8))
-
-

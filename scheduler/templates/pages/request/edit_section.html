@@ -3,19 +3,20 @@
 {% block head %}
 {% load formhelpers %}
 <link rel="stylesheet" href="{% static 'myMeetings.css' %}">
+<link rel="stylesheet" href="{% static 'search.css' %}">
 {% endblock %}
 {% block title %}Edit Section{% endblock %} {% block content %}
 {% csrf_token %}
 <div class="container text-center">
     {% if og_edit_meetings %}
-    <section id="og_sections" class="pt-2 pb-2"> 
+    <section id="og_sections" class="pt-2 pb-2">
         {% regroup og_edit_meetings by section as sections %}
         {% for section in sections %}
         {% include 'og_section.html' with section=section.grouper section_meetings=section.list %}
         {% endfor %}
     </section>
     {% endif %}
-    <section id="sections" class="pt-2 pb-2"> 
+    <section id="sections" class="pt-2 pb-2">
         {% regroup edit_meetings by section as sections %}
         {% for section in sections %}
         {% include 'section.html' with section=section.grouper section_meetings=section.list %}
@@ -25,28 +26,27 @@
         {% endfor %}
         {% endfor %}
     </section>
+    {# term department and subject inputs for the course_search #}
+    <form id="course-options" hidden>
+        <input type="text" name="term" id="term" value="{{ section.term.pk }}">
+        <input type="text" name="department" id="department" value="{{ section.course.subject.department.pk }}">
+        <input type="text" name="subject" id="subject" value="{{ section.course.subject.pk }}">
+    </form>
+    <form id="course-search" style="min-height: 100px;">
+        {% with add_course_url="add_conflicting_course_pill" %}
+        {% include 'course_search.html' with course_search_title='Add Conflicting Courses:' course_results="conflicting_course_pills.html"  %}
+        {% endwith %}
+    </form>
     <div class="row">
         <div class="col text-end">
             {% if og_edit_meetings %}
-            <button 
-                hx-post="{% url 'soft_submit' %}"
-                hx-include="#sections"
-                hx-swap="none"
-                type="button" 
-                class="btn btn-warning"
-                data-bs-toggle="modal" 
-                data-bs-target="#problemsModal">
+            <button hx-post="{% url 'soft_submit' %}" hx-include="#sections" hx-swap="none" type="button"
+                class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#problemsModal">
                 Edit Existing Request
             </button>
             {% else %}
-            <button 
-                hx-post="{% url 'soft_submit' %}"
-                hx-include="#sections"
-                hx-swap="none"
-                type="button" 
-                class="btn btn-primary"
-                data-bs-toggle="modal" 
-                data-bs-target="#problemsModal">
+            <button hx-post="{% url 'soft_submit' %}" hx-include="#sections" hx-swap="none" type="button"
+                class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#problemsModal">
                 Submit New Request
             </button>
             {% endif %}
@@ -54,16 +54,16 @@
     </div>
 </div>
 <br>
-<div 
-    hx-put="{% url 'update_meetings' %}"
+<div hx-put="{% url 'update_meetings' %}"
     hx-trigger="updateMeetings from:body"
-    hx-swap="none"
-    hx-include="#sections"
-    id="meetingsContainer" >
+    hx-swap="none" 
+    hx-include="#sections, #course-search"
+    id="meetingsContainer">
     {% include 'get_meetings.html' with edit_meetings=edit_meetings %}
 </div>
 
-<div class="modal fade" id="problemsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+<div class="modal fade" id="problemsModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="staticBackdropLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -74,27 +74,16 @@
                 Loading...
             </div>
             <div class="modal-footer">
-                <button 
-                    type="button" 
-                    class="btn btn-secondary" 
-                    data-bs-dismiss="modal">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     Cancel
                 </button>
                 {% if og_edit_meetings %}
-                <button 
-                    hx-include="#sections"
-                    hx-post="{% url 'hard_submit' %}"
-                    id="hardSubmitAll" 
-                    type="button" 
+                <button hx-include="#sections" hx-post="{% url 'hard_submit' %}" id="hardSubmitAll" type="button"
                     class="btn btn-warning">
                     Edit
                 </button>
                 {% else %}
-                <button 
-                    hx-include="#sections"
-                    hx-post="{% url 'hard_submit' %}"
-                    id="hardSubmitAll" 
-                    type="button" 
+                <button hx-include="#sections" hx-post="{% url 'hard_submit' %}" id="hardSubmitAll" type="button"
                     class="btn btn-primary">
                     Submit
                 </button>
@@ -105,66 +94,68 @@
 </div>
 
 
-    {% endblock %} 
-    {% block scripts %}
-    <script>
-        function updateMeetingHandler() {
-            let lastCall = null
-            return function updateMeetings(rowId, refreshEditMeetings = false) {
-                const meetingsCounter = document.getElementById("meetingsContainer")
-                const thisRow = document.getElementById(rowId)
+{% endblock %}
+{% block scripts %}
+<script>
+    function updateMeetingHandler() {
+        let lastCall = null
+        return function updateMeetings(rowId, refreshEditMeetings = false) {
+            const meetingsCounter = document.getElementById("meetingsContainer")
+            const thisRow = document.getElementById(rowId)
 
-                const duration = thisRow.querySelector('[name="duration"]').value
+            const duration = thisRow.querySelector('[name="duration"]').value
 
-                const buildingSelect = thisRow.querySelector('[name="building"]')
-                const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
+            const buildingSelect = thisRow.querySelector('[name="building"]')
+            const selectedBuilding = buildingSelect.options[buildingSelect.selectedIndex].value
 
-                const roomSelect = thisRow.querySelector('[name="room"]')
-                const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
+            const roomSelect = thisRow.querySelector('[name="room"]')
+            const selectedRoom = roomSelect.options[roomSelect.selectedIndex].value
 
-                const professor = thisRow.querySelector('[name="professor"]').value
+            const professor = thisRow.querySelector('[name="professor"]').value
 
-                let currentCall =  `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
+            let currentCall = `${duration},${selectedBuilding},${selectedRoom},${professor},${refreshEditMeetings}`
 
-                if (currentCall === lastCall && !refreshEditMeetings) {
-                    return
-                }
+            if (currentCall === lastCall && !refreshEditMeetings) {
+                return
+            }
 
 
-                meetingsCounter.setAttribute("hx-vals", ` {
+            meetingsCounter.setAttribute("hx-vals", ` {
                         "thisDuration": "${duration}",
                         "thisBuilding": "${selectedBuilding}",
                         "thisRoom": "${selectedRoom}",
                         "thisProfessor": "${professor}",
                         "thisRefreshEditMeetings": "${refreshEditMeetings}"
                 }`)
-                lastCall = currentCall
+            lastCall = currentCall
 
-                htmx.trigger("body", "updateMeetings")
+            // remember you can do this
+            // dispatching htmx custom trigger in js
+            htmx.trigger("body", "updateMeetings")
+        }
+    }
+
+    updateMeetings = updateMeetingHandler()
+
+    function deleteMeeting(rowId) {
+        const thisRow = document.getElementById(rowId)
+        const gridMeeting = document.querySelector(`[rowId="${thisRow.id}"]`)
+
+        thisRow.remove()
+        gridMeeting.remove()
+    }
+
+    htmx.onLoad(() => {
+        const toastElList = document.querySelectorAll('.toast')
+        const toastList = [...toastElList].map(toastEl => {
+            const toast = new bootstrap.Toast(toastEl)
+            if (!toast.isShown()) {
+                toast.show()
             }
-        }
-
-        updateMeetings = updateMeetingHandler()
-
-        function deleteMeeting(rowId) {
-            const thisRow = document.getElementById(rowId)
-            const gridMeeting = document.querySelector(`[rowId="${thisRow.id}"]`)
-
-            thisRow.remove()
-            gridMeeting.remove()
-        }
-
-        htmx.onLoad(()=>{
-            const toastElList = document.querySelectorAll('.toast')
-            const toastList = [...toastElList].map(toastEl => {
-                const toast =  new bootstrap.Toast(toastEl)
-                if(!toast.isShown()){
-                    toast.show()
-                }
-                toastEl.addEventListener('hidden.bs.toast', () => {
-                    toastEl.remove()
-                })
+            toastEl.addEventListener('hidden.bs.toast', () => {
+                toastEl.remove()
             })
         })
-    </script>
-    {% endblock %}
+    })
+</script>
+{% endblock %}
