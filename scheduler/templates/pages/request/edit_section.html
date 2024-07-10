@@ -26,17 +26,18 @@
         {% endfor %}
         {% endfor %}
     </section>
-    {# term department and subject inputs for the course_search #}
-    <form id="course-options" hidden>
-        <input type="text" name="term" id="term" value="{{ section.term.pk }}">
-        <input type="text" name="department" id="department" value="{{ section.course.subject.department.pk }}">
-        <input type="text" name="subject" id="subject" value="{{ section.course.subject.pk }}">
-    </form>
-    <form id="course-search" style="min-height: 100px;">
-        {% with add_course_url="add_conflicting_course_pill" %}
-        {% include 'course_search.html' with course_search_title='Add Conflicting Courses:' course_results="conflicting_course_pills.html"  %}
-        {% endwith %}
-    </form>
+<div class="d-grid gap-3 container">
+    <div id="course-options" hidden>
+        <input type="text" name="term" value="{{ term.pk }}">
+        <input type="text" name="department" value="{{ department.pk }}">
+        <input type="text" name="subject" value="{{ subject.pk }}">
+    </div>
+    {% with add_url='add_course_pill' %}
+    {% with remove_url='remove_course_pill' %}
+    {% include 'course_search.html' with course_search_title="Add conflicting courses:" %}
+    {% endwith %}
+    {% endwith %}
+</div>
     <div class="row">
         <div class="col text-end">
             {% if og_edit_meetings %}

@@ -36,11 +36,13 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
 
     first_edit_meeting: EditMeeting | None = next(iter(edit_meetings), None)
     page_conetext = {
+        "section": section,
+        "term": section.term,
+        "subject": section.course.subject,
+        "department": section.course.subject.department,
         "og_edit_meetings": og_edit_meetings,
         # used for when there are no edit_meetings
         "empty_sections": sections_to_exclude,
-        "term": section.term,
-        "section": section,
     }
     input_row_context = {
         "days": Day.CODE_TO_VERBOSE.items(),
@@ -60,15 +62,17 @@ def edit_section(request: HttpRequest, section_pk: int) -> HttpResponse:
         first_building = Building.recommend(
             first_edit_meeting.section.course, first_edit_meeting.section.term
         )
+    # TODO GET THIS FROM THE ADDED TAGS
+    conflicting_courses = set()
 
     other_meetings, open_slots = EditMeeting.get_open_slots(
         term=section.term,
-        conflicting_courses=set(),  # TODO change to ones added by tags
         building=first_building,
         room=first_edit_meeting.room,
         department=section.course.subject.department,
         professor=first_edit_meeting.professor,
         sections_to_exclude=sections_to_exclude,
+        conflicting_courses=conflicting_courses,
         duration=duration,
     )
 

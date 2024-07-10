@@ -3,7 +3,7 @@
     <input name="course" value="{{ course.pk }}" hidden></input>
     {{ course.subject.code }}: {{ course.code }}
     <button 
-        hx-delete="{% url 'remove_course_pill' course=course.pk %}"
+        hx-delete="{% url remove_url course=course.pk %}"
         hx-include="#courseMultiSelect"
         hx-target="#courseMultiSelect"
         hx-swap="innerHTML"

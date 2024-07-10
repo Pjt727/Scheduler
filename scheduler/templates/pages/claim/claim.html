@@ -15,8 +15,10 @@
         </div>
     </form>
     <div id="courseSearch">
-        {% with add_course_url="add_course_pill" %}
-        {% include 'course_search.html' with course_search_title="Add Course To Search:" course_results="course_pills.html" %}
+        {% with add_url='add_course_pill' %}
+        {% with remove_url='remove_course_pill' %}
+        {% include 'course_search.html' with course_search_title="Add Course To Search" %}
+        {% endwith %}
         {% endwith %}
     </div>
 </div>

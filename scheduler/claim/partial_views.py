@@ -109,7 +109,7 @@ def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
         pass
 
     context = {
-        "courses": map(lambda p: p.course, professor.preferences.claim_courses.all())
+        "courses": map(lambda p: p.course, professor.preferences.claim_courses.all()),
     }
 
     return render(request, "course_pills.html", context=context)
@@ -121,7 +121,7 @@ def remove_course_pill(request: HttpRequest, course: int) -> HttpResponse:
     # mainly doing it this way to ensure that empty course selections are
     #    properly maintained
     professor: Professor = request.user.professor  # pyright: ignore
-    data = QueryDict(request.body)
+    data = QueryDict(request.body)  # pyright: ignore
     courses = data.getlist("course", [])
     courses_objs = list(Course.objects.filter(id__in=courses).exclude(id=course).all())
 
@@ -132,7 +132,9 @@ def remove_course_pill(request: HttpRequest, course: int) -> HttpResponse:
     if pref_course:
         pref_course.delete()
 
-    context = {"courses": courses_objs}
+    context = {
+        "courses": courses_objs,
+    }
     return render(request, "course_pills.html", context=context)
 
 

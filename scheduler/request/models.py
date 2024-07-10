@@ -489,6 +489,9 @@ class EditMeeting:
             section__course__in=conflicting_courses, section__term=term
         )
         meetings = meetings.exclude(section__in=sections_to_exclude)
+        meetings |= Meeting.objects.filter(section__in=sections_to_exclude)
+
+        meetings = meetings.exclude(section__in=sections_to_exclude).distinct()
 
         return meetings
 

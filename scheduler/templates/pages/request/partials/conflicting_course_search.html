@@ -1,0 +1,90 @@
+<div class="row">
+    <h4 class="col-3 text-center">{{ course_search_title }}</h4>
+    <div class="col-9 search-container">
+        <input 
+        hx-get="{% url 'get_course_results' offset=0%}" 
+        hx-include="#course-options, #courseMultiSelect"
+        hx-target="#course-results"
+        hx-trigger="keyup changed delay:250ms, search, load" 
+        name="course_query" 
+        placeholder="Course Title or Number"
+        type="text" 
+        class="form-control"
+        id="course-text" value="{{ course_query }}">
+        </input>
+        <div class="live-search-results" id="course-search-results">
+            <div class="container" id="course-results">
+            </div>
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div id="courseMultiSelect">
+        {% include 'course_pills.html' with courses=courses %}
+    </div>    
+</div>
+
+<script>
+    {
+        let selectedOptionIndex = -1;
+        const courseTextLiveSearch = document.getElementById('course-text');
+        const courseSearchResults = document.getElementById('course-search-results');
+        const courseLiveSearchContainer = document.getElementById('courseSearch');
+        const courseLiveSearchCheckBox = document.getElementById('isCourseSearch');
+
+        function toggleCourseLiveSearch() {
+            if(courseLiveSearchCheckBox.checked) {
+                courseLiveSearchContainer.style.opacity = 1;
+            } else {
+                courseLiveSearchContainer.style.opacity = 0;
+            }
+        }
+        courseTextLiveSearch.addEventListener('focus', () => {
+            courseSearchResults.style.display = 'block';
+        });
+        courseTextLiveSearch.addEventListener('blur', () => {
+            setTimeout(() => {
+                courseSearchResults.style.display = 'none';
+            }, 200);
+        });
+        courseTextLiveSearch.addEventListener('keydown', (event) => {
+            const options = courseSearchResults.querySelectorAll('.course-option');
+
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (selectedOptionIndex > 0) {
+                    options[selectedOptionIndex].classList.remove('selected-course');
+                    selectedOptionIndex--;
+                    options[selectedOptionIndex].classList.add('selected-course');
+                }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (selectedOptionIndex < options.length - 1) {
+                    if (selectedOptionIndex >= 0) {
+                        options[selectedOptionIndex].classList.remove('selected-course');
+                    }
+                    selectedOptionIndex++;
+                    options[selectedOptionIndex].classList.add('selected-course');
+                }
+            }
+            if (event.key === 'Enter' || event.key === 'Return') {
+                const eventDetails = {
+                    'hx-swap': 'innerHTML'
+                };
+                if (options.length == 1 ) {
+                    htmx.trigger(options[0], 'click', eventDetails);
+                } else if (selectedOptionIndex >= 0) {
+                    htmx.trigger(options[selectedOptionIndex], 'click', eventDetails);
+                }
+            }
+            // Scroll the selected option into view
+            if (options[selectedOptionIndex]) {
+                options[selectedOptionIndex].scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'nearest'
+                });
+            }
+        });
+    }
+</script>

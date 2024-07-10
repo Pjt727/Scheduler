@@ -566,52 +566,24 @@ def read_bundle(request: HttpRequest) -> HttpResponse:
     return HttpResponse()
 
 
-#### place to optimize queries (they are really bad)
-
-
-# would be better to return nothing on the case where
-#    it is already there, but this has the advantage of keeping
-#    it ordered perhaps
 @login_required
 @require_http_methods(["GET"])
 def add_conflicting_course_pill(request: HttpRequest, course: int) -> HttpResponse:
-    data = request.GET
-    course_pks = data.getlist("course", [])
-    course_is_tagged = data.getlist("is_tagged", [])
-    course_items: list[tuple[Course, bool]] = []
-    # add all of the course items currently on the page
-    for course_pk, is_tagged_str in zip(course_pks, course_is_tagged):
-        is_tagged = is_tagged_str == "true"
-        course_items.append((Course.objects.get(pk=course_pk), is_tagged))
-    # add the new course item pill
-    if course not in course_pks:
-        course_items.append((Course.objects.get(pk=course), False))
-    context = {"course_items": course_items, "is_tagged": False}
-    response = render(request, "conflicting_course_pills.html", context=context)
-    # this calls the updateMeetings htmx trigger to update the meeting once the
-    #   conflicting course
-    response["Hx-Trigger"] = "updateMeetings"
-    return response
+    course_obj = Course.objects.get(pk=course)
+    context = {
+        "course": course_obj,
+    }
+    return render(request, "course_pill.html", context=context)
 
 
-# mainly rerending entire course pills to to ensure that empty course selections are
-#    properly maintained
 @login_required
 @require_http_methods(["DELETE"])
 def remove_conflicting_course_pill(request: HttpRequest, course: int) -> HttpResponse:
-    data = request.GET
-    course_pks = data.getlist("course", [])
-    course_is_tagged = data.getlist("is_tagged", [])
-    course_items: list[tuple[Course, bool]] = []
-    # add all of the course items currently on the page except the one sent
-    for course_pk, is_tagged_str in zip(course_pks, course_is_tagged):
-        if course_pk == course:
-            continue
-        is_tagged = is_tagged_str == "true"
-        course_items.append((Course.objects.get(pk=course_pk), is_tagged))
-    context = {"course_items": course_items}
-    response = render(request, "conflicting_course_pills.html", context=context)
-    # this calls the updateMeetings htmx trigger to update the meeting once the
-    #   conflicting course
-    response["Hx-Trigger"] = "updateMeetings"
-    return response
+    data = QueryDict(request.body)  # pyright: ignore
+    courses = data.getlist("course", [])
+    courses_objs = list(Course.objects.filter(id__in=courses).exclude(id=course).all())
+
+    context = {
+        "courses": courses_objs,
+    }
+    return render(request, "course_pills.html", context=context)

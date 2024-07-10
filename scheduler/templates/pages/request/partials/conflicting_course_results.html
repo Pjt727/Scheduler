@@ -11,7 +11,6 @@
 <div class="course-result" 
     {% if forloop.last and get_more %}
         hx-get="{% url 'get_course_results' offset=next_offset %}"
-        hx-vals='{"add_course_url": "{{ add_course_url }}"}'
         hx-trigger="intersect once" 
         hx-target="this"
         hx-include="#course-options"
@@ -23,7 +22,7 @@
         hx-include="#courseMultiSelect"
         hx-swap="innerHTML"
         hx-trigger="click"
-        hx-get="{% url add_url course=course.pk %}"
+        hx-get="{% url 'add_course_pill' course=course.pk %}"
         >
         <div class="col">{{course.title}}</div>
         <div class="col-2">{{course.code}}</div>
