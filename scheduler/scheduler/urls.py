@@ -136,8 +136,14 @@ urlpatterns = [
     # Head views
     ## pages
     path("term_overview/", heads_page_views.term_overview, name="term_overview"),
+    path("grid_overview/", heads_page_views.grid_overview, name="grid_overview"),
+    path("manage_sections/", heads_page_views.manage_sections, name="manage_sections"),
+    path("generate_reports/", heads_page_views.generate_reports, name="generate_reports"),
     ## partial responses.
     path("dep_allo/", heads_partial_views.dep_allo, name="dep_allo"),
+    path("professor_search/<int:offset>", heads_partial_views.professor_search, name="professor_search"),
+    path("professor_display/<int:professor_pk>", heads_partial_views.professor_display, name="professor_display"),
+    path("professor_live_search/", heads_partial_views.professor_live_search, name="professor_live_search"),
     path(
         "dep_allo_sections/",
         heads_partial_views.dep_allo_sections,

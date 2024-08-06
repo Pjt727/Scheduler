@@ -51,18 +51,24 @@ def add_course(course: dict):
 
 def add_section(section: dict):
     course_number = section['courseNumber']
-
     subject_code = section['subject']
+    subject_description = section.get('subjectDescription')
+
+    subject = MaristDB.Subject.objects.filter(code=subject_code).first()
+    if subject is None:
+        subject = MaristDB.Subject(
+                code=subject_code,
+                description=subject_description,
+                department=MaristDB.Department.objects.get(code="OT"))
+        subject.save()
 
     course, _ = MaristDB.Course.objects.get_or_create(
         code=course_number,
-        subject__code=subject_code,
+        subject=subject,
         defaults={
             'title': section['courseTitle'],
             'credits': section['creditHourLow'],
             'banner_id': section["courseReferenceNumber"],
-            'subject__description': section.get('subjectDescription'),
-            'subject__department': MaristDB.Department.objects.get(code="OT"),
         }
         )
 

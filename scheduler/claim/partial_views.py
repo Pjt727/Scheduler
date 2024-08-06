@@ -76,7 +76,6 @@ def get_course_results(request: HttpRequest, offset: int) -> HttpResponse:
         subject = Subject.objects.get(pk=subject_pk)
 
     course_query = data.get("course_query")
-    add_course_url = data["add_course_url"]
     courses, has_results = Course.search(course_query, term.pk, department, subject)
     courses = courses.order_by("title")
     # TODO implement if can be made faster
@@ -88,29 +87,41 @@ def get_course_results(request: HttpRequest, offset: int) -> HttpResponse:
         "get_more": len(courses) > (offset + Course.SEARCH_INTERVAL),
         "next_offset": offset + Course.SEARCH_INTERVAL,
         "has_results": has_results,
-        "add_course_url": add_course_url,
     }
 
     return render(request, "course_results.html", context=context)
 
 
 @login_required
-@require_http_methods(["GET"])
+@require_http_methods(["POST"])
 def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
-    professor: Professor = request.user.professor  # pyright: ignore
+    data = QueryDict(request.body) # pyright: ignore
+    search_type = data["searchType"]
+    professor = Professor.objects.get(user=request.user)
     course_obj = Course.objects.get(pk=course)
-    try:
-        pref_course = PreferencesCourse(
-            preferences=professor.preferences, course=course_obj
-        )
-        pref_course.save()
-    except IntegrityError:
-        # the pref_course probably already existed
-        pass
 
-    context = {
-        "courses": map(lambda p: p.course, professor.preferences.claim_courses.all()),
-    }
+    if search_type == "claim":
+        try:
+            pref_course = PreferencesCourse(
+                preferences=professor.preferences, course=course_obj
+            )
+            pref_course.save()
+        except IntegrityError:
+            # the pref_course probably already existed
+            pass
+
+        context = {
+            "courses": map(lambda p: p.course, professor.preferences.claim_courses.all()),
+        }
+    elif search_type == "edit":
+        course_pks = data.getlist("course", [])
+        course_pks.append(str(course))
+        courses = Course.objects.filter(pk__in=course_pks).all()
+        context = {
+                "courses": courses
+                }
+    else:
+        raise ValueError("Invalid search type")
 
     return render(request, "course_pills.html", context=context)
 
@@ -118,23 +129,30 @@ def add_course_pill(request: HttpRequest, course: int) -> HttpResponse:
 @login_required
 @require_http_methods(["DELETE"])
 def remove_course_pill(request: HttpRequest, course: int) -> HttpResponse:
-    # mainly doing it this way to ensure that empty course selections are
-    #    properly maintained
     professor: Professor = request.user.professor  # pyright: ignore
     data = QueryDict(request.body)  # pyright: ignore
+    search_type = data["searchType"]
     courses = data.getlist("course", [])
+
     courses_objs = list(Course.objects.filter(id__in=courses).exclude(id=course).all())
 
-    pref_courses = PreferencesCourse.objects.filter(
-        preferences=professor.preferences, course=course
-    )
-    pref_course = pref_courses.first()
-    if pref_course:
-        pref_course.delete()
+    if search_type == "claim":
+        pref_courses = PreferencesCourse.objects.filter(
+            preferences=professor.preferences, course=course
+        )
+        pref_course = pref_courses.first()
+        if pref_course:
+            pref_course.delete()
+        context = {
+            "courses": courses_objs,
+        }
+    elif search_type == "edit":
+        context = {
+            "courses": courses_objs,
+        }
+    else:
+        raise ValueError("Invalid search type")
 
-    context = {
-        "courses": courses_objs,
-    }
     return render(request, "course_pills.html", context=context)
 
 

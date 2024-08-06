@@ -80,6 +80,8 @@ TEMPLATES = [
             BASE_DIR / 'templates' / 'pages' / 'request',
             BASE_DIR / 'templates' / 'pages' / 'request' / 'partials',
             BASE_DIR / 'templates' / 'pages' / 'heads',
+            BASE_DIR / 'templates' / 'pages' / 'heads' / 'partials',
+            BASE_DIR / 'templates' / 'pages' / 'utils',
             BASE_DIR / 'request' / 'templatetags',
         ],
         'APP_DIRS': True,

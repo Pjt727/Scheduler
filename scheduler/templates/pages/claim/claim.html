@@ -7,7 +7,7 @@
 
 {% block title %}Claim{% endblock %} {% block content %}
 {% csrf_token %}
-<div class="d-grid gap-3 container">
+<div class="d-grid gap-3 container" hx-vals='{"searchType": "claim"}'>
     <form id="course-options">
         {% include 'term_option.html' %}
         <div class="row">
@@ -15,11 +15,7 @@
         </div>
     </form>
     <div id="courseSearch">
-        {% with add_url='add_course_pill' %}
-        {% with remove_url='remove_course_pill' %}
         {% include 'course_search.html' with course_search_title="Add Course To Search" %}
-        {% endwith %}
-        {% endwith %}
     </div>
 </div>
 <div class="p-2" id="professorControls">

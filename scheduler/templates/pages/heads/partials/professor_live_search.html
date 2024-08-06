@@ -1,0 +1,14 @@
+<div class="col-4" id="professor-input">
+    <input type="text" name="professor" value="any" hidden>
+    <div class="col-9 search-container">
+        <input hx-get="{% url 'professor_search' offset=0%}" hx-include="#course-options"
+            hx-target="#professor-results" hx-trigger="keyup changed delay:250ms, search, load" name="professor_query"
+            placeholder="Professor Name or Email" type="text" class="form-control" id="professor-text">
+        </input>
+        <div class="live-search-results" id="professor-search-results">
+            <div class="container" id="professor-results">
+            </div>
+        </div>
+    </div>
+    {% include 'search.html' with textLiveSearchId="professor-text" searchResultsId="professor-search-results" %}
+</div>

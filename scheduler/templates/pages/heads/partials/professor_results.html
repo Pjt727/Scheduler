@@ -7,25 +7,22 @@
     {% endif %}
 {% endif %}
 {% endif %}
-{% for course in courses %}
+{% for professor in professors %}
 <div class="course-result" 
     {% if forloop.last and get_more %}
-        hx-get="{% url 'get_course_results' offset=next_offset %}"
+        hx-get="{% url 'professor_search' offset=next_offset %}"
         hx-trigger="intersect once" 
         hx-target="this"
-        hx-include="#course-options"
         hx-swap="afterend" 
     {% endif %}
     >
-    <div class="row align-items-start pb-2 course-option"
-        hx-target="#courseMultiSelect"
-        hx-include="#courseMultiSelect"
-        hx-swap="innerHTML"
+    <div class="row align-items-start pb-2 search-option"
+        hx-target="#professor-input"
+        hx-swap="outerHTML"
         hx-trigger="click"
-        hx-get="{% url 'add_course_pill' course=course.pk %}"
+        hx-get="{% url 'professor_display' professor_pk=professor.pk %}"
         >
-        <div class="col">{{course.title}}</div>
-        <div class="col-2">{{course.code}}</div>
+        <div class="col">{{ professor }}</div>
     </div>
 </div>
 {% endfor %}

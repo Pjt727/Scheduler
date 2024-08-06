@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 
 class Professor(models.Model):
     verbose_name = "Professor"
+    SEARCH_INTERVAL = 10
 
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)

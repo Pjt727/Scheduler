@@ -22,6 +22,11 @@ def only_department_heads(view_func):
 # change to only department heads...
 @login_required
 def term_overview(request: HttpRequest) -> HttpResponse:
+    return render(request, 'term_overview.html')
+
+
+@login_required
+def grid_overview(request: HttpRequest) -> HttpResponse:
     data = {
             "terms": Term.objects.all().order_by('-year',
             Case(
@@ -34,4 +39,23 @@ def term_overview(request: HttpRequest) -> HttpResponse:
             )),
             "departments": Department.objects.all(),
     }
-    return render(request, 'term_overview.html', context=data)
+    return render(request, 'grid_overview.html', context=data)
+
+
+@login_required
+def manage_sections(request: HttpRequest) -> HttpResponse:
+    professor = Professor.objects.get(user=request.user)
+    preferences = Preferences.get_or_create_from_professor(professor)
+    courses_from_preferences = map(lambda p: p.course, preferences.claim_courses.all())
+
+    context = {
+            "terms": Term.objects.all(),
+            "departments": Department.objects.all(),
+            "subjects": Subject.objects.all(),
+            "courses_from_preferences": courses_from_preferences,
+            }
+    return render(request, 'manage_sections.html', context=context)
+
+@login_required
+def generate_reports(request: HttpRequest) -> HttpResponse:
+    return render(request, 'generate_reports.html')

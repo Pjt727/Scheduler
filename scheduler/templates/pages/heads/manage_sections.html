@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'search.css' %}">
+{% endblock %}
+{% block title %}Manage Sections{% endblock %} 
+{% block content %}
+<div class="d-grid gap-3 container" hx-vals='{"searchType": "claim"}'>
+    <form id="course-options">
+        {% include 'term_option.html' %}
+        <div class="row">
+            {% include 'department_subject.html' %}
+        </div>
+    </form>
+    <div id="courseSearch">
+        {% include 'course_search.html' with course_search_title="Add Course To Search" %}
+    </div>
+    <div class="row">
+        {% include 'professor_display.html' %}
+    </div>
+</div>
+{% endblock %}

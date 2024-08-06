@@ -1,7 +1,0 @@
-<section>
-{% for course, is_tagged in course_items %}
-    {% include 'conflicting_course_pill.html' with course=course is_tagged=is_tagged %}
-{% empty %}
-<div>No courses selected</div>
-{% endfor %}
-</section>

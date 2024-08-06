@@ -3,6 +3,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from claim.models import *
+from django.db.models import Q
 from .page_views import only_department_heads
 
 
@@ -100,3 +101,39 @@ def dep_allo_sections(request: HttpRequest) -> HttpResponse:
     }
 
     return render(request, "sections.html", context=context) 
+
+@login_required
+def professor_search(request: HttpRequest, offset: int) -> HttpResponse:
+    data = request.GET
+
+    professor_query = data.get("professor_query", "")
+    professor_filter = Q()
+    for part in professor_query.split(" "):
+        professor_filter |= Q(first_name__icontains=part)
+        professor_filter |= Q(last_name__icontains=part)
+        professor_filter |= Q(email__icontains=part)
+    possible_professor = Professor.objects.filter(professor_filter).all()
+    amount_of_professors = len(possible_professor)
+
+    context = {
+        "professors": possible_professor[offset:offset + Professor.SEARCH_INTERVAL],
+        "offset": offset,
+        "get_more": amount_of_professors > (offset + Professor.SEARCH_INTERVAL),
+        "next_offset": offset + Professor.SEARCH_INTERVAL,
+        "has_results": amount_of_professors > 0,
+    }
+
+    return render(request, "professor_results.html", context=context)
+
+@login_required
+def professor_live_search(request: HttpRequest) -> HttpResponse:
+    return render(request, "professor_live_search.html")
+
+@login_required
+def professor_display(request: HttpRequest, professor_pk: int) -> HttpResponse:
+    professor = Professor.objects.filter(pk=professor_pk).first()
+    context = {
+            "professor": professor
+            }
+    return render(request, "professor_display.html", context=context)
+

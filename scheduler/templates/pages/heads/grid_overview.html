@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load static %}
+{% block head %}
+    <link rel="stylesheet" href="{% static 'search.css' %}">
+{% endblock %}
+{% block title %}Term Overview{% endblock %} {% block content %}
+<label for="term">Terms</label>
+<select 
+    hx-get="{% url 'dep_allo' %}"
+    hx-target="#dep_allo_container"
+    hx-include="#term, #department"
+    name="term" id="term" class="form-select"
+>
+    {% for term in terms %}
+    {% if forloop.first %}
+    <option value="{{ term.pk }}" selected>{{ term }}</option>
+    {% else %}
+    <option value="{{ term.pk }}">{{ term }}</option>
+    {% endif %}
+    {% endfor %}
+</select>
+<label for="department">Department:</label>
+<select 
+    hx-get="{% url 'dep_allo' %}"
+    hx-target="#dep_allo_container"
+    hx-include="#term, #department"
+    name="department" class="form-select" id="department"
+>
+    {% for department in departments %}
+    {% if forloop.first %}
+    <option value="{{ department.pk }}" selected>{{ department }}</option>
+    {% else %}
+    <option value="{{ department.pk }}">{{ department }}</option>
+    {% endif %}
+    {% endfor %}
+</select>
+
+<div 
+    hx-get="{% url 'dep_allo' %}"
+    hx-trigger="load"
+    hx-include="#term, #department"
+    id="dep_allo_container"
+>
+</div>
+<div 
+    hx-get="{% url 'dep_allo_sections' %}"
+    hx-target="this"
+    hx-include="#term, #department"
+    hx-trigger="newOptions from:body"
+    id="sectionsContainer"
+>
+</div>
+
+{% endblock %}

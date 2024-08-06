@@ -16,12 +16,12 @@
     // position: relative;
 }
 
-.course-option {
+.search-option {
     cursor: pointer;
 }
 
-.course-option:hover,
-.selected-course {
+.search-option:hover,
+.selected-option {
     background-color: #c5c5c5;
 }
 
