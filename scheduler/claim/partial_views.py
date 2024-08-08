@@ -170,6 +170,8 @@ def get_meetings(request: HttpRequest, professor_pk: int) -> HttpResponse:
         .filter(term=term)
         .all()
     )
+    for section in sections_without_meetings.all():
+        print(section)
     if requester == professor:
         title = f"Your {term}"
     else:
@@ -244,8 +246,6 @@ def section_search(request: HttpRequest) -> HttpResponse:
         "search_interval": Section.SEARCH_INTERVAL,
     }
 
-    if not courses:
-        return render(request, "sections.html", context=context)
 
     professor = Professor.objects.get(user=request.user)
     if only_search_on_courses:

@@ -15,8 +15,46 @@
     <div id="courseSearch">
         {% include 'course_search.html' with course_search_title="Add Course To Search" %}
     </div>
-    <div class="row">
-        {% include 'professor_display.html' %}
+</div>
+<div class="p-2" id="headControls">
+    <div class="row pb-2">
+        <div class="col-4">
+            <input onchange="toggleCourseLiveSearch()" type="checkbox" class="form-check-input" name="isCourseSearch"
+                id="isCourseSearch" checked>
+            <label for="isCourseSearch">Search on courses</label>
+            <select name="claimState" class="form-select">
+                <option value="any">Any claim status</option>
+                <option value="fullyClaimed">Fully Claimed</option>
+                <option value="autoClaimed">Auto Claimed</option>
+                <option value="fullyUnclaimed">Fully Unclaimed</option>
+            </select>
+        </div>
+        <div class="col-5">
+            {% include 'professor_display.html' %}
+        </div>
+        <div class="col-3">
+            <button hx-get="{% url 'section_search' %}" hx-trigger="load, click"
+                hx-include="#courseMultiSelect, #term, #professorControls, #course-options" hx-target="#sections"
+                class="cursor-pointer search-icon-link" id="meetingSearch">
+                Search For Sections
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z" />
+                </svg>
+            </button>
+        </div>
     </div>
 </div>
+<script>
+    const courseLiveSearchContainer = document.getElementById('courseSearch');
+    const courseLiveSearchCheckBox = document.getElementById('isCourseSearch');
+    function toggleCourseLiveSearch() {
+        if (courseLiveSearchCheckBox.checked) {
+            courseLiveSearchContainer.style.opacity = 1;
+        } else {
+            courseLiveSearchContainer.style.opacity = 0;
+        }
+    }
+</script>
 {% endblock %}

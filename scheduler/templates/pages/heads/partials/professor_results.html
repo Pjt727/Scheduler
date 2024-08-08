@@ -1,6 +1,7 @@
 {% if not has_results %}
 {% if offset == 0 %}
-    {% if not courses %}
+{# add an "any" selection #}
+    {% if not professors %}
     <div class="row align-items-center fw-bold">No results found</div>
     {% else %}
     <div class="row align-items-center fw-bold">Results not found with that subject/department widening scope</div>

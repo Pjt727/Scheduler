@@ -130,10 +130,84 @@ def professor_live_search(request: HttpRequest) -> HttpResponse:
     return render(request, "professor_live_search.html")
 
 @login_required
-def professor_display(request: HttpRequest, professor_pk: int) -> HttpResponse:
-    professor = Professor.objects.filter(pk=professor_pk).first()
+def professor_display(request: HttpRequest, professor_pk: str) -> HttpResponse:
+    if professor_pk == "any":
+        professor = None
+    else:
+        professor = Professor.objects.filter(pk=professor_pk).first()
     context = {
             "professor": professor
             }
     return render(request, "professor_display.html", context=context)
 
+@login_required
+def get_head_sections(request: HttpRequest) -> HttpResponse:
+    courses = request.GET.getlist("course", [])
+    only_search_on_courses = request.GET.get("isCourseSearch") is None
+
+    subject = None
+    department = None
+    if only_search_on_courses:
+        department = request.GET.get("department")
+        subject = request.GET.get("subject")
+
+    if not isinstance(courses, list):
+        courses = [courses]
+
+    term = request.GET["term"]
+
+    is_available = request.GET.get("available", False)
+
+    start_slice = int(request.GET.get("startSlice", 0))
+    end_slice = int(request.GET.get("endSlice", Section.SEARCH_INTERVAL))
+    original_length = 0
+    context = {
+        "sections": [],
+        "claim": True,
+        "start_slice": start_slice,
+        "end_slice": min(end_slice, original_length),
+        "original_length": original_length,
+        "search_interval": Section.SEARCH_INTERVAL,
+    }
+
+    if not courses:
+        return render(request, "sections.html", context=context)
+
+    professor = Professor.objects.get(user=request.user)
+    if only_search_on_courses:
+        if subject == "any" and department != "any":
+            section_qs = Section.objects.filter(
+                term=term, course__department=department
+            )
+        elif subject != "any":
+            section_qs = Section.objects.filter(term=term, course__subject=subject)
+        else:
+            section_qs = Section.objects.filter(term=term)
+    elif not courses:
+        return render(request, "sections.html", context=context)
+    else:
+        section_qs = Section.objects.filter(term=term, course__in=courses)
+
+    # exclude meetings with professors
+    if is_available:
+        sections_with_any_open_meetings = Q(meetings__professor__isnull=True)
+        sections_with_any_open_primaries = Q(primary_professor__isnull=True)
+
+        section_qs = section_qs.filter(
+            sections_with_any_open_meetings | sections_with_any_open_primaries
+        )
+
+    # Exclude all meetings that overlap with professor meetings
+    if does_fit:
+        section_qs = section_qs.exclude(professor.section_in_meetings(term))
+
+    section_qs = Section.sort_sections(
+        section_qs=section_qs.distinct(), sort_column=sort_column, sort_type=sort_type
+    )
+    original_length = len(section_qs)
+    sections = section_qs[start_slice:end_slice]
+    context["sections"] = sections
+    context["end_slice"] = min(end_slice, original_length)
+    context["original_length"] = original_length
+
+    return render(request, "head_sections.html", context=context)

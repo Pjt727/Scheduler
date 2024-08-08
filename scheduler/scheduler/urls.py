@@ -142,8 +142,9 @@ urlpatterns = [
     ## partial responses.
     path("dep_allo/", heads_partial_views.dep_allo, name="dep_allo"),
     path("professor_search/<int:offset>", heads_partial_views.professor_search, name="professor_search"),
-    path("professor_display/<int:professor_pk>", heads_partial_views.professor_display, name="professor_display"),
+    path("professor_display/<str:professor_pk>", heads_partial_views.professor_display, name="professor_display"),
     path("professor_live_search/", heads_partial_views.professor_live_search, name="professor_live_search"),
+    path("get_head_sections/", heads_partial_views.get_head_sections, name="get_head_sections"),
     path(
         "dep_allo_sections/",
         heads_partial_views.dep_allo_sections,
