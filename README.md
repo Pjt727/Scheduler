@@ -17,3 +17,4 @@ Help teachers submit class schedules
 - run the server on local port
     1. `python manage.py runserver`
 
+

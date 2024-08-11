@@ -1,0 +1,53 @@
+{% load formhelpers %}
+<div 
+    class="container position-relative" id="sectionsContainer"
+    style="min-height: 1000px"
+>
+<div class="position-absolute top-0 end-0">
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            {% if original_length == 0 %}
+            <li class="page-item disabled"> 0 results</li>
+            {% else %}
+            <li class="page-item {% if start_slice == 0 %}disabled{% endif %}">
+                <a id="prevSections" class="page-link" aria-label="Previous" 
+                    {% if start_slice == 0 %}
+                    disabled
+                    {% else %}
+                    hx-target="#sectionsContainer"
+                    hx-vals='{
+                    "startSlice": "{{ start_slice|subtract:search_interval }}",
+                    "endSlice": "{{ start_slice|subtract:search_interval|add:search_interval }}"
+                    }'
+                    hx-get="{% url 'get_head_sections' %}"
+                    {% endif %}
+                    >
+                    <span aria-hidden="true">Prev</span>
+                </a>
+            </li>
+            <li class="page-item">
+                <div class="page-link disabled">
+                    {{ start_slice|add:1 }} - {{ end_slice }} of {{ original_length }}
+                </div>
+            </li>
+            <li class="page-item {% if end_slice >= original_length %}disabled{% endif %}">
+                <a id="nextSections" class="page-link" aria-label="Next"
+                    {% if end_slice >= original_length %}
+                    disabled
+                    {% else %}
+                    hx-get="{% url 'get_head_sections' %}"
+                    hx-target="#sectionsContainer"
+
+                    hx-vals='{ 
+                    "startSlice": "{{ start_slice|add:search_interval }}", 
+                    "endSlice": "{{ end_slice|add:search_interval }}" 
+                    }'
+                    {% endif %}>
+                    <span aria-hidden="true">Next</span>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+</div>

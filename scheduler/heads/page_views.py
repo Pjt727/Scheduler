@@ -46,11 +46,13 @@ def grid_overview(request: HttpRequest) -> HttpResponse:
 def manage_sections(request: HttpRequest) -> HttpResponse:
     professor = Professor.objects.get(user=request.user)
     preferences = Preferences.get_or_create_from_professor(professor)
+    department = preferences.claim_department
     courses_from_preferences = map(lambda p: p.course, preferences.claim_courses.all())
 
     context = {
             "terms": Term.objects.all(),
             "departments": Department.objects.all(),
+            "selected_department": department,
             "subjects": Subject.objects.all(),
             "courses_from_preferences": courses_from_preferences,
             }

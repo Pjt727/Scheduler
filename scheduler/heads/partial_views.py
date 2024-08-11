@@ -142,24 +142,26 @@ def professor_display(request: HttpRequest, professor_pk: str) -> HttpResponse:
 
 @login_required
 def get_head_sections(request: HttpRequest) -> HttpResponse:
-    courses = request.GET.getlist("course", [])
-    only_search_on_courses = request.GET.get("isCourseSearch") is None
+    data = request.GET
+    courses = data.getlist("course", [])
+    only_search_on_courses = data.get("isCourseSearch") is None
 
     subject = None
     department = None
     if only_search_on_courses:
-        department = request.GET.get("department")
-        subject = request.GET.get("subject")
+        department = data.get("department")
+        subject = data.get("subject")
 
     if not isinstance(courses, list):
         courses = [courses]
 
-    term = request.GET["term"]
+    term = data["term"]
 
-    is_available = request.GET.get("available", False)
+    is_available = data.get("available", False)
 
-    start_slice = int(request.GET.get("startSlice", 0))
-    end_slice = int(request.GET.get("endSlice", Section.SEARCH_INTERVAL))
+    start_slice = int(data.get("startSlice", 0))
+    end_slice = int(data.get("endSlice", Section.SEARCH_INTERVAL))
+    print(start_slice, end_slice)
     original_length = 0
     context = {
         "sections": [],
@@ -173,11 +175,10 @@ def get_head_sections(request: HttpRequest) -> HttpResponse:
     if not courses:
         return render(request, "sections.html", context=context)
 
-    professor = Professor.objects.get(user=request.user)
     if only_search_on_courses:
         if subject == "any" and department != "any":
             section_qs = Section.objects.filter(
-                term=term, course__department=department
+                term=term, course__subject__department=department
             )
         elif subject != "any":
             section_qs = Section.objects.filter(term=term, course__subject=subject)
@@ -197,13 +198,31 @@ def get_head_sections(request: HttpRequest) -> HttpResponse:
             sections_with_any_open_meetings | sections_with_any_open_primaries
         )
 
-    # Exclude all meetings that overlap with professor meetings
-    if does_fit:
-        section_qs = section_qs.exclude(professor.section_in_meetings(term))
+    section_qs.order_by("course__pk")
 
-    section_qs = Section.sort_sections(
-        section_qs=section_qs.distinct(), sort_column=sort_column, sort_type=sort_type
-    )
+    # terrible way to do this lol i just dont like
+    #    the orm
+    course_hueristic: list[dict] = []
+    courses_left = Section.SEARCH_INTERVAL
+    last_course_pk = None
+    for section in section_qs.all():
+
+        if section.course.pk == last_course_pk:
+            pass
+        else:
+            course_hueristic.append({
+                "course": section.course,
+                "sections": [section],
+                })
+            courses_left -= 1
+
+        if courses_left == 0: break
+    # adding some more fields
+
+
+
+
+
     original_length = len(section_qs)
     sections = section_qs[start_slice:end_slice]
     context["sections"] = sections

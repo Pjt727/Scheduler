@@ -251,7 +251,7 @@ def section_search(request: HttpRequest) -> HttpResponse:
     if only_search_on_courses:
         if subject == "any" and department != "any":
             section_qs = Section.objects.filter(
-                term=term, course__department=department
+                term=term, course__subject__department=department
             )
         elif subject != "any":
             section_qs = Section.objects.filter(term=term, course__subject=subject)
