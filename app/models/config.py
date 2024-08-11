@@ -1,10 +1,10 @@
 from typing import Iterator
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine, Integer
+from sqlalchemy.orm import Mapped, Session, mapped_column
 from sqlalchemy.orm import DeclarativeBase
 
 class Base(DeclarativeBase):
-    pass
+    rowid: Mapped[int]  = mapped_column(Integer, system=True)
 
 # Database configuration
 DB_URI = 'sqlite:///scheduler.db'

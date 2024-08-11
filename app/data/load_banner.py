@@ -1,8 +1,13 @@
 from data.helpers import *
+from collections import Counter
+from models.config import session
+from models.core import *
 import os
 import json
 from dataclasses import dataclass, field, fields
 from typing import List
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.exc  import IntegrityError
 import re
 
 BANNER_DIR = os.path.join("data", "banner")
@@ -46,7 +51,7 @@ class MeetingTime:
         })
 
 @dataclass
-class Section:
+class BannerSection:
     id: int
     term: str
     termDesc: str
@@ -83,30 +88,78 @@ class Section:
             if k in [f.name for f in fields(cls)]
         })
 
+def merge_sections(term: Term, courses: set[Course], banner_sections: list[BannerSection]):
+    professors: set[Professor] = set()
+    schools: set[School] = set()
+    subjects: set[Subject] = set()
+    sections: set[Section] = set()
+    buildings: set[Building] = set()
+    room: set[Room] = set()
+    meetings: list[Meeting] = []
 
+    for banner_section in banner_sections:
+        # professors
+        for fac in banner_section.faculty:
+            names = fac.displayName.split(", ")
+            if len(names) > 1:
+                last_name, first_name = names
+            elif len(names) == 1:
+                last_name, first_name = "", names[0]
+            else:
+                first_name, last_name = "", ""
 
+            email_address = fac.emailAddress
+            if not email_address:
+                email_address = None
+            professors.add(Professor(first_name=first_name,
+                      last_name=last_name, email=email_address))
+    # probably would be fast to use
+    #   https://docs.sqlalchemy.org/en/20/dialects/sqlite.html#insert-on-conflict-upsert
+    # but this is easier
+    for professor in professors:
+        insert_prof = insert(Professor).values(
+                first_name=professor.first_name,
+                last_name=professor.last_name,
+                email=professor.email
+                )
+        update_prof = insert_prof.on_conflict_do_update(
+                index_elements=[ Professor.email ],
+                set_=dict(last_name=professor.last_name, first_name=professor.first_name)
+                )
+        session.execute(update_prof)
+
+    
+    session.commit()
 
 
 def facilitate_section_merge():
     files = os.listdir(BANNER_DIR)
+    term_pattern = r"(Fall|Spring|Winter|Summer)(2[0-9]{3})"
     for file_name in files:
         if not file_name.startswith("sections"): continue
+        sections: list[BannerSection] = []
+        matches = re.search(term_pattern, file_name)
+        assert matches is not None
+        term_season = matches.group(1)
+        term_year = int(matches.group(2))
+        try:
+            term = Term(season=term_season, year=term_year)
+            session.add(term)
+            session.commit()
+        except IntegrityError:
+            print_warning(f"Skipping term {term_season} {term_year} because it already exists")
+            session.rollback()
+            continue
 
-        sections: list[Section] = []
-        term_pattern = r"(Fall|Spring|Winter|Summer)(2[0-9]{3})"
+        print_info(f"Loading banner classes for {term_season} {term_year}")
         with open(os.path.join(BANNER_DIR, file_name), "r") as file:
             data = json.load(file)
-            matches = re.search(term_pattern, file_name)
-            assert matches is not None
-            term = matches.group(1)
-            year = int(matches.group(2))
-            print_info(f"Loading banner classes for {term} {year}")
             for section in data:
                 meetingsFaculty = [MeetingTime.from_dict(m) for m in section["meetingsFaculty"]]
                 faculty = [Faculty.from_dict(m) for m in section["faculty"]]
                 section["meetingsTimes"] = meetingsFaculty
                 section["faculty"] = faculty
-                sections.append(Section.from_dict(section))
-
-            print_info(f"Finished loading banner classes for {term} {year}")
+                sections.append(BannerSection.from_dict(section))
+        merge_sections(term, set(), sections)
+        print_info(f"Finished loading banner classes for {term_season} {term_year}")
 

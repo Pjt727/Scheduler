@@ -1,7 +1,8 @@
-from sqlalchemy import ForeignKey, Integer, String, Boolean, Enum, ForeignKeyConstraint, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, Enum, ForeignKeyConstraint, DateTime
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import Mapped, validates
 from sqlalchemy.orm import mapped_column, relationship
+from sqlalchemy.util import hybridmethod, hybridproperty
 from models.config import session, Base
 import enum
 from datetime import time, datetime
@@ -11,20 +12,29 @@ from typing import Optional, List
 #     and all default information
 #
 # Notes:
-#  1. unique id's are useful in place of composite pk's for lookups (forms and such); still,
-#     when possible composite keys are used for database integrity
+#  1. unique id's are useful in place of composite pk's for lookups (forms and such);
+#        so use rowid from sqlite
 ###############################
 
 
 class Professor(Base):
     __tablename__ = "Professors"
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True, autoincrement=True)
+    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
     first_name: Mapped[str] = mapped_column(String())
     last_name: Mapped[str] = mapped_column(String())
-    email_name: Mapped[Optional[str]] = mapped_column(String(), unique=True)
+    email: Mapped[Optional[str]] = mapped_column(String(), unique=True)
     title: Mapped[str] = mapped_column(String(), default="Professor")
 
     sections: Mapped[List["Section"]] = relationship(back_populates="professor")
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="professor")
+
+    def __hash__(self):
+        return hash((self.first_name, self.last_name, self.email))
+
+    def __eq__(self, other):
+        if not isinstance(other, Professor):
+            return False
+        return (self.first_name, self.last_name, self.email) == (other.first_name, other.last_name, other.email)
 
 class Building(Base):
     __tablename__ = "Buildings"
@@ -32,6 +42,15 @@ class Building(Base):
     name: Mapped[str] = mapped_column(String())
 
     rooms: Mapped[List["Room"]] = relationship(back_populates="building")
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="building")
+
+    def __hash__(self):
+        return hash(self.code)
+
+    def __eq__(self, other):
+        if not isinstance(other, Building):
+            return False
+        return self.code == other.code
 
 
 class RoomClassification(enum.Enum):
@@ -40,7 +59,6 @@ class RoomClassification(enum.Enum):
 
 class Room(Base):
     __tablename__ = "Rooms"
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True, unique=True)
     number: Mapped[int] = mapped_column(String(), primary_key=True)
     building_code: Mapped[str] = mapped_column(String(), ForeignKey("Buildings.code"), primary_key=True)
     capacity: Mapped[int] = mapped_column(String(length=2), default=0)
@@ -48,6 +66,15 @@ class Room(Base):
     is_general_purpose: Mapped[bool] = mapped_column(Boolean())
 
     building: Mapped["Building"] = relationship(back_populates="rooms")
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="room", overlaps="meetings")
+
+    def __hash__(self):
+        return hash((self.number, self.building_code))
+
+    def __eq__(self, other):
+        if not isinstance(other, Room):
+            return False
+        return (self.number, self.building_code) == (other.number, self.building_code)
 
 class Day(enum.Enum):
     MON = "Monday"
@@ -62,13 +89,12 @@ class Day(enum.Enum):
 #   to avoid dealing with timezones and make checks easier
 class TimeBlock(Base):
     __tablename__ = "TimeBlocks"
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True, unique=True)
     day: Mapped[Day] = mapped_column(Enum(Day), primary_key=True)
     number: Mapped[int] =mapped_column(Integer(), primary_key=True) 
     start_minutes_from_est: Mapped[int] = mapped_column(Integer())
     end_minutes_from_est: Mapped[int] = mapped_column(Integer())
 
-    school_allocations: Mapped["SchoolAllocation"] = relationship(back_populates="time_blocks")
+    school_allocations: Mapped[List["SchoolAllocation"]] = relationship(back_populates="time_block")
 
     @validates('end_minutes_from_est')
     def validate_end_time(self, _, end_minutes_from_est):
@@ -86,6 +112,14 @@ class TimeBlock(Base):
         hours, minutes = divmod(int(self.end_minutes_from_est), 60)
         return time(hours, minutes)
 
+    def __hash__(self):
+        return hash((self.day, self.number))
+
+    def __eq__(self, other):
+        if not isinstance(other, TimeBlock):
+            return False
+        return (self.number, self.day) == (other.number, self.day)
+
 # Marist really blurs the line in their communication on what a school versus
 #   a deparment really is...
 # There is no list of "departments" that I could find, but I was told it was valuable
@@ -100,6 +134,14 @@ class School(Base):
     allocations: Mapped[List["SchoolAllocation"]] = relationship(back_populates="school")
     subjects: Mapped[List["Subject"]] = relationship(back_populates="school")
 
+    def __hash__(self):
+        return hash((self.code, self.name))
+
+    def __eq__(self, other):
+        if not isinstance(other, School):
+            return False
+        return (self.code, self.name) == (other.code, self.name)
+
 # Registrar may try to say this is "deparment" allocationbut it is school
 #    allocation
 # Keep in mind there is not history of school allocations so if this changes
@@ -108,7 +150,6 @@ class School(Base):
 #    correctly calculate allocation numbers
 class SchoolAllocation(Base):
     __tablename__ = "SchoolAllocations"
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True, unique=True)
     school_code: Mapped[str] = mapped_column(String(), ForeignKey("Schools.code"), primary_key=True)
     time_block_number: Mapped[int] = mapped_column(String(), primary_key=True)
     time_block_day: Mapped[Day] = mapped_column(Enum(Day), primary_key=True)
@@ -122,6 +163,15 @@ class SchoolAllocation(Base):
             )
     __table_args__ = (_fk_c,)
 
+    def __hash__(self):
+        return hash((self.school_code, self.time_block_number, self.time_block_day))
+
+    def __eq__(self, other):
+        if not isinstance(other, SchoolAllocation):
+            return False
+        return (self.school_code, self.time_block_number, self.time_block_day) == \
+            (other.school_code, self.time_block_number, self.time_block_day)
+
 
 class Subject(Base):
     __tablename__ = "Subjects"
@@ -132,10 +182,18 @@ class Subject(Base):
     school: Mapped["School"] = relationship(back_populates="subjects")
     courses: Mapped[List["Course"]] = relationship(back_populates="subject")
 
+    def __hash__(self):
+        return hash(self.code)
+
+    def __eq__(self, other):
+        if not isinstance(other, Subject):
+            return False
+        return self.code == other.code
+
+
 class Course(Base):
     __tablename__ = "Courses"
     SEARCH_INTERVAL = 10
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True)
     code: Mapped[str] = mapped_column(String(), primary_key=True)
     subject_code: Mapped[int] = mapped_column(String(), ForeignKey("Subjects.code"), primary_key=True)
     credits: Mapped[int] = mapped_column(Integer())
@@ -144,22 +202,31 @@ class Course(Base):
     banner_id: Mapped[Optional[str]] = mapped_column(String())
 
     subject: Mapped["Subject"] = relationship(back_populates="courses")
-    sections: Mapped[List["Section"]] = relationship(back_populates="coures")
+    sections: Mapped[List["Section"]] = relationship(back_populates="course")
+
+    def __hash__(self):
+        return hash((self.code, self.subject_code))
+
+    def __eq__(self, other):
+        if not isinstance(other, Course):
+            return False
+        return (self.code, self.subject_code) == (other.code, other.subject_code)
 
 
 class Season(enum.Enum):
-    WINTER = "Winter"
-    SPRING = "Spring"
-    SUMMER = "Summer"
-    FALL = "Fall"
+    WINTER = "WINTER"
+    SPRING = "SPRING"
+    SUMMER = "SUMMER"
+    FALL = "FALL"
 
 class Term(Base):
     __tablename__ = "Terms"
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True, unique=True)
     season: Mapped[Season] = mapped_column(Enum(Season), primary_key=True)
     year: Mapped[int] = mapped_column(Integer(), primary_key=True)
 
     sections: Mapped[List["Section"]] = relationship(back_populates="term")
+
+
 
     @staticmethod
     def recent_order() -> tuple:
@@ -171,11 +238,18 @@ class Term(Base):
             (Term.season == Season.FALL, 1),
             else_=0).desc()
 
+    def __hash__(self):
+        return hash((self.season, self.year))
+
+    def __eq__(self, other):
+        if not isinstance(other, Term):
+            return False
+        return (self.season, self.year) == (other.season, other.year)
+
 
 class Section(Base):
     __tablename__ = "Sections"
     SEARCH_INTERVAL = 10
-    id: Mapped[int] = mapped_column(Integer(), autoincrement=True, unique=True)
     number: Mapped[str] = mapped_column(String(), primary_key=True)
     course_code: Mapped[str] = mapped_column(String(), primary_key=True)
     subject_code: Mapped[str] = mapped_column(String(), primary_key=True)
@@ -189,6 +263,7 @@ class Section(Base):
     course: Mapped["Course"] = relationship(back_populates="sections")
     term: Mapped["Term"] = relationship(back_populates="sections")
     professor: Mapped["Professor"] = relationship(back_populates="sections")
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="section")
 
     _fk_c_to_term = ForeignKeyConstraint(
             ["term_season", "term_year"],
@@ -199,6 +274,15 @@ class Section(Base):
             ["Courses.code", "Courses.subject_code"],
             )
     __table_args__ = (_fk_c_to_term, _fk_c_to_course,)
+
+    def __hash__(self):
+        return hash((self.number, self.course_code, self.subject_code, self.term_season, self.term_year))
+
+    def __eq__(self, other):
+        if not isinstance(other, Section):
+            return False
+        return (self.number, self.course_code, self.subject_code, self.term_season, self.term_year) == \
+                (other.number, other.course_code, other.subject_code, other.term_season, other.term_year)
 
 
 class Meeting(Base):
@@ -224,13 +308,18 @@ class Meeting(Base):
     style_code: Mapped[Optional[str]] = mapped_column(String(), default="Lec")
     style_description: Mapped[Optional[str]] = mapped_column(String(), default="Lecture")
 
+    section: Mapped["Section"] = relationship(back_populates="meetings")
+    room: Mapped["Room"] = relationship(back_populates="meetings", overlaps="meetings")
+    building: Mapped["Building"] = relationship(back_populates="meetings", overlaps="meetings,room")
+    professor: Mapped["Professor"] = relationship(back_populates="meetings")
+
     _fk_c_to_section = ForeignKeyConstraint(
             ["section_number", "course_code", "subject_code", "term_season", "term_year"],
             ["Sections.number", "Sections.course_code", "Sections.subject_code", "Sections.term_season", "Sections.term_year"],
             )
     _fk_c_to_room = ForeignKeyConstraint(
             ["room_number", "building_code"],
-            ["Sections.number", "Sections.course_code"],
+            ["Rooms.number", "Rooms.building_code"],
             )
 
     __table_args__ = (_fk_c_to_room, _fk_c_to_section)
