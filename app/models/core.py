@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, Boolean, Enum, ForeignKeyConstraint, DateTime
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Boolean, Enum, ForeignKeyConstraint, DateTime, UniqueConstraint
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import Mapped, validates
 from sqlalchemy.orm import mapped_column, relationship
@@ -23,7 +23,8 @@ class Professor(Base):
     first_name: Mapped[str] = mapped_column(String())
     last_name: Mapped[str] = mapped_column(String())
     email: Mapped[Optional[str]] = mapped_column(String(), unique=True)
-    title: Mapped[str] = mapped_column(String(), default="Professor")
+    default_title = "Professor"
+    title: Mapped[str] = mapped_column(String(), default=default_title, server_default=default_title)
 
     sections: Mapped[List["Section"]] = relationship(back_populates="professor")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="professor")
@@ -56,15 +57,18 @@ class Building(Base):
 class RoomClassification(enum.Enum):
     LAB = "Lab"
     LECTURE = "Lecture"
+    WEB = "On-Line"
 
 class Room(Base):
     __tablename__ = "Rooms"
     number: Mapped[int] = mapped_column(String(), primary_key=True)
     building_code: Mapped[str] = mapped_column(String(), ForeignKey("Buildings.code"), primary_key=True)
-    capacity: Mapped[int] = mapped_column(String(length=2), default=0)
-    classification: Mapped[enum.Enum] = mapped_column(Enum(RoomClassification))
-    is_general_purpose: Mapped[bool] = mapped_column(Boolean())
-
+    default_capacity = 0
+    capacity: Mapped[int] = mapped_column(String(length=2), default=default_capacity, server_default=str(default_capacity))
+    classification: Mapped[Optional[enum.Enum]] = mapped_column(Enum(RoomClassification))
+    default_is_general_purpose = False
+    is_general_purpose: Mapped[bool] = mapped_column(Boolean(), default=default_is_general_purpose,
+                                                     server_default="false")
     building: Mapped["Building"] = relationship(back_populates="rooms")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="room", overlaps="meetings")
 
@@ -176,7 +180,7 @@ class SchoolAllocation(Base):
 class Subject(Base):
     __tablename__ = "Subjects"
     code: Mapped[str] = mapped_column(String(length=10), primary_key=True)
-    school_code: Mapped[str] = mapped_column(String(), ForeignKey("Schools.code"))
+    school_code: Mapped[Optional[str]] = mapped_column(String(), ForeignKey("Schools.code"))
     description: Mapped[Optional[str]] = mapped_column(String())
 
     school: Mapped["School"] = relationship(back_populates="subjects")
@@ -225,8 +229,7 @@ class Term(Base):
     year: Mapped[int] = mapped_column(Integer(), primary_key=True)
 
     sections: Mapped[List["Section"]] = relationship(back_populates="term")
-
-
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="term")
 
     @staticmethod
     def recent_order() -> tuple:
@@ -253,11 +256,11 @@ class Section(Base):
     number: Mapped[str] = mapped_column(String(), primary_key=True)
     course_code: Mapped[str] = mapped_column(String(), primary_key=True)
     subject_code: Mapped[str] = mapped_column(String(), primary_key=True)
-    term_season: Mapped[Season] = mapped_column(String(), primary_key=True)
+    term_season: Mapped[Season] = mapped_column(Enum(Season), primary_key=True)
     term_year: Mapped[Season] = mapped_column(Integer(), primary_key=True)
     professor_id: Mapped[Optional[Professor]] = mapped_column(Integer(), ForeignKey("Professors.id"))
     campus: Mapped[str] = mapped_column(String())
-    soft_capacity: Mapped[int] = mapped_column(Integer(), default=0)
+    soft_capacity: Mapped[int] = mapped_column(Integer(), default=0, server_default="0")
     banner_course: Mapped[Optional[str]] = mapped_column(String())
 
     course: Mapped["Course"] = relationship(back_populates="sections")
@@ -292,7 +295,7 @@ class Meeting(Base):
     section_number: Mapped[str] = mapped_column(String())
     course_code: Mapped[str] = mapped_column(String())
     subject_code: Mapped[str] = mapped_column(String())
-    term_season: Mapped[Season] = mapped_column(String())
+    term_season: Mapped[Season] = mapped_column(Enum(Season))
     term_year: Mapped[Season] = mapped_column(Integer())
     day: Mapped[Optional[Day]] = mapped_column(Enum(Day))
     start_minutes_from_est: Mapped[Optional[int]] = mapped_column(Integer())
@@ -305,11 +308,11 @@ class Meeting(Base):
     # these probably wont matter all that much
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime())
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime())
-    style_code: Mapped[Optional[str]] = mapped_column(String(), default="Lec")
-    style_description: Mapped[Optional[str]] = mapped_column(String(), default="Lecture")
+    style_code: Mapped[Optional[str]] = mapped_column(String(), default="Lec", server_default="Lec")
 
     section: Mapped["Section"] = relationship(back_populates="meetings")
     room: Mapped["Room"] = relationship(back_populates="meetings", overlaps="meetings")
+    term: Mapped["Term"] = relationship(back_populates="meetings")
     building: Mapped["Building"] = relationship(back_populates="meetings", overlaps="meetings,room")
     professor: Mapped["Professor"] = relationship(back_populates="meetings")
 
@@ -321,8 +324,11 @@ class Meeting(Base):
             ["room_number", "building_code"],
             ["Rooms.number", "Rooms.building_code"],
             )
-
-    __table_args__ = (_fk_c_to_room, _fk_c_to_section)
+    _fk_c_to_term = ForeignKeyConstraint(
+            ["term_season", "term_year"],
+            ["Terms.season", "Terms.year"],
+            )
+    __table_args__ = (_fk_c_to_room, _fk_c_to_section, _fk_c_to_term)
 
     @staticmethod
     def day_time_sort() -> tuple:
