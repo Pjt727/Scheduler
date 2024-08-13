@@ -3,6 +3,7 @@ from collections import Counter
 from models.config import session
 from models.core import *
 from datetime import datetime
+from data.hard_coded_defaults import *
 import os
 import json
 from dataclasses import dataclass, field, fields
@@ -13,6 +14,34 @@ from sqlalchemy.exc  import IntegrityError
 import re
 
 BANNER_DIR = os.path.join("data", "banner")
+
+@dataclass
+class CourseData:
+    id: int
+    termEffective: str
+    courseNumber: str
+    subject: str
+    subjectCode: str
+    college: str
+    collegeCode: str
+    department: str
+    departmentCode: str
+    courseTitle: str
+    creditHourLow: int
+    lectureHourLow: int
+    billHourLow: int
+    subjectDescription: str
+    termStart: str
+    termEnd: str
+    preRequisiteCheckMethodCde: str
+
+    @classmethod
+    def from_dict(cls, env):
+        return cls(**{
+            k: v for k, v in env.items() 
+            if k in [f.name for f in fields(cls)]
+        })
+
 
 @dataclass
 class Faculty:
@@ -329,4 +358,53 @@ def facilitate_section_merge():
         merge_sections(term, sections)
 
         print_info(f"Finished loading banner classes for {term_season} {term_year}")
+
+def course_merge():
+    with open(os.path.join(BANNER_DIR, "courses.json")) as file:
+        data = json.load(file)
+        course_datas = [CourseData.from_dict(c) for c in data]
+        subjects: list[dict] = []
+        courses: list[dict] = []
+        for course in course_datas:
+             school_code = None
+             for code, valid_departments in SCHOOL_CODE_AND_VALID_DEPARTMENTS:
+                 if course.department in valid_departments:
+                     school_code = code
+                     break
+             subject_dict = {
+                     "code": course.subjectCode,
+                     "school_code": school_code,
+                     "description": course.subjectDescription.replace("amp;", ""),
+                    }
+             # probably dont need this check since the database should take care of duplicates
+             if subject_dict not in subjects:
+                 subjects.append(subject_dict)
+             course_dict = {
+                     "code": course.courseNumber,
+                     "subject_code": course.subjectCode,
+                     "credits": course.creditHourLow,
+                     "name": course.courseTitle.replace("amp;", ""),
+                     # sadge theres no description
+                     "banner_id": course.id,
+                     }
+             # probably dont need this check since the database should take care of duplicates
+             courses.append(course_dict)
+
+        add_subjects = sqlite_insert(Subject).values(subjects)
+        add_subjects = add_subjects.on_conflict_do_update(
+                set_= { 
+                       "description": add_subjects.excluded.description, 
+                       "school_code": add_subjects.excluded.school_code, 
+                       }
+                )
+        add_courses = sqlite_insert(Course).values(courses)
+        add_courses = add_courses.on_conflict_do_update(
+                set_={ 
+                      "description": add_courses.excluded.description, 
+                      "credits": add_courses.excluded.credits, 
+                      }
+                )
+        session.execute(add_subjects)
+        session.execute(add_courses)
+        session.commit()
 

@@ -266,7 +266,7 @@ class Section(Base):
     course: Mapped["Course"] = relationship(back_populates="sections")
     term: Mapped["Term"] = relationship(back_populates="sections")
     professor: Mapped["Professor"] = relationship(back_populates="sections")
-    meetings: Mapped[List["Meeting"]] = relationship(back_populates="section")
+    meetings: Mapped[List["Meeting"]] = relationship(back_populates="section", overlaps="meetings")
 
     _fk_c_to_term = ForeignKeyConstraint(
             ["term_season", "term_year"],
@@ -310,9 +310,9 @@ class Meeting(Base):
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime())
     style_code: Mapped[Optional[str]] = mapped_column(String(), default="Lec", server_default="Lec")
 
-    section: Mapped["Section"] = relationship(back_populates="meetings")
+    section: Mapped["Section"] = relationship(back_populates="meetings", overlaps="meetings")
     room: Mapped["Room"] = relationship(back_populates="meetings", overlaps="meetings")
-    term: Mapped["Term"] = relationship(back_populates="meetings")
+    term: Mapped["Term"] = relationship(back_populates="meetings", overlaps="meetings,section")
     building: Mapped["Building"] = relationship(back_populates="meetings", overlaps="meetings,room")
     professor: Mapped["Professor"] = relationship(back_populates="meetings")
 

@@ -17,7 +17,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.command == 'load':
         if args.data == "banner":
-            facilitate_section_merge()
+            course_merge()
         elif args.data == "default":
             raise NotImplemented()
         elif args.data == "database":
