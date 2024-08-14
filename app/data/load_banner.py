@@ -247,12 +247,12 @@ def merge_sections(term: Term, banner_sections: list[BannerSection]):
             if room_number is not None and building_code is not None:
                 room_dict = {
                         "building_code": building_code,
-                        "classifcation": classifcation,
+                        "classification": classifcation,
                         "number": room_number,
                         "is_general_purpose": Room.default_is_general_purpose,
                         "capacity": Room.default_capacity,
                         }
-                if room_dict in rooms:
+                if room_dict not in rooms:
                     rooms.append(room_dict)
             ## making meetings
             day_is_day: list[tuple[Day, bool]] = [
@@ -279,6 +279,7 @@ def merge_sections(term: Term, banner_sections: list[BannerSection]):
                         "course_code": course_dict["code"],
                         "subject_code": subject_dict["code"],
                         "day": day,
+                        "professor": professor,
                         "start_minutes_from_est":start_time,
                         "end_minutes_from_est": end_time,
                         "room_number": room_number,
@@ -407,4 +408,8 @@ def course_merge():
         session.execute(add_subjects)
         session.execute(add_courses)
         session.commit()
+
+def load_everything_from_banner():
+    facilitate_section_merge()
+    course_merge()
 
