@@ -369,7 +369,9 @@ def course_merge():
         for course in course_datas:
              school_code = None
              for code, valid_departments in SCHOOL_CODE_AND_VALID_DEPARTMENTS:
-                 if course.department in valid_departments:
+                 # college not department has literally like one different in code that
+                 #   completely screwed over the CMPT subject
+                 if course.collegeCode in valid_departments:
                      school_code = code
                      break
              subject_dict = {

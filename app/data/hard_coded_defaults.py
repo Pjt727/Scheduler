@@ -14,8 +14,10 @@ SCHOOL_CODE_AND_VALID_DEPARTMENTS: list[tuple[str, list[str]]] = [
         ("SI", ["School of Science", "Science"]),
         ("SB", ["School Behavioral/Social Sci"]),
         ("PP", ["Professional Programs"]),
-        ("MSCS", ["MSCS Computer Science"]),
+        ("CS", ["MSCS Computer Science"]),
         ]
+# THERE IS EXACTLY ONE COURSE WHICH HAS A SUBJECT CODE OF CMPT AND
+# cat data/banner/courses.json | jq 'group_by(.department, .subjectCode) | map({department: .[0].department, subjectCode: .[0].subjectCode, count: length})' | rg CMPT -C 2
 
 
 def load_defaults():
@@ -376,6 +378,7 @@ def load_defaults():
             SchoolAllocation(school_code="PP", allocation=1, group=20, time_block_day=Day.THU, time_block_number=18),
             SchoolAllocation(school_code="PP", allocation=1, group=20, time_block_day=Day.THU, time_block_number=24),
             ]
+
     ROOMS: list[Room] = [
             Room(building_code="HC" ,number="1021"  ,capacity=30, classification= MeetingClassification.LECTURE),
             Room(building_code="HC" ,number="2005"  ,capacity=32, classification=MeetingClassification.LECTURE) ,
