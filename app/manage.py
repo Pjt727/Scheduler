@@ -1,5 +1,6 @@
 from data.helpers import *
 from data.load_banner import *
+from data.hard_coded_defaults import load_defaults
 # TODO change how models are imported
 from models.config import Base, engine
 from models.core import *
@@ -19,7 +20,7 @@ if __name__ == "__main__":
         if args.data == "banner":
             load_everything_from_banner()
         elif args.data == "default":
-            raise NotImplemented()
+            load_defaults()
         elif args.data == "database":
             simple_create_database()
 

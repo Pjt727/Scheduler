@@ -234,11 +234,11 @@ def merge_sections(term: Term, banner_sections: list[BannerSection]):
                 if building_dict not in buildings:
                     buildings.append(building_dict)
             if banner_meeting.meetingType == "LEC":
-                classifcation = RoomClassification.LECTURE
+                classifcation = MeetingClassification.LECTURE
             elif banner_meeting.meetingType == "LAB":
-                classifcation = RoomClassification.LAB
+                classifcation = MeetingClassification.LAB
             elif banner_meeting.meetingType == "WEB":
-                classifcation = RoomClassification.WEB
+                classifcation = MeetingClassification.WEB
             else:
                 classifcation = None
             # rooms

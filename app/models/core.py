@@ -54,19 +54,20 @@ class Building(Base):
         return self.code == other.code
 
 
-class RoomClassification(enum.Enum):
+class MeetingClassification(enum.Enum):
     LAB = "Lab"
     LECTURE = "Lecture"
     WEB = "On-Line"
 
 class Room(Base):
     __tablename__ = "Rooms"
+    default_capacity = 0
+    default_is_general_purpose = False
+
     number: Mapped[int] = mapped_column(String(), primary_key=True)
     building_code: Mapped[str] = mapped_column(String(), ForeignKey("Buildings.code"), primary_key=True)
-    default_capacity = 0
     capacity: Mapped[int] = mapped_column(String(length=2), default=default_capacity, server_default=str(default_capacity))
-    classification: Mapped[Optional[enum.Enum]] = mapped_column(Enum(RoomClassification))
-    default_is_general_purpose = False
+    classification: Mapped[Optional[enum.Enum]] = mapped_column(Enum(MeetingClassification))
     is_general_purpose: Mapped[bool] = mapped_column(Boolean(), default=default_is_general_purpose,
                                                      server_default="false")
     building: Mapped["Building"] = relationship(back_populates="rooms")
@@ -152,8 +153,11 @@ class School(Base):
 #    views on previous years using these values my also change
 # There would have to be history both this change and of rooms to 
 #    correctly calculate allocation numbers
+# Technically the group + school_code dictates the alloaction
 class SchoolAllocation(Base):
     __tablename__ = "SchoolAllocations"
+    group: Mapped[int] = mapped_column(Integer())
+    allocation: Mapped[int] = mapped_column(Integer())
     school_code: Mapped[str] = mapped_column(String(), ForeignKey("Schools.code"), primary_key=True)
     time_block_number: Mapped[int] = mapped_column(String(), primary_key=True)
     time_block_day: Mapped[Day] = mapped_column(Enum(Day), primary_key=True)
@@ -315,6 +319,16 @@ class Meeting(Base):
     term: Mapped["Term"] = relationship(back_populates="meetings", overlaps="meetings,section")
     building: Mapped["Building"] = relationship(back_populates="meetings", overlaps="meetings,room")
     professor: Mapped["Professor"] = relationship(back_populates="meetings")
+
+    @validates('end_minutes_from_est')
+    def validate_end_time(self, _, end_minutes_from_est):
+        if end_minutes_from_est is None and self.start_minutes_from_est is None:
+            return end_minutes_from_est
+        if not (end_minutes_from_est and self.start_minutes_from_est):
+            raise ValueError("Both end minutes and startminutes must be set together")
+        if int(end_minutes_from_est) <= int(self.start_minutes_from_est):
+            raise ValueError("End time must be greater than start time")
+        return end_minutes_from_est
 
     _fk_c_to_section = ForeignKeyConstraint(
             ["section_number", "course_code", "subject_code", "term_season", "term_year"],
