@@ -29,3 +29,4 @@ app, rt = fast_app(hdrs=hdrs, pico=False, surreal=False, live=True)
 PARTIALS_PREFIX = "/partials"
 ASSETS_PATH = "./assets"
 SCRIPTS_PATH = "./scripts"
+CSS_PATH = "./css"

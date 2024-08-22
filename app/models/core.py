@@ -1,4 +1,15 @@
-from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Boolean, Enum, ForeignKeyConstraint, DateTime, UniqueConstraint
+from sqlalchemy import (
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    Boolean,
+    Enum,
+    ForeignKeyConstraint,
+    DateTime,
+    UniqueConstraint,
+)
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import Mapped, validates
 from sqlalchemy.orm import mapped_column, relationship
@@ -24,7 +35,9 @@ class Professor(Base):
     last_name: Mapped[str] = mapped_column(String())
     email: Mapped[Optional[str]] = mapped_column(String(), unique=True)
     default_title = "Professor"
-    title: Mapped[str] = mapped_column(String(), default=default_title, server_default=default_title)
+    title: Mapped[str] = mapped_column(
+        String(), default=default_title, server_default=default_title
+    )
 
     sections: Mapped[List["Section"]] = relationship(back_populates="professor")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="professor")
@@ -35,7 +48,12 @@ class Professor(Base):
     def __eq__(self, other):
         if not isinstance(other, Professor):
             return False
-        return (self.first_name, self.last_name, self.email) == (other.first_name, other.last_name, other.email)
+        return (self.first_name, self.last_name, self.email) == (
+            other.first_name,
+            other.last_name,
+            other.email,
+        )
+
 
 class Building(Base):
     __tablename__ = "Buildings"
@@ -59,17 +77,23 @@ class MeetingClassification(enum.Enum):
     LECTURE = "Lecture"
     WEB = "On-Line"
 
+
 class Room(Base):
     __tablename__ = "Rooms"
     default_capacity = 0
     default_is_general_purpose = False
 
     number: Mapped[int] = mapped_column(String(), primary_key=True)
-    building_code: Mapped[str] = mapped_column(String(), ForeignKey("Buildings.code"), primary_key=True)
-    capacity: Mapped[int] = mapped_column(String(length=2), default=default_capacity, server_default=str(default_capacity))
+    building_code: Mapped[str] = mapped_column(
+        String(), ForeignKey("Buildings.code"), primary_key=True
+    )
+    capacity: Mapped[int] = mapped_column(
+        String(length=2), default=default_capacity, server_default=str(default_capacity)
+    )
     classification: Mapped[Optional[enum.Enum]] = mapped_column(Enum(MeetingClassification))
-    is_general_purpose: Mapped[bool] = mapped_column(Boolean(), default=default_is_general_purpose,
-                                                     server_default="false")
+    is_general_purpose: Mapped[bool] = mapped_column(
+        Boolean(), default=default_is_general_purpose, server_default="false"
+    )
     building: Mapped["Building"] = relationship(back_populates="rooms")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="room", overlaps="meetings")
 
@@ -81,6 +105,7 @@ class Room(Base):
             return False
         return (self.number, self.building_code) == (other.number, self.building_code)
 
+
 class Day(enum.Enum):
     MON = "Monday"
     TUE = "Tuesday"
@@ -90,18 +115,19 @@ class Day(enum.Enum):
     SAT = "Saturday"
     SUN = "Sunday"
 
+
 # time is set up as minutes since EST 00:00
 #   to avoid dealing with timezones and make checks easier
 class TimeBlock(Base):
     __tablename__ = "TimeBlocks"
     day: Mapped[Day] = mapped_column(Enum(Day), primary_key=True)
-    number: Mapped[int] =mapped_column(Integer(), primary_key=True) 
+    number: Mapped[int] = mapped_column(Integer(), primary_key=True)
     start_minutes_from_est: Mapped[int] = mapped_column(Integer())
     end_minutes_from_est: Mapped[int] = mapped_column(Integer())
 
     school_allocations: Mapped[List["SchoolAllocation"]] = relationship(back_populates="time_block")
 
-    @validates('end_minutes_from_est')
+    @validates("end_minutes_from_est")
     def validate_end_time(self, _, end_minutes_from_est):
         if int(end_minutes_from_est) <= int(self.start_minutes_from_est):
             raise ValueError("End time must be greater than start time")
@@ -125,6 +151,7 @@ class TimeBlock(Base):
             return False
         return (self.number, self.day) == (other.number, self.day)
 
+
 # Marist really blurs the line in their communication on what a school versus
 #   a deparment really is...
 # There is no list of "departments" that I could find, but I was told it was valuable
@@ -147,11 +174,12 @@ class School(Base):
             return False
         return (self.code, self.name) == (other.code, self.name)
 
+
 # Registrar may try to say this is "deparment" allocationbut it is school
 #    allocation
 # Keep in mind there is not history of school allocations so if this changes
 #    views on previous years using these values my also change
-# There would have to be history both this change and of rooms to 
+# There would have to be history both this change and of rooms to
 #    correctly calculate allocation numbers
 # Technically the group + school_code dictates the alloaction
 class SchoolAllocation(Base):
@@ -166,9 +194,8 @@ class SchoolAllocation(Base):
     school: Mapped["School"] = relationship(back_populates="allocations")
 
     _fk_c = ForeignKeyConstraint(
-            ["time_block_number", "time_block_day"],
-            ["TimeBlocks.number", "TimeBlocks.day"]
-            )
+        ["time_block_number", "time_block_day"], ["TimeBlocks.number", "TimeBlocks.day"]
+    )
     __table_args__ = (_fk_c,)
 
     def __hash__(self):
@@ -177,8 +204,11 @@ class SchoolAllocation(Base):
     def __eq__(self, other):
         if not isinstance(other, SchoolAllocation):
             return False
-        return (self.school_code, self.time_block_number, self.time_block_day) == \
-            (other.school_code, self.time_block_number, self.time_block_day)
+        return (self.school_code, self.time_block_number, self.time_block_day) == (
+            other.school_code,
+            self.time_block_number,
+            self.time_block_day,
+        )
 
 
 class Subject(Base):
@@ -203,7 +233,9 @@ class Course(Base):
     __tablename__ = "Courses"
     SEARCH_INTERVAL = 10
     code: Mapped[str] = mapped_column(String(), primary_key=True)
-    subject_code: Mapped[int] = mapped_column(String(), ForeignKey("Subjects.code"), primary_key=True)
+    subject_code: Mapped[int] = mapped_column(
+        String(), ForeignKey("Subjects.code"), primary_key=True
+    )
     credits: Mapped[int] = mapped_column(Integer())
     name: Mapped[str] = mapped_column(String())
     description: Mapped[Optional[str]] = mapped_column(String())
@@ -227,6 +259,10 @@ class Season(enum.Enum):
     SUMMER = "SUMMER"
     FALL = "FALL"
 
+    def __str__(self) -> str:
+        return self.value.lower().capitalize()
+
+
 class Term(Base):
     __tablename__ = "Terms"
     season: Mapped[Season] = mapped_column(Enum(Season), primary_key=True)
@@ -237,13 +273,14 @@ class Term(Base):
 
     @staticmethod
     def recent_order() -> tuple:
-        '''used to get the most recent terms'''
+        """used to get the most recent terms"""
         return Term.year.desc(), case(
             (Term.season == Season.SUMMER, 4),
             (Term.season == Season.SPRING, 3),
             (Term.season == Season.WINTER, 2),
             (Term.season == Season.FALL, 1),
-            else_=0).desc()
+            else_=0,
+        ).desc()
 
     def __hash__(self):
         return hash((self.season, self.year))
@@ -262,7 +299,9 @@ class Section(Base):
     subject_code: Mapped[str] = mapped_column(String(), primary_key=True)
     term_season: Mapped[Season] = mapped_column(Enum(Season), primary_key=True)
     term_year: Mapped[Season] = mapped_column(Integer(), primary_key=True)
-    professor_id: Mapped[Optional[Professor]] = mapped_column(Integer(), ForeignKey("Professors.id"))
+    professor_id: Mapped[Optional[Professor]] = mapped_column(
+        Integer(), ForeignKey("Professors.id")
+    )
     campus: Mapped[str] = mapped_column(String())
     soft_capacity: Mapped[int] = mapped_column(Integer(), default=0, server_default="0")
     banner_course: Mapped[Optional[str]] = mapped_column(String())
@@ -273,23 +312,39 @@ class Section(Base):
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="section", overlaps="meetings")
 
     _fk_c_to_term = ForeignKeyConstraint(
-            ["term_season", "term_year"],
-            ["Terms.season", "Terms.year"],
-            )
+        ["term_season", "term_year"],
+        ["Terms.season", "Terms.year"],
+    )
     _fk_c_to_course = ForeignKeyConstraint(
-            ["course_code", "subject_code"],
-            ["Courses.code", "Courses.subject_code"],
-            )
-    __table_args__ = (_fk_c_to_term, _fk_c_to_course,)
+        ["course_code", "subject_code"],
+        ["Courses.code", "Courses.subject_code"],
+    )
+    __table_args__ = (
+        _fk_c_to_term,
+        _fk_c_to_course,
+    )
 
     def __hash__(self):
-        return hash((self.number, self.course_code, self.subject_code, self.term_season, self.term_year))
+        return hash(
+            (self.number, self.course_code, self.subject_code, self.term_season, self.term_year)
+        )
 
     def __eq__(self, other):
         if not isinstance(other, Section):
             return False
-        return (self.number, self.course_code, self.subject_code, self.term_season, self.term_year) == \
-                (other.number, other.course_code, other.subject_code, other.term_season, other.term_year)
+        return (
+            self.number,
+            self.course_code,
+            self.subject_code,
+            self.term_season,
+            self.term_year,
+        ) == (
+            other.number,
+            other.course_code,
+            other.subject_code,
+            other.term_season,
+            other.term_year,
+        )
 
 
 class Meeting(Base):
@@ -304,10 +359,14 @@ class Meeting(Base):
     day: Mapped[Optional[Day]] = mapped_column(Enum(Day))
     start_minutes_from_est: Mapped[Optional[int]] = mapped_column(Integer())
     end_minutes_from_est: Mapped[Optional[int]] = mapped_column(Integer)
-    room_number: Mapped[Optional[str]] = mapped_column(String(), )
+    room_number: Mapped[Optional[str]] = mapped_column(
+        String(),
+    )
     # building code is a fk for builds and part of the composite key for room
     building_code: Mapped[Optional[str]] = mapped_column(String(), ForeignKey("Buildings.code"))
-    professor_id: Mapped[Optional[Professor]] = mapped_column(Integer(), ForeignKey("Professors.id"))
+    professor_id: Mapped[Optional[Professor]] = mapped_column(
+        Integer(), ForeignKey("Professors.id")
+    )
     #####
     # these probably wont matter all that much
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime())
@@ -320,7 +379,7 @@ class Meeting(Base):
     building: Mapped["Building"] = relationship(back_populates="meetings", overlaps="meetings,room")
     professor: Mapped["Professor"] = relationship(back_populates="meetings")
 
-    @validates('end_minutes_from_est')
+    @validates("end_minutes_from_est")
     def validate_end_time(self, _, end_minutes_from_est):
         if end_minutes_from_est is None and self.start_minutes_from_est is None:
             return end_minutes_from_est
@@ -331,29 +390,34 @@ class Meeting(Base):
         return end_minutes_from_est
 
     _fk_c_to_section = ForeignKeyConstraint(
-            ["section_number", "course_code", "subject_code", "term_season", "term_year"],
-            ["Sections.number", "Sections.course_code", "Sections.subject_code", "Sections.term_season", "Sections.term_year"],
-            )
+        ["section_number", "course_code", "subject_code", "term_season", "term_year"],
+        [
+            "Sections.number",
+            "Sections.course_code",
+            "Sections.subject_code",
+            "Sections.term_season",
+            "Sections.term_year",
+        ],
+    )
     _fk_c_to_room = ForeignKeyConstraint(
-            ["room_number", "building_code"],
-            ["Rooms.number", "Rooms.building_code"],
-            )
+        ["room_number", "building_code"],
+        ["Rooms.number", "Rooms.building_code"],
+    )
     _fk_c_to_term = ForeignKeyConstraint(
-            ["term_season", "term_year"],
-            ["Terms.season", "Terms.year"],
-            )
+        ["term_season", "term_year"],
+        ["Terms.season", "Terms.year"],
+    )
     __table_args__ = (_fk_c_to_room, _fk_c_to_section, _fk_c_to_term)
 
     @staticmethod
     def day_time_sort() -> tuple:
         return case(
-                (Meeting.day == Day.MON, 1),
-                (Meeting.day == Day.TUE, 2),
-                (Meeting.day == Day.WED, 3),
-                (Meeting.day == Day.THU, 4),
-                (Meeting.day == Day.FRI, 5),
-                (Meeting.day == Day.SAT, 6),
-                (Meeting.day == Day.SUN, 7),
-                else_=8
-                ).asc(), Meeting.start_minutes_from_est.asc()
-
+            (Meeting.day == Day.MON, 1),
+            (Meeting.day == Day.TUE, 2),
+            (Meeting.day == Day.WED, 3),
+            (Meeting.day == Day.THU, 4),
+            (Meeting.day == Day.FRI, 5),
+            (Meeting.day == Day.SAT, 6),
+            (Meeting.day == Day.SUN, 7),
+            else_=8,
+        ).asc(), Meeting.start_minutes_from_est.asc()

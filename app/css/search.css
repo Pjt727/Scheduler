@@ -1,0 +1,24 @@
+.search-table {
+    z-index: 999;
+}
+.search-table tbody {
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+.search-option {
+    cursor: pointer;
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+.search-option:hover td {
+    background-color: #c5c5c5;
+}
+
+.search-option:hover,
+.selected-option td {
+    background-color: #c5c5c5;
+}
+
