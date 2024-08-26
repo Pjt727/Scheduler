@@ -1,6 +1,7 @@
 from fasthtml.common import *
 from make_app import app, PARTIALS_PREFIX, SCRIPTS_PATH, CSS_PATH, ASSETS_PATH
 from utility_components.full_pages import Page
+from utility_components.messages import Message
 from dataclasses import dataclass
 
 
@@ -54,8 +55,14 @@ def register(req: Request):
                 name="password2",
                 placeholder="Confirm Password",
             ),
+            Button(cls="form", inputmode="submit"),
         ),
     )
+
+
+@app.post()
+def validate_email(email: str):
+    return Name()
 
 
 @app.get("/login")
