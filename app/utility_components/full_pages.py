@@ -4,14 +4,20 @@ from make_app import app, ASSETS_PATH
 
 
 def Page(req: Request, title: str, *c):
-    nav_pairs = [("Search", app.url_path_for("search"))]
+    logged_in_nav = [("Search", app.url_path_for("search"))]
+    unauth_nav = [("Login", app.url_path_for("login")), ("Register", app.url_path_for("register"))]
+
+    # uncomment this when fisnihing auth
+    logged_in_nav.extend(unauth_nav)
+    print(req.url.path)
+
     nav_items = [
         A(
             href=url,
-            cls="nav-link",
+            cls=f"nav-link {"active" if url == req.url.path else ""}",
             aria_current="page" if url == req.url.path else None,
         )(name)
-        for name, url in nav_pairs
+        for name, url in logged_in_nav
     ]
     nav_options = Div(id="navbarNav", cls="collapse navbar-collapse")(
         Div(cls="navbar-nav")(*nav_items)

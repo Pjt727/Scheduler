@@ -54,6 +54,9 @@ class Professor(Base):
             other.email,
         )
 
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
 
 class Building(Base):
     __tablename__ = "Buildings"
@@ -115,6 +118,14 @@ class Day(enum.Enum):
     SAT = "Saturday"
     SUN = "Sunday"
 
+    def __gt__(self, other):
+        days = [Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT, Day.SUN]
+        return days.index(self) > days.index(other)
+
+    def __lt__(self, other):
+        days = [Day.MON, Day.TUE, Day.WED, Day.THU, Day.FRI, Day.SAT, Day.SUN]
+        return days.index(self) < days.index(other)
+
 
 # time is set up as minutes since EST 00:00
 #   to avoid dealing with timezones and make checks easier
@@ -129,6 +140,14 @@ class TimeBlock(Base):
 
     @validates("end_minutes_from_est")
     def validate_end_time(self, _, end_minutes_from_est):
+        if end_minutes_from_est is None and self.start_minutes_from_est is None:
+            return end_minutes_from_est
+        if not (end_minutes_from_est and self.start_minutes_from_est):
+            raise ValueError("Both end minutes and startminutes must be set together")
+        if end_minutes_from_est > 1440 or end_minutes_from_est < 0:
+            raise ValueError("End time must be less than within 24 hour range")
+        if self.start_minutes_from_est > 1440 or self.start_minutes_from_est < 0:
+            raise ValueError("Start time must be less than within 24 hour range")
         if int(end_minutes_from_est) <= int(self.start_minutes_from_est):
             raise ValueError("End time must be greater than start time")
         return end_minutes_from_est
@@ -385,6 +404,10 @@ class Meeting(Base):
             return end_minutes_from_est
         if not (end_minutes_from_est and self.start_minutes_from_est):
             raise ValueError("Both end minutes and startminutes must be set together")
+        if end_minutes_from_est > 1440 or end_minutes_from_est < 0:
+            raise ValueError("End time must be less than within 24 hour range")
+        if self.start_minutes_from_est > 1440 or self.start_minutes_from_est < 0:
+            raise ValueError("Start time must be less than within 24 hour range")
         if int(end_minutes_from_est) <= int(self.start_minutes_from_est):
             raise ValueError("End time must be greater than start time")
         return end_minutes_from_est
@@ -421,3 +444,31 @@ class Meeting(Base):
             (Meeting.day == Day.SUN, 7),
             else_=8,
         ).asc(), Meeting.start_minutes_from_est.asc()
+
+    @property
+    def start_time(self) -> time | None:
+        if self.start_minutes_from_est is None:
+            return None
+        hours, minutes = divmod(int(self.start_minutes_from_est), 60)
+        return time(hours, minutes)
+
+    @property
+    def end_time(self) -> time | None:
+        if self.end_minutes_from_est is None:
+            return None
+        hours, minutes = divmod(int(self.end_minutes_from_est), 60)
+        return time(hours, minutes)
+
+    @property
+    def display_time(self) -> str:
+        if self.start_time is None or self.end_time is None:
+            return "No time"
+        return f"{self.start_time.strftime("%I:%M %p")} - {self.end_time.strftime("%I:%M %p")}"
+
+    def __hash__(self):
+        return hash(self.rowid)
+
+    def __eq__(self, other):
+        if not isinstance(other, Meeting):
+            return False
+        return self.rowid == other.rowid

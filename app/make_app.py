@@ -1,7 +1,7 @@
 from fasthtml.common import *
 from fasthtml.svg import Path
 
-hdrs = (
+_hdrs = (
     # boostrap cdn v5.3
     Link(
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
@@ -24,7 +24,7 @@ hdrs = (
                """),
 )
 
-app, rt = fast_app(hdrs=hdrs, pico=False, surreal=False, live=True)
+app, rt = fast_app(hdrs=_hdrs, pico=False, surreal=False, live=True)
 
 PARTIALS_PREFIX = "/partials"
 ASSETS_PATH = "./assets"

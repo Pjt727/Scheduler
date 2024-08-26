@@ -14,11 +14,10 @@
 }
 
 .search-option:hover td {
-    background-color: #c5c5c5;
+    background-color: #f5f5f5;
 }
 
-.search-option:hover,
 .selected-option td {
-    background-color: #c5c5c5;
+    background-color: #c5c5c5 !important;
 }
 
