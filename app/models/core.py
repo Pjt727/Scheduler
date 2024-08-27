@@ -17,7 +17,11 @@ from sqlalchemy.util import hybridmethod, hybridproperty
 from models.config import session, Base
 import enum
 from datetime import time, datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from models.users import User
+
 ###############################
 # Core is everything that gets mapped from banner
 #     and all default information
@@ -39,8 +43,17 @@ class Professor(Base):
         String(), default=default_title, server_default=default_title
     )
 
+    user: Mapped[Optional["User"]] = relationship(back_populates="professor")
     sections: Mapped[List["Section"]] = relationship(back_populates="professor")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="professor")
+
+    @validates("email")
+    def validate_name(self, _, value):
+        if value is None:
+            return value
+        if any(char.isupper() for char in value):
+            raise ValueError(f"Email `{value}` must be all lowercase")
+        return value
 
     def __hash__(self):
         return hash((self.first_name, self.last_name, self.email))
@@ -327,7 +340,7 @@ class Section(Base):
 
     course: Mapped["Course"] = relationship(back_populates="sections")
     term: Mapped["Term"] = relationship(back_populates="sections")
-    professor: Mapped["Professor"] = relationship(back_populates="sections")
+    professor: Mapped[Optional["Professor"]] = relationship(back_populates="sections")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="section", overlaps="meetings")
 
     _fk_c_to_term = ForeignKeyConstraint(

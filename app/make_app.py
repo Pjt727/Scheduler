@@ -24,7 +24,7 @@ _hdrs = (
                """),
 )
 
-app, rt = fast_app(hdrs=_hdrs, pico=False, surreal=False, live=True)
+app, rt = fast_app(hdrs=_hdrs, pico=False, live=True)
 
 PARTIALS_PREFIX = "/partials"
 ASSETS_PATH = "./assets"

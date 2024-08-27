@@ -157,6 +157,8 @@ def merge_sections(term: Term, banner_sections: list[BannerSection]):
             email_address = fac.emailAddress
             if not email_address:
                 email_address = None
+            else:
+                email_address = email_address.lower()
             professor = Professor(first_name=first_name, last_name=last_name, email=email_address)
             # cursed - remember this is messy bc professor doesnt have a good PK
             if professor in old_professors:

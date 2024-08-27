@@ -265,9 +265,9 @@ def remove_course_pill(request: Request, course_id: int):
     )
 
 
+# this seems slow for some reason or another
 @app.get(f"{PARTIALS_PREFIX}/search_sections")
 def search_sections(request: Request, term_id: int, start_slice: int):
-    print("Start:", datetime.now())
     included_courses = request.query_params.getlist("included_course")
     if not included_courses:
         sections = []
@@ -284,7 +284,6 @@ def search_sections(request: Request, term_id: int, start_slice: int):
             .order_by(Course.rowid, Section.number)
         )
         sections = session.scalars(sections_select).unique()
-        print("End Query:", datetime.now())
 
     return tuple(
         [
