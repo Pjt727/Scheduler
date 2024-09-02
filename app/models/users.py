@@ -30,8 +30,8 @@ from typing import Optional, List
 
 
 class User(Base):
-    __tablename__ = "Professors"
-    id: Mapped[int] = mapped_column(Integer(), primary_key=True)
+    __tablename__ = "Users"
+    email: Mapped[str] = mapped_column(String(), primary_key=True)
     password: Mapped[str] = mapped_column(String())
     professor_id: Mapped[Professor] = mapped_column(Integer(), ForeignKey("Professors.id"))
 
