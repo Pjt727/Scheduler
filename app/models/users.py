@@ -19,14 +19,6 @@ from models.core import Professor
 import enum
 from datetime import time, datetime
 from typing import Optional, List
-###############################
-# Core is everything that gets mapped from banner
-#     and all default information
-#
-# Notes:
-#  1. unique id's are useful in place of composite pk's for lookups (forms and such);
-#        so use rowid from sqlite
-###############################
 
 
 class User(Base):
@@ -35,4 +27,4 @@ class User(Base):
     password: Mapped[str] = mapped_column(String())
     professor_id: Mapped[Professor] = mapped_column(Integer(), ForeignKey("Professors.id"))
 
-    professor: Mapped["Professor"] = relationship(back_populates="user", uselist=False)
+    professor: Mapped["Professor"] = relationship(Professor, back_populates="user", uselist=False)

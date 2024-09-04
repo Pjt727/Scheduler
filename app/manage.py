@@ -1,8 +1,18 @@
 from data.helpers import *
 from data.load_banner import *
 from data.hard_coded_defaults import load_defaults
+<<<<<<< Updated upstream
 from models import *
 from models.config import Base, engine
+=======
+
+# TODO change how models are imported
+from models.config import Base, engine
+
+# needs to import everything from all the models to ensure that the all
+#    the tables are created
+from models.models import *
+>>>>>>> Stashed changes
 import argparse
 import logging
 

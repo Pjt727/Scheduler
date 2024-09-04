@@ -31,7 +31,7 @@ def register(req: Request):
     return Page(
         req,
         "Register",
-        Form(
+        Form(hx_post=app.url_path_for("make_user"))(
             Legend("Create a scheduler account"),
             Input(
                 hx_post=app.url_path_for("validate_email"),
@@ -69,20 +69,42 @@ class AccountCreation:
     last_name: str
     password1: str
     password2: str
+    force: bool
 
 
 @app.post("/register")
 def make_user(data: AccountCreation):
-    same_email = select(Professor.first_name, Professor.last_name).filter(
-        Professor.email == data.email
-    )
-    dupe_email_result = session.execute(same_email).first()
-    if dupe_email_result:
-        return
-    same_name_select = select(Professor.email).filter(
-        (Professor.first_name == data.first_name) & (Professor.last_name == data.last_name)
-    )
-    emaiL_ = select
+    email = data.email.lower()
+    same_email = select(User).join(Professor).filter(User.email == email)
+    dupe_user = session.scalar(same_email)
+    # there is already a user email as registered
+    if dupe_user:
+        return Message(
+            Div(
+                f"That email is already an existing user under {dupe_user.professor.first_name} {dupe_user.professor.last_name}"
+            ),
+            kind=MessageKind.ERROR,
+        )
+    select_exisiting_professor = select(Professor).join(User).filter(Professor.email == email)
+    exisiting_professor = session.scalar(select_exisiting_professor)
+    # There is a professor with the same email (happy registration path)
+    if exisiting_professor:
+        assert exisiting_professor.user is None
+
+    # allow users to assume the professor of unlinked professors with the same name
+    if not data.force:
+        similar_name_select = (
+            select(Professor)
+            .join(Professor)
+            .filter(
+                Professor.first_name.like(f"%{data.first_name}%")
+                & Professor.last_name.like(f"%{data.last_name}%")
+                & Professor.user
+                == None
+            )
+        )
+        # TODO: implement this selection
+        similiar_profs = session.scalars(similar_name_select)
     pass
 
 

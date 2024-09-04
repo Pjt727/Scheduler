@@ -43,9 +43,10 @@ class Professor(Base):
         String(), default=default_title, server_default=default_title
     )
 
-    user: Mapped[Optional["User"]] = relationship(back_populates="professor")
     sections: Mapped[List["Section"]] = relationship(back_populates="professor")
     meetings: Mapped[List["Meeting"]] = relationship(back_populates="professor")
+
+    user: Mapped[Optional["User"]] = relationship("User", back_populates="professor", uselist=False)
 
     @validates("email")
     def validate_name(self, _, value):
