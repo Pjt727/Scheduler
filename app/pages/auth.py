@@ -4,6 +4,7 @@ from utility_components.full_pages import Page
 from utility_components.messages import Message, MessageKind, MessageStack
 from sqlalchemy import select
 from dataclasses import dataclass
+from models.users import *
 from models.core import *
 
 
@@ -23,6 +24,18 @@ def Name(first_name="", last_name=""):
             placeholder="First Last",
             value=last_name,
         ),
+    )
+
+
+def RegisterSubmit(is_force=False):
+    return (
+        Button(
+            id="submitRegister",
+            hx_swap_oob="true",
+            cls=f"btn { "btn-warning" if is_force else "btn-primary" }",
+            inputmode="submit",
+            hx_vals={"force": is_force},
+        )("Register Anyways" if is_force else "Register"),
     )
 
 
@@ -56,7 +69,7 @@ def register(req: Request):
                 name="password2",
                 placeholder="Confirm Password",
             ),
-            Button(cls="btn btn-primary", inputmode="submit")("Register"),
+            RegisterSubmit(),
         ),
         MessageStack(),
     )
@@ -75,7 +88,7 @@ class AccountCreation:
 @app.post("/register")
 def make_user(data: AccountCreation):
     email = data.email.lower()
-    same_email = select(User).join(Professor).filter(User.email == email)
+    same_email = select(User).filter(User.email == email)
     dupe_user = session.scalar(same_email)
     # there is already a user email as registered
     if dupe_user:
@@ -85,11 +98,6 @@ def make_user(data: AccountCreation):
             ),
             kind=MessageKind.ERROR,
         )
-    select_exisiting_professor = select(Professor).join(User).filter(Professor.email == email)
-    exisiting_professor = session.scalar(select_exisiting_professor)
-    # There is a professor with the same email (happy registration path)
-    if exisiting_professor:
-        assert exisiting_professor.user is None
 
     # allow users to assume the professor of unlinked professors with the same name
     if not data.force:
@@ -105,7 +113,43 @@ def make_user(data: AccountCreation):
         )
         # TODO: implement this selection
         similiar_profs = session.scalars(similar_name_select)
-    pass
+
+    if data.password1 != data.password2 or not data.password1:
+        # the password would only be none of someone hacked the request
+        #   so idk that the error message is bad
+        return Message(Div(f"Your passwords do not match"), kind=MessageKind.ERROR)
+    # checking password complexity
+    if not data.force:
+        reason, is_complex = User.password_is_complex(data.password1)
+        if not is_complex:
+            return Message(
+                Div(
+                    f"Your password is not very complex are you sure you want to coninue with this password? {reason}"
+                ),
+                MessageKind.WARNING,
+            ), RegisterSubmit(True)
+    select_exisiting_professor = select(Professor).filter(
+        Professor.email == email, Professor.user == None
+    )
+    exisiting_professor = session.scalar(select_exisiting_professor)
+    message = "Your account is linked to your teaching history"
+    if exisiting_professor is None:
+        exisiting_professor = Professor()
+        session.add(exisiting_professor)
+        message = "A new professor instance is made for your account"
+    exisiting_professor.first_name = data.first_name
+    exisiting_professor.last_name = data.last_name
+    exisiting_professor.email = email
+
+    user = User(
+        email=email, password=User.hash_password(data.password1), professor=exisiting_professor
+    )
+    session.add(user)
+    session.commit()
+    return Message(
+        Div(f"A Scheduler account already exists under the email {email}! Try logging in."),
+        kind=MessageKind.ERROR,
+    ), HttpHeader("HX-Redirect", app.get_url_for("home"))
 
 
 @app.post(f"{PARTIALS_PREFIX}/validate_email")

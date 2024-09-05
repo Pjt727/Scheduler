@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     UniqueConstraint,
 )
+import hashlib
 from sqlalchemy.sql.expression import case
 from sqlalchemy.orm import Mapped, validates
 from sqlalchemy.orm import mapped_column, relationship
@@ -28,3 +29,17 @@ class User(Base):
     professor_id: Mapped[Professor] = mapped_column(Integer(), ForeignKey("Professors.id"))
 
     professor: Mapped["Professor"] = relationship(Professor, back_populates="user", uselist=False)
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        hash_object = hashlib.sha256()
+        hash_object.update(password.encode("utf-8"))
+        return hash_object.hexdigest()
+
+    @staticmethod
+    def password_is_complex(password: str) -> tuple[str, bool]:
+        # maybe add some other password checks
+        PASS_LEN = 8
+        if len(password) < PASS_LEN:
+            return f"Password length must be at least {PASS_LEN}", False
+        return "", True
